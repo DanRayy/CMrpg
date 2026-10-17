@@ -1,0 +1,743 @@
+/* ==========================================================================
+   CMrpg v2.0 — Dark Fantasy Medieval Theme (Fiel à Imagem de Referência)
+   ========================================================================== */
+
+:root,
+html[data-theme="dark"] {
+  --bg-obsidian: #0a0908;
+  --bg-sidebar: #0e0c0a;
+  --bg-main: #110f0c;
+  --bg-card: #171410;
+  --bg-card-elevated: #1e1a15;
+  --bg-card-hover: #241f19;
+  --bg-input: #0d0b09;
+  --bg-pill: #211c16;
+  --bg-pill-hover: #2c251d;
+
+  --gold-primary: #d4a853;
+  --gold-bright: #f0c674;
+  --gold-muted: #9a7836;
+  --gold-glow: rgba(212, 168, 83, 0.18);
+  --gold-border: rgba(212, 168, 83, 0.22);
+  --gold-border-strong: rgba(212, 168, 83, 0.48);
+
+  --border-subtle: rgba(255, 244, 224, 0.08);
+  --border-medium: rgba(255, 244, 224, 0.14);
+
+  --text-primary: #f5efe6;
+  --text-secondary: #d6cbb9;
+  --text-muted: #8c8273;
+
+  --crimson-bg: rgba(153, 27, 27, 0.22);
+  --crimson-border: rgba(220, 38, 38, 0.45);
+  --crimson-text: #fca5a5;
+
+  --bar-track: #090807;
+  --shadow-card: 0 14px 34px -8px rgba(0, 0, 0, 0.72);
+}
+
+html[data-theme="light"] {
+  --bg-obsidian: #f4efe6;
+  --bg-sidebar: #ebe3d5;
+  --bg-main: #f8f4ec;
+  --bg-card: #ffffff;
+  --bg-card-elevated: #fcf9f2;
+  --bg-card-hover: #f3ede0;
+  --bg-input: #f5efe4;
+  --bg-pill: #ede5d5;
+  --bg-pill-hover: #e2d7c3;
+
+  --gold-primary: #9c6f19;
+  --gold-bright: #7c5610;
+  --gold-muted: #785a22;
+  --gold-glow: rgba(180, 130, 40, 0.14);
+  --gold-border: rgba(156, 111, 25, 0.25);
+  --gold-border-strong: rgba(156, 111, 25, 0.55);
+
+  --border-subtle: rgba(30, 24, 16, 0.1);
+  --border-medium: rgba(30, 24, 16, 0.18);
+
+  --text-primary: #1c1610;
+  --text-secondary: #463a2c;
+  --text-muted: #756756;
+
+  --crimson-bg: rgba(185, 28, 28, 0.1);
+  --crimson-border: rgba(185, 28, 28, 0.4);
+  --crimson-text: #991b1b;
+
+  --bar-track: #e4dccb;
+  --shadow-card: 0 10px 26px -6px rgba(40, 30, 15, 0.1);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background-color: var(--bg-main);
+  color: var(--text-primary);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  margin: 0;
+  overflow-x: hidden;
+}
+
+.font-serif-fantasy {
+  font-family: 'Cinzel', Georgia, serif;
+}
+
+/* ==========================================================================
+   Layout Principal: Sidebar Esquerda + Área Principal
+   ========================================================================== */
+.app-sidebar {
+  background-color: var(--bg-sidebar);
+  border-right: 1px solid var(--border-subtle);
+}
+
+.app-topbar {
+  background-color: rgba(14, 12, 10, 0.88);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+html[data-theme="light"] .app-topbar {
+  background-color: rgba(235, 227, 213, 0.9);
+}
+
+.gold-title {
+  color: var(--gold-primary);
+}
+
+.gold-diamond-divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--gold-muted);
+  font-size: 10px;
+}
+
+.gold-diamond-divider::before,
+.gold-diamond-divider::after {
+  content: "";
+  height: 1px;
+  width: 44px;
+  background: linear-gradient(90deg, transparent, var(--gold-border-strong), transparent);
+}
+
+/* Links da Sidebar */
+.sidebar-nav-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  border: 1px solid transparent;
+  transition: all 0.16s ease;
+  position: relative;
+}
+
+.sidebar-nav-item:hover {
+  color: var(--text-primary);
+  background-color: rgba(212, 168, 83, 0.06);
+}
+
+.sidebar-nav-item.active {
+  color: var(--gold-bright);
+  background: linear-gradient(90deg, rgba(212, 168, 83, 0.16) 0%, rgba(212, 168, 83, 0.04) 100%);
+  border-color: var(--gold-border);
+}
+
+.sidebar-nav-item.active::before {
+  content: "";
+  position: absolute;
+  left: -1px;
+  top: 6px;
+  bottom: 6px;
+  width: 3px;
+  border-radius: 0 4px 4px 0;
+  background-color: var(--gold-primary);
+}
+
+/* Botão Especial de Combate & Turnos na Sidebar (Vermelho Carmesim como na imagem) */
+.sidebar-nav-combat {
+  background: var(--crimson-bg);
+  border: 1px solid var(--crimson-border) !important;
+  color: var(--crimson-text) !important;
+}
+
+.sidebar-nav-combat:hover {
+  background: rgba(185, 28, 28, 0.34);
+  border-color: #ef4444 !important;
+}
+
+.sidebar-nav-combat.active {
+  background: linear-gradient(90deg, rgba(220, 38, 38, 0.35) 0%, rgba(153, 27, 27, 0.18) 100%);
+  border-color: #f87171 !important;
+  color: #ffffff !important;
+}
+
+.sidebar-nav-combat.active::before {
+  background-color: #ef4444;
+}
+
+.sidebar-badge {
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 9999px;
+  font-family: 'Inter', sans-serif;
+  font-size: 10px;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(212, 168, 83, 0.12);
+  color: var(--gold-primary);
+  border: 1px solid var(--gold-border);
+}
+
+/* Widgets da Topbar */
+.topbar-wallet-pill {
+  background-color: var(--bg-card);
+  border: 1px solid var(--gold-border);
+  border-radius: 8px;
+  padding: 6px 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  transition: all 0.15s ease;
+}
+
+.topbar-wallet-pill:hover {
+  border-color: var(--gold-border-strong);
+  background-color: var(--bg-card-elevated);
+}
+
+.topbar-role-pill {
+  background: rgba(212, 168, 83, 0.1);
+  border: 1px solid var(--gold-border-strong);
+  color: var(--gold-bright);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+}
+
+.topbar-role-pill.role-player {
+  background: rgba(56, 189, 248, 0.1);
+  border-color: rgba(56, 189, 248, 0.35);
+  color: #7dd3fc;
+}
+
+/* ==========================================================================
+   Hero Banner da Sala (Visão Geral — Estilo Taverna / Velas / Grimório)
+   ========================================================================== */
+.room-hero-banner {
+  position: relative;
+  border-radius: 12px;
+  border: 1px solid var(--gold-border);
+  overflow: hidden;
+  min-height: 215px;
+  background:
+    linear-gradient(90deg, rgba(12, 10, 8, 0.96) 0%, rgba(15, 12, 9, 0.85) 48%, rgba(28, 20, 12, 0.45) 100%),
+    radial-gradient(circle at 76% 42%, rgba(245, 158, 11, 0.32) 0%, rgba(180, 83, 9, 0.16) 28%, rgba(12, 10, 8, 0.95) 70%),
+    linear-gradient(135deg, #1a130c 0%, #2b1d10 50%, #0f0c09 100%);
+  box-shadow: var(--shadow-card);
+}
+
+html[data-theme="light"] .room-hero-banner {
+  background:
+    linear-gradient(90deg, rgba(28, 22, 16, 0.92) 0%, rgba(36, 28, 19, 0.82) 50%, rgba(65, 46, 25, 0.55) 100%),
+    radial-gradient(circle at 76% 42%, rgba(245, 158, 11, 0.35) 0%, rgba(12, 10, 8, 0.9) 70%);
+  color: #f5efe6;
+}
+
+/* Ilustração decorativa de Taverna/Vela/Pena à direita do Banner */
+.room-hero-decor {
+  position: absolute;
+  right: 32px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  opacity: 0.42;
+  filter: drop-shadow(0 0 24px rgba(245, 158, 11, 0.45));
+}
+
+/* Botão Dourado Padrão (Como "COPIAR LINK" na imagem) */
+.btn-gold {
+  background: linear-gradient(180deg, #deb562 0%, #c4963c 100%);
+  color: #14100a;
+  font-weight: 800;
+  border: 1px solid #f0c674;
+  border-radius: 8px;
+  box-shadow: 0 4px 14px rgba(212, 168, 83, 0.25);
+  transition: all 0.15s ease;
+}
+
+.btn-gold:hover {
+  background: linear-gradient(180deg, #eac474 0%, #d1a347 100%);
+  transform: translateY(-1px);
+}
+
+.btn-gold:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.btn-gold-outline {
+  background: rgba(212, 168, 83, 0.1);
+  color: var(--gold-bright);
+  border: 1px solid var(--gold-border-strong);
+  border-radius: 8px;
+  font-weight: 700;
+  transition: all 0.15s ease;
+}
+
+.btn-gold-outline:hover {
+  background: rgba(212, 168, 83, 0.2);
+}
+
+/* Cards e Superfícies */
+.fantasy-card,
+.char-card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  box-shadow: var(--shadow-card);
+  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
+}
+
+.fantasy-card:hover,
+.char-card:hover {
+  border-color: var(--gold-border);
+}
+
+.app-title {
+  color: var(--text-primary);
+}
+
+.app-muted {
+  color: var(--text-muted);
+}
+
+.app-label {
+  color: var(--text-secondary);
+}
+
+.app-input {
+  background-color: var(--bg-input);
+  color: var(--text-primary);
+  border: 1px solid var(--border-medium);
+  border-radius: 8px;
+}
+
+.app-input:focus {
+  border-color: var(--gold-primary);
+  box-shadow: 0 0 0 2px var(--gold-glow);
+  outline: none;
+}
+
+.app-icon-btn {
+  background-color: var(--bg-pill);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+}
+
+.app-icon-btn:hover {
+  background-color: var(--bg-pill-hover);
+  border-color: var(--gold-border);
+  color: var(--gold-bright);
+}
+
+.app-secondary-btn {
+  background-color: var(--bg-pill);
+  border: 1px solid var(--border-medium);
+  color: var(--text-secondary);
+}
+
+.app-secondary-btn:hover {
+  background-color: var(--bg-pill-hover);
+  color: var(--text-primary);
+}
+
+.app-divider-border {
+  border-color: var(--border-subtle);
+}
+
+/* Badges de Cargo na Tabela de Membros */
+.role-badge-master {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  background: rgba(212, 168, 83, 0.12);
+  color: var(--gold-bright);
+  border: 1px solid var(--gold-border-strong);
+}
+
+.role-badge-player {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  background: rgba(56, 189, 248, 0.1);
+  color: #93c5fd;
+  border: 1px solid rgba(56, 189, 248, 0.28);
+}
+
+/* ==========================================================================
+   Drag & Drop (Reordenação de Cards pelo Nome do Personagem)
+   ========================================================================== */
+.char-drag-handle {
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.char-drag-handle:active {
+  cursor: grabbing;
+}
+
+.char-card.dragging-source {
+  opacity: 0.35;
+  transform: scale(0.98);
+}
+
+.char-card.drop-target-active {
+  border: 2px dashed var(--gold-primary) !important;
+  box-shadow: 0 0 0 4px var(--gold-glow), var(--shadow-card);
+  transform: translateY(-2px);
+}
+
+.drag-ghost {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0.88;
+  transform: rotate(2.2deg) scale(1.02);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8), 0 0 0 2px var(--gold-primary);
+  transition: none !important;
+}
+
+/* ==========================================================================
+   Barras de Atributos (Vida ❤️, Armadura 🛡️, Mana ✨ e Resistências)
+   ========================================================================== */
+.stat-bar-track {
+  background-color: var(--bar-track);
+  border: 1px solid var(--border-subtle);
+  overflow: hidden;
+  position: relative;
+}
+
+.stat-bar-fill {
+  height: 100%;
+  border-radius: inherit;
+  transition: width 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  position: relative;
+}
+
+.stat-bar-fill::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0) 60%);
+  pointer-events: none;
+}
+
+.stat-bar-hp {
+  background: linear-gradient(90deg, #b91c1c 0%, #ef4444 65%, #f87171 100%);
+}
+
+.stat-bar-armor {
+  background: linear-gradient(90deg, #0369a1 0%, #0ea5e9 65%, #7dd3fc 100%);
+}
+
+.stat-bar-mana {
+  background: linear-gradient(90deg, #4338ca 0%, #6366f1 65%, #a855f7 100%);
+}
+
+.stat-bar-xp {
+  background: linear-gradient(90deg, #b45309 0%, #d97706 60%, #fbbf24 100%);
+}
+
+.stat-overflow-glow {
+  box-shadow: 0 0 12px rgba(212, 168, 83, 0.5);
+  border-color: var(--gold-primary) !important;
+}
+
+/* Action Pills nos Cards */
+.action-pill {
+  background-color: var(--bg-pill);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  transition: all 0.14s ease;
+}
+
+.action-pill:hover {
+  background-color: var(--bg-pill-hover);
+  border-color: var(--gold-border);
+  transform: translateY(-1px);
+}
+
+.action-pill:active {
+  transform: translateY(0) scale(0.96);
+}
+
+.action-pill-damage {
+  background: rgba(185, 28, 28, 0.18);
+  border-color: rgba(239, 68, 68, 0.35);
+  color: #fca5a5;
+}
+
+.action-pill-damage:hover {
+  background: rgba(185, 28, 28, 0.3);
+  border-color: rgba(239, 68, 68, 0.6);
+}
+
+.action-pill-regen {
+  background: rgba(109, 40, 217, 0.18);
+  border-color: rgba(167, 139, 250, 0.35);
+  color: #ddd6fe;
+}
+
+/* Modais */
+.modal-backdrop {
+  background-color: rgba(5, 4, 3, 0.78);
+  backdrop-filter: blur(6px);
+  animation: fadeIn 0.15s ease-out;
+}
+
+.modal-panel {
+  background-color: var(--bg-card);
+  border: 1px solid var(--gold-border);
+  color: var(--text-primary);
+  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.85);
+  animation: scaleUp 0.16s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.app-modal-header {
+  background-color: var(--bg-sidebar);
+  border-color: var(--border-subtle);
+}
+
+.attr-op-btn,
+.res-op-btn {
+  background-color: var(--bg-pill);
+  border-color: var(--border-subtle);
+  color: var(--text-secondary);
+}
+
+.attr-op-btn.active-op,
+.res-op-btn.active-op {
+  background: linear-gradient(180deg, #deb562 0%, #c4963c 100%);
+  border-color: #f0c674;
+  color: #14100a;
+  box-shadow: 0 4px 12px rgba(212, 168, 83, 0.3);
+}
+
+.resistance-row {
+  background-color: var(--bg-input);
+  border: 1px solid var(--border-subtle);
+  transition: all 0.15s ease;
+}
+
+.resistance-row:hover {
+  border-color: var(--gold-primary);
+  transform: translateX(2px);
+}
+
+/* Toasts */
+.toast-item {
+  pointer-events: auto;
+  animation: toastSlideIn 0.26s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.toast-item.toast-leaving {
+  animation: toastSlideOut 0.2s ease-in forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scaleUp {
+  from { opacity: 0; transform: scale(0.96) translateY(6px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes toastSlideIn {
+  from { opacity: 0; transform: translateX(100%) scale(0.95); }
+  to { opacity: 1; transform: translateX(0) scale(1); }
+}
+
+@keyframes toastSlideOut {
+  from { opacity: 1; transform: translateX(0) scale(1); }
+  to { opacity: 0; transform: translateX(100%) scale(0.95); }
+}
+
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-obsidian);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(212, 168, 83, 0.25);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(212, 168, 83, 0.45);
+}
+
+/* ==========================================================================
+   Cursores Colaborativos em Tempo Real (Multiplayer Cursors — Figma/Miro Style)
+   ========================================================================== */
+.multiplayer-cursors-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  overflow: hidden;
+}
+
+.remote-cursor {
+  position: fixed;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: 9999;
+  will-change: transform, opacity;
+  transition: transform 40ms linear, opacity 220ms ease;
+  opacity: 1;
+}
+
+.remote-cursor.cursor-hidden {
+  opacity: 0;
+}
+
+.remote-cursor-svg {
+  width: 22px;
+  height: 22px;
+  display: block;
+  filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.72));
+}
+
+.remote-cursor-badge {
+  position: absolute;
+  top: 15px;
+  left: 14px;
+  white-space: nowrap;
+  padding: 2px 8px;
+  border-radius: 4px 10px 10px 10px;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  line-height: 1.35;
+  background-color: rgba(12, 10, 8, 0.92);
+  border: 1.5px solid var(--cursor-color, #F59E0B);
+  color: var(--cursor-color, #F59E0B);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.65);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.remote-cursor-badge-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background-color: var(--cursor-color, #F59E0B);
+  flex-shrink: 0;
+}
+
+.sidebar-cursors-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.sidebar-cursor-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 6px;
+  border-radius: 9999px;
+  background-color: rgba(10, 9, 8, 0.85);
+  border: 1px solid var(--cursor-color, #F59E0B);
+  color: var(--cursor-color, #F59E0B);
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  text-transform: none;
+  max-width: 84px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar-cursor-pill-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background-color: var(--cursor-color, #F59E0B);
+  flex-shrink: 0;
+}
+
+.cursor-color-swatch {
+  width: 100%;
+  height: 28px;
+  border-radius: 8px;
+  border: 2px solid rgba(255, 255, 255, 0.18);
+  cursor: pointer;
+  transition: transform 0.14s ease, border-color 0.14s ease, box-shadow 0.14s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cursor-color-swatch:hover {
+  transform: scale(1.08);
+  border-color: rgba(255, 255, 255, 0.75);
+}
+
+.cursor-color-swatch.active-swatch {
+  border-color: #ffffff;
+  box-shadow: 0 0 0 2px #0a0908, 0 0 12px var(--swatch-color, #F59E0B);
+  transform: scale(1.1);
+}
+

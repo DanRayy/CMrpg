@@ -1,0 +1,2005 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>CMrpg — Mesa de RPG &amp; Combate em Tempo Real</title>
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+            serif: ['Cinzel', 'Georgia', 'serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          }
+        }
+      }
+    };
+  </script>
+  <!-- Google Fonts: Cinzel + Inter + JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800;900&family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+  <!-- Estilos Customizados -->
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body class="min-h-screen flex select-none">
+
+  <!-- Camada Superior de Cursores Colaborativos em Tempo Real (Figma/Miro Style) -->
+  <div id="multiplayer-cursors-layer" class="multiplayer-cursors-layer" aria-hidden="true"></div>
+
+  <!-- Container de Toasts (Canto Superior Direito) -->
+  <div id="toast-container" class="fixed top-4 right-4 z-[120] flex flex-col gap-2.5 pointer-events-none max-w-sm w-full px-2 sm:px-0" aria-live="assertive"></div>
+
+  <!-- Overlay Mobile para Sidebar -->
+  <div id="sidebar-mobile-backdrop" class="hidden fixed inset-0 bg-black/70 z-40 lg:hidden"></div>
+
+  <!-- ========================================================================= -->
+  <!-- SIDEBAR ESQUERDA FIXA (Fiel à Imagem de Referência)                       -->
+  <!-- ========================================================================= -->
+  <aside id="app-sidebar" class="app-sidebar fixed lg:sticky top-0 left-0 z-50 h-screen w-64 shrink-0 flex flex-col justify-between transition-transform duration-200 -translate-x-full lg:translate-x-0">
+    
+    <!-- Topo da Sidebar: Nome da Sala + Subtítulo + Divisor Losango Dourado -->
+    <div>
+      <div class="px-5 pt-6 pb-4 text-center">
+        <h1 id="sidebar-room-name" class="font-serif-fantasy text-xl font-extrabold tracking-widest gold-title uppercase truncate">
+          SALA1
+        </h1>
+        <p id="sidebar-room-subtitle" class="text-[10px] font-semibold tracking-[0.2em] app-muted uppercase mt-1 truncate">
+          TESTES DE TUDOO
+        </p>
+        <div class="gold-diamond-divider mt-3">
+          <span>◇</span>
+        </div>
+      </div>
+
+      <!-- Menu de Navegação Principal -->
+      <nav class="px-3 space-y-1.5 mt-1" aria-label="Navegação Principal">
+        <button type="button" data-nav-tab="overview" class="sidebar-nav-item active">
+          <span class="flex items-center gap-2.5">
+            <span class="text-sm">🏠</span>
+            <span>Visão Geral</span>
+          </span>
+          <span class="flex items-center gap-1.5">
+            <span data-nav-cursors="overview" class="sidebar-cursors-dots"></span>
+          </span>
+        </button>
+
+        <button type="button" data-nav-tab="characters" class="sidebar-nav-item">
+          <span class="flex items-center gap-2.5 text-left">
+            <span class="text-sm">👤</span>
+            <span class="leading-tight">Personagens &amp;<br />Fichas</span>
+          </span>
+          <span class="flex items-center gap-1.5">
+            <span data-nav-cursors="characters" class="sidebar-cursors-dots"></span>
+            <span id="badge-chars-count" class="sidebar-badge">2</span>
+          </span>
+        </button>
+
+        <button type="button" data-nav-tab="catalog" class="sidebar-nav-item">
+          <span class="flex items-center gap-2.5">
+            <span class="text-sm">📦</span>
+            <span>Catálogo de Itens</span>
+          </span>
+          <span class="flex items-center gap-1.5">
+            <span data-nav-cursors="catalog" class="sidebar-cursors-dots"></span>
+            <span id="badge-items-count" class="sidebar-badge">9</span>
+          </span>
+        </button>
+
+        <button type="button" data-nav-tab="shop" class="sidebar-nav-item">
+          <span class="flex items-center gap-2.5">
+            <span class="text-sm">🛍️</span>
+            <span>Loja &amp; Mercadores</span>
+          </span>
+          <span class="flex items-center gap-1.5">
+            <span data-nav-cursors="shop" class="sidebar-cursors-dots"></span>
+            <span id="badge-npcs-count" class="sidebar-badge">1</span>
+          </span>
+        </button>
+
+        <button type="button" data-nav-tab="combat" class="sidebar-nav-item sidebar-nav-combat mt-2">
+          <span class="flex items-center gap-2.5">
+            <span class="text-sm">⚔️</span>
+            <span>Combate &amp; Turnos</span>
+          </span>
+          <span class="flex items-center gap-1.5">
+            <span data-nav-cursors="combat" class="sidebar-cursors-dots"></span>
+            <span id="combat-nav-dot" class="w-2.5 h-2.5 rounded-full bg-red-500/60"></span>
+          </span>
+        </button>
+
+        <button type="button" data-nav-tab="quests" class="sidebar-nav-item mt-2">
+          <span class="flex items-center gap-2.5">
+            <span class="text-sm">📜</span>
+            <span>Missões</span>
+          </span>
+          <span class="flex items-center gap-1.5">
+            <span data-nav-cursors="quests" class="sidebar-cursors-dots"></span>
+            <span id="badge-quests-count" class="sidebar-badge">2</span>
+          </span>
+        </button>
+
+        <button type="button" data-nav-tab="admin" class="sidebar-nav-item">
+          <span class="flex items-center gap-2.5">
+            <span class="text-sm">⚙️</span>
+            <span>Administração</span>
+          </span>
+          <span class="flex items-center gap-1.5">
+            <span data-nav-cursors="admin" class="sidebar-cursors-dots"></span>
+          </span>
+        </button>
+      </nav>
+    </div>
+
+    <!-- Rodapé da Sidebar: Histórico Undo/Redo + Status de Rede -->
+    <div class="p-3 border-t app-divider-border space-y-2.5">
+      <!-- Controles Desfazer / Refazer -->
+      <div class="grid grid-cols-2 gap-1.5">
+        <button
+          id="btn-undo"
+          type="button"
+          disabled
+          title="Desfazer última ação (Ctrl+Z)"
+          class="py-1.5 px-2 rounded-lg font-bold text-[11px] tracking-wide app-secondary-btn disabled:opacity-35 disabled:pointer-events-none flex items-center justify-center gap-1"
+        >
+          <span>↩</span>
+          <span>DESFAZER</span>
+        </button>
+        <button
+          id="btn-redo"
+          type="button"
+          disabled
+          title="Refazer ação (Ctrl+Y)"
+          class="py-1.5 px-2 rounded-lg font-bold text-[11px] tracking-wide app-secondary-btn disabled:opacity-35 disabled:pointer-events-none flex items-center justify-center gap-1"
+        >
+          <span>REFAZER</span>
+          <span>↪</span>
+        </button>
+      </div>
+
+      <!-- Identidade / Status WS -->
+      <div class="px-2 py-1.5 rounded-lg bg-black/25 border app-divider-border flex items-center justify-between text-[11px]">
+        <div class="flex items-center gap-2 min-w-0">
+          <span id="ws-status-dot" class="w-2 h-2 rounded-full bg-amber-400 animate-pulse shrink-0"></span>
+          <span id="ws-status-text" class="font-bold tracking-wider uppercase truncate app-muted">CONECTANDO</span>
+        </div>
+        <button
+          type="button"
+          id="btn-open-profile"
+          title="Configurar seu apelido e personagem vinculado"
+          class="text-[11px] font-bold gold-title hover:underline shrink-0"
+        >
+          Perfil ✎
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ========================================================================= -->
+  <!-- ÁREA DE CONTEÚDO PRINCIPAL (Direita)                                      -->
+  <!-- ========================================================================= -->
+  <div class="flex-1 flex flex-col min-w-0 min-h-screen">
+
+    <!-- Topbar Superior -->
+    <header class="app-topbar sticky top-0 z-30 px-4 sm:px-8 py-3 flex flex-wrap items-center justify-between gap-3">
+      <!-- Esquerda: Botão Mobile + Breadcrumb -->
+      <div class="flex items-center gap-3">
+        <button
+          type="button"
+          id="btn-mobile-sidebar"
+          class="lg:hidden w-9 h-9 rounded-lg flex items-center justify-center app-icon-btn"
+          aria-label="Abrir Menu"
+        >
+          ☰
+        </button>
+        <div class="text-[11px] font-serif-fantasy tracking-[0.16em] uppercase app-muted flex items-center gap-2">
+          <span>SALAS</span>
+          <span>/</span>
+          <span id="topbar-room-breadcrumb" class="gold-title font-bold">SALA1</span>
+          <span class="hidden sm:inline">/</span>
+          <span id="topbar-section-breadcrumb" class="hidden sm:inline text-amber-100/80">VISÃO GERAL</span>
+        </div>
+      </div>
+
+      <!-- Direita: Widget de Moeda + Badge Modo Mestre/Jogador + Tema -->
+      <div class="flex items-center gap-2.5">
+        <!-- Widget do Cofre da Sala (Igual à Imagem) -->
+        <div class="topbar-wallet-pill">
+          <span class="flex items-center gap-1.5 font-extrabold tracking-wide">
+            <span class="text-amber-400">🪙</span>
+            <span id="topbar-gold-amount" class="font-mono text-sm app-title">1620</span>
+            <span id="topbar-currency-name" class="text-[11px] uppercase gold-title font-serif-fantasy">OURO</span>
+          </span>
+          <span class="w-px h-3.5 bg-amber-500/25 master-only-el"></span>
+          <button
+            type="button"
+            id="btn-manage-gold"
+            class="text-[11px] app-muted hover:text-amber-300 transition flex items-center gap-1 master-only-el"
+          >
+            <span>✎</span>
+            <span class="hidden sm:inline">Gerenciar Moeda</span>
+          </button>
+        </div>
+
+        <!-- Badge MODO MESTRE / MODO JOGADOR -->
+        <button
+          type="button"
+          id="btn-role-badge"
+          title="Host = Mestre Automático (Clique para alternar simulação de visão de Jogador)"
+          class="topbar-role-pill"
+        >
+          <span id="role-badge-icon">👑</span>
+          <span id="role-badge-text">MODO MESTRE</span>
+        </button>
+
+        <!-- Botão Tema Claro/Escuro -->
+        <button
+          id="btn-theme-toggle"
+          type="button"
+          title="Alternar Tema Escuro / Pergaminho Claro"
+          class="w-9 h-9 rounded-lg flex items-center justify-center text-sm app-icon-btn transition"
+        >
+          <span id="theme-icon">🌙</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Container das Abas -->
+    <main class="flex-1 px-4 sm:px-8 py-6 max-w-[1400px] w-full mx-auto space-y-6">
+
+      <!-- ===================================================================== -->
+      <!-- ABA 1: VISÃO GERAL (Fiel à Imagem de Referência)                      -->
+      <!-- ===================================================================== -->
+      <section id="tab-overview" class="tab-section space-y-5">
+        <!-- Hero Banner da Sala -->
+        <div class="room-hero-banner p-6 sm:p-9 flex flex-col justify-center">
+          <!-- Ilustração Decorativa de Taverna / Vela / Pena / Grimório -->
+          <div class="room-hero-decor hidden md:flex items-center gap-6 select-none">
+            <span class="text-7xl">🕯️</span>
+            <span class="text-8xl">🍺</span>
+            <span class="text-7xl">🪶</span>
+          </div>
+
+          <div class="relative z-10 max-w-2xl">
+            <div class="flex items-center gap-3">
+              <h2 id="hero-room-name" class="font-serif-fantasy text-3xl sm:text-4xl font-black tracking-wider text-amber-50 uppercase">
+                SALA1
+              </h2>
+              <button
+                type="button"
+                id="btn-edit-room-info"
+                title="Editar Nome e Frase da Sala"
+                class="master-only-el px-2.5 py-1 rounded-lg text-[11px] font-bold btn-gold-outline"
+              >
+                ✎ Editar Sala
+              </button>
+            </div>
+            <p id="hero-room-subtitle" class="text-xs font-serif-fantasy tracking-[0.22em] text-amber-200/75 uppercase mt-1">
+              TESTES DE TUDOO
+            </p>
+
+            <div class="flex items-center gap-2 my-3.5 text-amber-400/70 text-xs">
+              <span class="w-8 h-px bg-amber-400/40"></span>
+              <span>◇</span>
+              <span class="w-8 h-px bg-amber-400/40"></span>
+            </div>
+
+            <p id="hero-room-quote" class="font-serif-fantasy text-xs sm:text-sm tracking-widest text-amber-100/80 uppercase leading-relaxed whitespace-pre-line">
+              GRANDES HISTÓRIAS NASCEM DE BOAS COMPANHIAS.
+              BEM-VINDOS À MESA.
+            </p>
+          </div>
+        </div>
+
+        <!-- Faixa "CONVIDE SEUS JOGADORES" + Painel Ao Vivo de IPs Conectados -->
+        <div class="fantasy-card px-5 py-4 space-y-4">
+          <div class="flex flex-wrap items-center justify-between gap-4">
+            <div class="flex items-center gap-3.5">
+              <div class="w-10 h-10 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-center gold-title text-lg shrink-0">
+                🔗
+              </div>
+              <div>
+                <h3 class="font-serif-fantasy text-xs sm:text-sm font-extrabold tracking-wider uppercase app-title">
+                  CONVIDE SEUS JOGADORES (REDE LOCAL / RADMIN VPN)
+                </h3>
+                <p class="text-xs app-muted mt-0.5">
+                  O IP Principal (Host) é sempre o <strong>Mestre</strong> com todas as permissões. Qualquer outro IP conectado entra automaticamente como <strong>Jogador</strong>.
+                </p>
+              </div>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2.5">
+              <span class="px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-950/60 text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                <span>Host Mestre: <strong id="overview-host-ip" class="font-mono">Detectando...</strong></span>
+              </span>
+
+              <button
+                type="button"
+                id="btn-copy-invite-link"
+                class="btn-gold px-4 py-2 text-xs font-serif-fantasy tracking-wider uppercase flex items-center gap-1.5"
+              >
+                <span>📋</span>
+                <span>COPIAR LINK</span>
+              </button>
+
+              <div class="px-3 py-1.5 rounded-lg bg-black/30 border app-divider-border text-xs flex items-center gap-2">
+                <span class="app-muted uppercase text-[10px] font-bold">ENDEREÇO:</span>
+                <code id="overview-invite-url" class="font-mono font-bold gold-title">http://localhost:8000</code>
+              </div>
+            </div>
+          </div>
+
+          <!-- Painel em Tempo Real: Todos os IPs Conectados no Momento -->
+          <div class="pt-3 border-t app-divider-border flex flex-col gap-2">
+            <div class="flex items-center justify-between">
+              <span class="text-[11px] font-serif-fantasy font-extrabold uppercase tracking-wider gold-title flex items-center gap-2">
+                <span>📡</span>
+                <span>IPs CONECTADOS NO MOMENTO (<span id="connected-ips-count">0</span>)</span>
+              </span>
+              <span class="text-[11px] app-muted">Atualização instantânea via WebSocket</span>
+            </div>
+            <div id="live-connected-ips-list" class="flex flex-wrap items-center gap-2">
+              <!-- Preenchido em tempo real pelo JS -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Seção MEMBROS DA SALA (Baseado em IP + Apelido do Mestre) -->
+        <div class="space-y-3 pt-1">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center gap-2">
+              <span class="gold-title text-base">👥</span>
+              <h3 class="font-serif-fantasy text-sm sm:text-base font-extrabold tracking-wider uppercase app-title">
+                MEMBROS DA SALA (<span id="members-count-label">1</span>)
+              </h3>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2">
+              <div class="relative">
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs opacity-50">🔍</span>
+                <input
+                  id="member-search-input"
+                  type="text"
+                  placeholder="Buscar por apelido ou IP..."
+                  class="pl-8 pr-3 py-1.5 text-xs app-input w-48 sm:w-60"
+                />
+              </div>
+
+              <select id="member-role-filter" class="px-3 py-1.5 text-xs app-input">
+                <option value="ALL">Todos os cargos</option>
+                <option value="MESTRE">Mestre (Host)</option>
+                <option value="JOGADOR">Jogador (IP)</option>
+              </select>
+
+              <button
+                type="button"
+                id="btn-add-member"
+                class="master-only-el px-3 py-1.5 text-xs btn-gold-outline font-serif-fantasy uppercase"
+              >
+                ＋ Pré-Cadastrar IP
+              </button>
+            </div>
+          </div>
+
+          <!-- Tabela de Membros -->
+          <div class="fantasy-card overflow-hidden">
+            <div class="overflow-x-auto">
+              <table class="w-full text-left border-collapse">
+                <thead>
+                  <tr class="border-b app-divider-border text-[10px] font-serif-fantasy tracking-widest uppercase app-muted">
+                    <th class="py-3.5 px-5">APELIDO / IDENTIFICAÇÃO</th>
+                    <th class="py-3.5 px-5">ENDEREÇO IP &amp; STATUS</th>
+                    <th class="py-3.5 px-5">CARGO</th>
+                    <th class="py-3.5 px-5">PERSONAGEM VINCULADO</th>
+                    <th class="py-3.5 px-5 text-right">AÇÕES</th>
+                  </tr>
+                </thead>
+                <tbody id="members-table-body" class="divide-y app-divider-border text-sm">
+                  <!-- Renderizado dinamicamente pelo JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===================================================================== -->
+      <!-- ABA 2: PERSONAGENS & FICHAS                                           -->
+      <!-- ===================================================================== -->
+      <section id="tab-characters" class="tab-section hidden space-y-5">
+        <!-- Barra de Ferramentas de Personagens -->
+        <div class="fantasy-card p-4 flex flex-wrap items-center justify-between gap-3">
+          <div class="flex items-center gap-3 flex-1 min-w-[220px] max-w-md">
+            <div class="relative flex-1">
+              <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs opacity-60">🔍</span>
+              <input
+                id="search-input"
+                type="text"
+                placeholder="BUSCAR..."
+                autocomplete="off"
+                class="w-full pl-9 pr-8 py-2 text-xs sm:text-sm font-semibold tracking-wide app-input"
+              />
+              <button
+                id="clear-search-btn"
+                type="button"
+                title="Limpar busca"
+                class="hidden absolute right-2.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded items-center justify-center text-xs app-muted hover:opacity-100"
+              >
+                ✕
+              </button>
+            </div>
+            <span id="char-count-label" class="text-xs font-mono font-bold app-muted shrink-0"></span>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              id="btn-bulk-rewards"
+              class="master-only-el px-3.5 py-2 text-xs font-serif-fantasy uppercase tracking-wider btn-gold-outline flex items-center gap-1.5"
+            >
+              <span>🎁</span>
+              <span>Conceder XP / Atributos em Lote</span>
+            </button>
+
+            <button
+              id="btn-create-char"
+              type="button"
+              class="btn-gold px-4 py-2 text-xs font-serif-fantasy uppercase tracking-wider flex items-center gap-1.5"
+            >
+              <span>＋</span>
+              <span>CRIAR</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between text-xs app-muted px-1">
+          <span>💡 Arraste pelo <strong>nome do personagem</strong> no topo do card para reordenar posições. Clique em <strong>📜 Ficha</strong> para abrir os 5 Atributos, Talentos e Inventário.</span>
+        </div>
+
+        <!-- Estado Vazio de Busca ("NENHUM CHAR ENCONTRADO") -->
+        <div
+          id="empty-search-state"
+          class="hidden flex-col items-center justify-center py-20 px-4 text-center fantasy-card border-dashed"
+        >
+          <div class="text-5xl mb-3 opacity-75">🔍</div>
+          <h2 class="text-xl sm:text-2xl font-serif-fantasy font-black tracking-wider uppercase gold-title">
+            NENHUM CHAR ENCONTRADO
+          </h2>
+          <p class="text-sm app-muted mt-1">Tente outro termo na barra de pesquisa ou crie um novo personagem.</p>
+        </div>
+
+        <!-- Grid de Cards de Personagens -->
+        <div id="characters-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5"></div>
+      </section>
+
+      <!-- ===================================================================== -->
+      <!-- ABA 3: CATÁLOGO DE ITENS                                              -->
+      <!-- ===================================================================== -->
+      <section id="tab-catalog" class="tab-section hidden space-y-5">
+        <div class="fantasy-card p-4 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 class="font-serif-fantasy text-lg font-extrabold gold-title uppercase tracking-wider">
+              📦 Catálogo Canônico de Itens da Sala
+            </h2>
+            <p class="text-xs app-muted">
+              Alterações feitas em qualquer item do catálogo atualizam automaticamente a loja e os inventários de todos os personagens.
+            </p>
+          </div>
+          <button
+            type="button"
+            id="btn-new-catalog-item"
+            class="master-only-el btn-gold px-4 py-2 text-xs font-serif-fantasy uppercase tracking-wider flex items-center gap-1.5"
+          >
+            <span>＋</span>
+            <span>Novo Item no Catálogo</span>
+          </button>
+        </div>
+
+        <!-- Filtros do Catálogo -->
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div class="flex flex-wrap items-center gap-1.5" id="catalog-type-filters">
+            <button type="button" data-item-type="ALL" class="px-3 py-1.5 rounded-lg text-xs font-bold btn-gold">Todos</button>
+            <button type="button" data-item-type="ARMADURA" class="px-3 py-1.5 rounded-lg text-xs font-bold app-secondary-btn">🛡️ Armaduras</button>
+            <button type="button" data-item-type="ARMA" class="px-3 py-1.5 rounded-lg text-xs font-bold app-secondary-btn">⚔️ Armas</button>
+            <button type="button" data-item-type="ACESSORIO" class="px-3 py-1.5 rounded-lg text-xs font-bold app-secondary-btn">💍 Acessórios</button>
+            <button type="button" data-item-type="CONSUMIVEL" class="px-3 py-1.5 rounded-lg text-xs font-bold app-secondary-btn">🧪 Consumíveis</button>
+            <button type="button" data-item-type="OUTRO" class="px-3 py-1.5 rounded-lg text-xs font-bold app-secondary-btn">🎒 Outros</button>
+          </div>
+          <input
+            id="catalog-search-input"
+            type="text"
+            placeholder="Filtrar item pelo nome..."
+            class="px-3 py-1.5 text-xs app-input w-56"
+          />
+        </div>
+
+        <div id="catalog-items-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"></div>
+      </section>
+
+      <!-- ===================================================================== -->
+      <!-- ABA 4: LOJA & MERCADORES                                              -->
+      <!-- ===================================================================== -->
+      <section id="tab-shop" class="tab-section hidden space-y-5">
+        <div class="fantasy-card p-4 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 class="font-serif-fantasy text-lg font-extrabold gold-title uppercase tracking-wider">
+              🛍️ Loja &amp; NPCs Mercadores
+            </h2>
+            <p class="text-xs app-muted">
+              Selecione seu personagem comprador e interaja com os mercadores da campanha.
+            </p>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2.5">
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-bold app-muted">Comprador:</span>
+              <select id="shop-buyer-char-select" class="px-3 py-1.5 text-xs font-bold app-input"></select>
+            </div>
+            <button
+              type="button"
+              id="btn-new-npc"
+              class="master-only-el btn-gold px-3.5 py-2 text-xs font-serif-fantasy uppercase tracking-wider"
+            >
+              ＋ Novo Mercador (NPC)
+            </button>
+          </div>
+        </div>
+
+        <!-- Central de Aprovação de Vendas em Escrow (IN_ESCROW) -->
+        <div id="escrow-approvals-box" class="hidden fantasy-card p-4 border-amber-500/40 space-y-3">
+          <div class="flex items-center justify-between">
+            <h3 class="font-serif-fantasy text-xs sm:text-sm font-extrabold uppercase gold-title flex items-center gap-2">
+              <span>⚖️</span>
+              <span>Solicitações de Venda em Escrow Pendentes de Aprovação</span>
+            </h3>
+          </div>
+          <div id="escrow-sales-list" class="space-y-2"></div>
+        </div>
+
+        <!-- Lista de NPCs + Vitrine -->
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-5">
+          <div class="lg:col-span-1 space-y-2.5" id="shop-npcs-sidebar"></div>
+          <div class="lg:col-span-3 space-y-4" id="shop-npc-showcase"></div>
+        </div>
+      </section>
+
+      <!-- ===================================================================== -->
+      <!-- ABA 5: COMBATE & TURNOS                                               -->
+      <!-- ===================================================================== -->
+      <section id="tab-combat" class="tab-section hidden space-y-5">
+        <!-- Painel de Controle de Batalha -->
+        <div class="fantasy-card p-5 border-red-500/30 flex flex-wrap items-center justify-between gap-4">
+          <div class="flex items-center gap-3.5">
+            <div class="w-12 h-12 rounded-xl bg-red-950/70 border border-red-500/40 flex items-center justify-center text-2xl">
+              ⚔️
+            </div>
+            <div>
+              <div class="flex items-center gap-2.5">
+                <h2 class="font-serif-fantasy text-lg sm:text-xl font-black uppercase tracking-wider app-title">
+                  Cockpit Tático de Combate &amp; Turnos
+                </h2>
+                <span id="battle-status-pill" class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-slate-800 text-slate-300 border border-slate-600">
+                  FORA DE COMBATE
+                </span>
+              </div>
+              <p class="text-xs app-muted mt-0.5">
+                Início de turno do jogador ativo recarrega 3 PA, regenera +20% de Mana e concede +1 Carga ao Grupo.
+              </p>
+            </div>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              id="btn-toggle-battle"
+              class="master-only-el px-4 py-2.5 rounded-lg font-serif-fantasy font-extrabold text-xs uppercase tracking-wider bg-red-700 hover:bg-red-600 text-white border border-red-400/50 shadow-lg transition"
+            >
+              ⚔️ Iniciar Combate
+            </button>
+
+            <button
+              type="button"
+              id="btn-end-turn"
+              class="px-4 py-2.5 rounded-lg font-serif-fantasy font-extrabold text-xs uppercase tracking-wider btn-gold"
+            >
+              ⏭️ Finalizar Turno
+            </button>
+
+            <button
+              type="button"
+              id="btn-force-turn"
+              title="Avanço Forçado pelo Mestre (Anti-AFK)"
+              class="master-only-el px-3.5 py-2.5 rounded-lg font-serif-fantasy font-bold text-xs uppercase tracking-wider app-secondary-btn"
+            >
+              ⚡ Forçar Avanço
+            </button>
+          </div>
+        </div>
+
+        <!-- 4 Cards de Telemetria + Cargas Compartilhadas do Grupo -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div class="fantasy-card p-4">
+            <span class="text-[10px] font-serif-fantasy uppercase tracking-widest app-muted">Rodada Atual (Rounds)</span>
+            <div id="battle-round-num" class="text-2xl font-mono font-black gold-title mt-1">1</div>
+          </div>
+          <div class="fantasy-card p-4">
+            <span class="text-[10px] font-serif-fantasy uppercase tracking-widest app-muted">Turnos Totais</span>
+            <div id="battle-total-turns" class="text-2xl font-mono font-black app-title mt-1">0</div>
+          </div>
+          <div class="fantasy-card p-4">
+            <span class="text-[10px] font-serif-fantasy uppercase tracking-widest app-muted">Turnos do Mestre</span>
+            <div id="battle-master-turns" class="text-2xl font-mono font-black text-rose-400 mt-1">0</div>
+          </div>
+          <div class="fantasy-card p-4 border-amber-500/40">
+            <div class="flex items-center justify-between">
+              <span class="text-[10px] font-serif-fantasy uppercase tracking-widest gold-title font-bold">⚡ Cargas do Grupo</span>
+              <span class="text-[10px] app-muted">Pool Coletivo</span>
+            </div>
+            <div class="flex items-center justify-between mt-1.5">
+              <span id="battle-group-charges" class="text-2xl font-mono font-black gold-title">0</span>
+              <div class="flex items-center gap-1.5">
+                <button type="button" id="btn-charge-dec" class="w-8 h-8 rounded-lg font-mono font-black text-base app-secondary-btn">－</button>
+                <button type="button" id="btn-charge-inc" class="w-8 h-8 rounded-lg font-mono font-black text-base btn-gold">＋</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Fila de Iniciativa + Rolador de Dados 1d20 -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+          <!-- Ordem de Iniciativa -->
+          <div class="lg:col-span-2 fantasy-card p-5 space-y-4">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <h3 class="font-serif-fantasy text-sm font-extrabold uppercase tracking-wider gold-title">
+                📜 Ordem de Iniciativa (Jogadores &amp; Mestre)
+              </h3>
+              <div class="flex items-center gap-2">
+                <button
+                  type="button"
+                  id="btn-sync-initiative-chars"
+                  class="master-only-el px-3 py-1.5 rounded-lg text-xs font-bold app-secondary-btn"
+                >
+                  🔄 Sincronizar Participantes
+                </button>
+                <button
+                  type="button"
+                  id="btn-roll-all-initiative"
+                  class="master-only-el px-3 py-1.5 rounded-lg text-xs font-bold btn-gold-outline"
+                >
+                  🎲 Rolar 1d20 p/ Todos
+                </button>
+              </div>
+            </div>
+
+            <div id="initiative-list-container" class="space-y-2.5"></div>
+          </div>
+
+          <!-- Rolador Rápido de Dados & Resumo de Regras de Turno -->
+          <div class="space-y-4">
+            <div class="fantasy-card p-5 space-y-3">
+              <h3 class="font-serif-fantasy text-sm font-extrabold uppercase tracking-wider gold-title">
+                🎲 Rolador Tático de Dados
+              </h3>
+              <div class="grid grid-cols-3 gap-2">
+                <button type="button" data-roll-die="20" class="py-2.5 rounded-lg font-mono font-extrabold text-xs btn-gold">1d20</button>
+                <button type="button" data-roll-die="12" class="py-2.5 rounded-lg font-mono font-extrabold text-xs app-secondary-btn">1d12</button>
+                <button type="button" data-roll-die="10" class="py-2.5 rounded-lg font-mono font-extrabold text-xs app-secondary-btn">1d10</button>
+                <button type="button" data-roll-die="8" class="py-2.5 rounded-lg font-mono font-extrabold text-xs app-secondary-btn">1d8</button>
+                <button type="button" data-roll-die="6" class="py-2.5 rounded-lg font-mono font-extrabold text-xs app-secondary-btn">1d6</button>
+                <button type="button" data-roll-die="100" class="py-2.5 rounded-lg font-mono font-extrabold text-xs app-secondary-btn">1d100</button>
+              </div>
+              <div id="dice-roller-result" class="p-3 rounded-lg bg-black/30 border app-divider-border text-center font-mono text-sm app-muted">
+                Clique em um dado para rolar na mesa.
+              </div>
+            </div>
+
+            <div class="fantasy-card p-5 space-y-2 text-xs app-muted leading-relaxed">
+              <h4 class="font-serif-fantasy font-bold uppercase gold-title">⚙️ Regras Automáticas de Combate</h4>
+              <p>• <strong>Início de Turno (Jogador Vivo):</strong> Recarrega PA para o máximo (3 PA), recupera Mana pela taxa de Regen e soma <strong>+1 Carga do Grupo</strong>.</p>
+              <p>• <strong>Turno do Mestre / Morto:</strong> Não acumula cargas nem regenera recursos.</p>
+              <p>• <strong>Sobrecarga de Armadura:</strong> Se o Dano Final superar a Armadura Atual, a Armadura Máxima sofre degradação temporária até o fim do combate.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===================================================================== -->
+      <!-- ABA 6: MISSÕES & RECOMPENSAS                                          -->
+      <!-- ===================================================================== -->
+      <section id="tab-quests" class="tab-section hidden space-y-5">
+        <div class="fantasy-card p-4 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 class="font-serif-fantasy text-lg font-extrabold gold-title uppercase tracking-wider">
+              📜 Quadro de Missões &amp; Contratos
+            </h2>
+            <p class="text-xs app-muted">
+              Acompanhe os objetivos do grupo e receba pacotes de Ouro, XP, Pontos de Atributo, Talentos e Itens ao concluir.
+            </p>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              id="btn-quests-bulk-xp"
+              class="master-only-el px-3.5 py-2 text-xs font-serif-fantasy uppercase btn-gold-outline"
+            >
+              🎁 Recompensa em Lote
+            </button>
+            <button
+              type="button"
+              id="btn-new-quest"
+              class="master-only-el btn-gold px-4 py-2 text-xs font-serif-fantasy uppercase tracking-wider"
+            >
+              ＋ Nova Missão
+            </button>
+          </div>
+        </div>
+
+        <div id="quests-list-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+      </section>
+
+      <!-- ===================================================================== -->
+      <!-- ABA 7: ADMINISTRAÇÃO, CONFIGURAÇÕES MATEMÁTICAS & AUDITORIA           -->
+      <!-- ===================================================================== -->
+      <section id="tab-admin" class="tab-section hidden space-y-6">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          <!-- Configurações da Sala e Matemática (ADR-009) -->
+          <div class="fantasy-card p-5 space-y-4">
+            <h3 class="font-serif-fantasy text-base font-extrabold uppercase gold-title">
+              ⚙️ Configurações da Campanha &amp; Motor Matemático (ADR-009)
+            </h3>
+            <form id="form-room-settings" class="space-y-3.5 text-xs">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label class="block font-bold uppercase mb-1 app-label">Nome da Sala</label>
+                  <input id="cfg-room-name" type="text" class="w-full px-3 py-2 app-input font-bold" />
+                </div>
+                <div>
+                  <label class="block font-bold uppercase mb-1 app-label">Subtítulo</label>
+                  <input id="cfg-room-subtitle" type="text" class="w-full px-3 py-2 app-input" />
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label class="block font-bold uppercase mb-1 app-label">Nome da Moeda</label>
+                  <input id="cfg-currency-name" type="text" class="w-full px-3 py-2 app-input font-bold" />
+                </div>
+                <div>
+                  <label class="block font-bold uppercase mb-1 app-label">Modo da Carteira</label>
+                  <select id="cfg-wallet-mode" class="w-full px-3 py-2 app-input font-bold">
+                    <option value="SHARED">Compartilhada (Cofre do Grupo)</option>
+                    <option value="INDIVIDUAL">Individual por Personagem</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label class="block font-bold uppercase mb-1 app-label">Precedência de Modificadores</label>
+                  <select id="cfg-precedence" class="w-full px-3 py-2 app-input font-bold">
+                    <option value="FLAT_FIRST">FLAT_FIRST — (Base + Fixo) × (1 + %)</option>
+                    <option value="PERCENT_FIRST">PERCENT_FIRST — (Base × (1 + %)) + Fixo</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block font-bold uppercase mb-1 app-label">Modo de Arredondamento</label>
+                  <select id="cfg-rounding" class="w-full px-3 py-2 app-input font-bold">
+                    <option value="ROUND_DOWN">ROUND_DOWN — Arredondar p/ Baixo (Floor)</option>
+                    <option value="ROUND_UP">ROUND_UP — Arredondar p/ Cima (Ceil)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label class="block font-bold uppercase mb-1 app-label">Capacidade de Inventário</label>
+                  <select id="cfg-inv-unlimited" class="w-full px-3 py-2 app-input font-bold">
+                    <option value="true">Ilimitado</option>
+                    <option value="false">Limitado (Slots Máximos)</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block font-bold uppercase mb-1 app-label">Limite de Slots (se limitado)</label>
+                  <input id="cfg-inv-limit" type="number" min="1" value="10" class="w-full px-3 py-2 app-input font-mono font-bold" />
+                </div>
+              </div>
+
+              <div>
+                <label class="block font-bold uppercase mb-1 app-label">Frase do Banner da Sala</label>
+                <textarea id="cfg-room-quote" rows="2" class="w-full px-3 py-2 app-input"></textarea>
+              </div>
+
+              <div class="pt-2 flex justify-end gap-2">
+                <button type="button" id="btn-export-json" class="px-3.5 py-2 rounded-lg font-bold app-secondary-btn">
+                  💾 Exportar Backup JSON
+                </button>
+                <button type="submit" class="master-only-el btn-gold px-5 py-2 font-serif-fantasy uppercase tracking-wider">
+                  Salvar Configurações
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <!-- Log de Auditoria Perpétuo (ADR-005) -->
+          <div class="fantasy-card p-5 flex flex-col max-h-[540px]">
+            <div class="flex items-center justify-between mb-3">
+              <div>
+                <h3 class="font-serif-fantasy text-base font-extrabold uppercase gold-title">
+                  🕵️ Histórico de Auditoria Perpétuo (RoomAuditLog)
+                </h3>
+                <p class="text-[11px] app-muted">Registro cronológico imutável de todas as ações da mesa.</p>
+              </div>
+            </div>
+            <div id="audit-log-container" class="flex-1 overflow-y-auto space-y-2 pr-1"></div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- MODAL 1: CRIAR / EDITAR PERSONAGEM (Com Point Buy 57 pts & 7 Resistências)-->
+  <!-- ========================================================================= -->
+  <div id="modal-char-form" class="modal-backdrop hidden fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
+    <div class="modal-panel w-full max-w-2xl rounded-2xl overflow-hidden flex flex-col max-h-[92vh]">
+      <div class="px-5 py-4 border-b flex items-center justify-between app-modal-header">
+        <div class="flex items-center gap-2">
+          <span id="char-form-icon" class="text-xl">✨</span>
+          <h3 id="char-form-title" class="font-serif-fantasy text-base font-black tracking-wider gold-title uppercase">
+            CRIAR PERSONAGEM
+          </h3>
+        </div>
+        <button type="button" data-close-modal="modal-char-form" class="w-8 h-8 rounded-lg flex items-center justify-center app-icon-btn">✕</button>
+      </div>
+
+      <form id="form-character" class="p-5 overflow-y-auto space-y-5 flex-1 text-xs">
+        <input type="hidden" id="char-form-id" value="" />
+
+        <!-- Identificação Básica & Limite de Peso (Padrão 27 kg) -->
+        <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+          <div class="sm:col-span-1">
+            <label for="char-name-input" class="block font-bold uppercase tracking-wider mb-1 app-label">Nome do Personagem</label>
+            <input id="char-name-input" type="text" placeholder="Sem nome" maxlength="40" class="w-full px-3 py-2 text-sm font-bold app-input" />
+          </div>
+          <div>
+            <label for="char-age-input" class="block font-bold uppercase tracking-wider mb-1 app-label">Idade</label>
+            <input id="char-age-input" type="text" placeholder="Ex: 25 anos" class="w-full px-3 py-2 app-input" />
+          </div>
+          <div>
+            <label for="char-height-input" class="block font-bold uppercase tracking-wider mb-1 app-label">Altura</label>
+            <input id="char-height-input" type="text" placeholder="Ex: 1,80m" class="w-full px-3 py-2 app-input" />
+          </div>
+          <div>
+            <label for="char-max-weight" class="block font-bold uppercase tracking-wider mb-1 gold-title">⚖️ Limite de Peso (kg)</label>
+            <input id="char-max-weight" type="number" min="0" step="0.5" value="27" required class="w-full px-3 py-2 font-mono font-bold app-input" />
+          </div>
+        </div>
+
+        <!-- Recursos Vitais Base & Combate -->
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <h4 class="font-serif-fantasy font-extrabold uppercase tracking-wider gold-title">
+              ❤️ Recursos Vitais &amp; Status Base
+            </h4>
+            <button type="button" id="btn-set-canonical-lvl1" class="text-[11px] font-bold text-amber-400 hover:underline">
+              Padrão Nível 1 Canônico (HP 80, Arm 0, Mana 100, Regen 20%)
+            </button>
+          </div>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+            <div>
+              <label for="char-max-hp" class="block font-bold mb-1 text-rose-400">❤️ Vida Máx</label>
+              <input id="char-max-hp" type="number" min="0" step="1" value="100" required class="w-full px-3 py-2 font-mono font-bold app-input" />
+            </div>
+            <div>
+              <label for="char-max-armor" class="block font-bold mb-1 text-sky-400">🛡️ Armadura Máx</label>
+              <input id="char-max-armor" type="number" min="0" step="1" value="10" required class="w-full px-3 py-2 font-mono font-bold app-input" />
+            </div>
+            <div>
+              <label for="char-max-mana" class="block font-bold mb-1 text-indigo-400">✨ Mana Máx</label>
+              <input id="char-max-mana" type="number" min="0" step="1" value="100" required class="w-full px-3 py-2 font-mono font-bold app-input" />
+            </div>
+            <div>
+              <label for="char-regen" class="block font-bold mb-1 text-violet-400">⚡ Regeneração %</label>
+              <input id="char-regen" type="number" min="0" step="any" value="10" required class="w-full px-3 py-2 font-mono font-bold app-input" />
+            </div>
+            <div>
+              <label for="char-defense" class="block font-bold mb-1 text-emerald-400">🔰 Defesa</label>
+              <input id="char-defense" type="number" step="1" value="0" required class="w-full px-3 py-2 font-mono font-bold app-input" />
+            </div>
+            <div>
+              <label for="char-attack" class="block font-bold mb-1 text-orange-400">⚔️ Ataque</label>
+              <input id="char-attack" type="number" step="1" value="0" class="w-full px-3 py-2 font-mono font-bold app-input" />
+            </div>
+            <div>
+              <label for="char-arcana" class="block font-bold mb-1 text-purple-400">🔮 Arcana</label>
+              <input id="char-arcana" type="number" step="1" value="0" class="w-full px-3 py-2 font-mono font-bold app-input" />
+            </div>
+            <div>
+              <label for="char-santidade" class="block font-bold mb-1 text-amber-300">✨ Santidade</label>
+              <input id="char-santidade" type="number" step="1" value="0" class="w-full px-3 py-2 font-mono font-bold app-input" />
+            </div>
+          </div>
+        </div>
+
+        <!-- 5 Atributos Canônicos (Point Buy 57 pts + Regra do 1 Ponto) -->
+        <div class="p-3.5 rounded-xl bg-black/25 border app-divider-border space-y-2.5">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h4 class="font-serif-fantasy font-extrabold uppercase tracking-wider gold-title">
+                🧬 5 Atributos Canônicos (Point Buy: Base 8 + 17 pts = 57 Total)
+              </h4>
+              <p class="text-[11px] app-muted">
+                Piso mínimo 8 (apenas <strong>1 único atributo</strong> pode ser reduzido para 7, liberando teto 19). Não é permitido reduzir abaixo de 7.
+              </p>
+            </div>
+            <span id="point-buy-counter" class="px-2.5 py-1 rounded-lg font-mono font-extrabold text-xs bg-amber-500/15 gold-title border border-amber-500/30">
+              Restantes: 17 pts (Soma: 40/57)
+            </span>
+          </div>
+          <div class="grid grid-cols-2 sm:grid-cols-5 gap-2" id="char-form-attributes-grid">
+            <!-- Preenchido pelo JS: FORCA, DESTREZA, INTELIGENCIA, SABEDORIA, LABIA -->
+          </div>
+        </div>
+
+        <!-- Resistências Visuais da Ficha em Porcentagem (%) -->
+        <div class="p-3.5 rounded-xl bg-black/25 border app-divider-border space-y-2.5">
+          <div class="flex items-center justify-between">
+            <div>
+              <h4 class="font-serif-fantasy font-extrabold uppercase tracking-wider gold-title">
+                🛡️ Resistências da Ficha (% Visual: Físico, Mágico, Pyro, Cryo, Elétrico, Profano, Sacro)
+              </h4>
+              <p class="text-[11px] app-muted">
+                Valores visuais em porcentagem (%) exibidos diretamente na Ficha Completa do personagem.
+              </p>
+            </div>
+            <button type="button" id="btn-reset-elem-res-defaults" class="text-[11px] font-bold gold-title hover:underline">
+              Zerar (0%)
+            </button>
+          </div>
+          <div id="char-form-elem-resistances-grid" class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2"></div>
+        </div>
+
+        <!-- Limites Máximos das 7 Resistências de Status -->
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <h4 class="font-serif-fantasy font-extrabold uppercase tracking-wider app-muted">
+              💊 Limites Máximos das 7 Barras de Status (Sangramento, Veneno, etc.)
+            </h4>
+            <button type="button" id="btn-reset-res-defaults" class="text-[11px] font-bold gold-title hover:underline">
+              Padrão (100)
+            </button>
+          </div>
+          <div id="char-form-resistances-grid" class="grid grid-cols-2 sm:grid-cols-4 gap-2"></div>
+        </div>
+
+        <!-- Habilidades Principais (3 Botões: PASSIVA, ATIVA, SUPREMA) + História -->
+        <div class="space-y-3">
+          <div class="p-3.5 rounded-xl bg-black/25 border app-divider-border space-y-2.5">
+            <div class="flex items-center justify-between">
+              <label class="font-serif-fantasy font-extrabold uppercase gold-title">
+                ⚡ Habilidades do Personagem (Clique para escrever/editar o texto de cada uma)
+              </label>
+              <span class="text-[10px] app-muted">Textos abrem em modal dedicado</span>
+            </div>
+
+            <input type="hidden" id="char-skill-passive" value="" />
+            <input type="hidden" id="char-skill-active" value="" />
+            <input type="hidden" id="char-skill-supreme" value="" />
+            <input type="hidden" id="char-skills-input" value="" />
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              <button
+                type="button"
+                data-open-form-skill="PASSIVA"
+                class="py-2.5 px-3 rounded-xl font-serif-fantasy font-extrabold text-xs uppercase tracking-wider border border-sky-500/40 bg-sky-500/10 hover:bg-sky-500/20 text-sky-300 flex items-center justify-between transition"
+              >
+                <span class="flex items-center gap-1.5"><span>🛡️</span><span>PASSIVA</span></span>
+                <span id="form-skill-badge-PASSIVA" class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-black/40 app-muted">Vazio</span>
+              </button>
+
+              <button
+                type="button"
+                data-open-form-skill="ATIVA"
+                class="py-2.5 px-3 rounded-xl font-serif-fantasy font-extrabold text-xs uppercase tracking-wider border border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 flex items-center justify-between transition"
+              >
+                <span class="flex items-center gap-1.5"><span>⚔️</span><span>ATIVA</span></span>
+                <span id="form-skill-badge-ATIVA" class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-black/40 app-muted">Vazio</span>
+              </button>
+
+              <button
+                type="button"
+                data-open-form-skill="SUPREMA"
+                class="py-2.5 px-3 rounded-xl font-serif-fantasy font-extrabold text-xs uppercase tracking-wider border border-rose-500/40 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 flex items-center justify-between transition"
+              >
+                <span class="flex items-center gap-1.5"><span>🔥</span><span>SUPREMA</span></span>
+                <span id="form-skill-badge-SUPREMA" class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-black/40 app-muted">Vazio</span>
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label for="char-history-input" class="block font-bold uppercase mb-1 app-label">📖 História / Antecedentes</label>
+            <textarea id="char-history-input" rows="2" placeholder="História e origem do personagem..." class="w-full px-3 py-2 app-input"></textarea>
+          </div>
+        </div>
+
+        <!-- Rodapé -->
+        <div class="pt-3 border-t flex items-center justify-between gap-3 app-divider-border">
+          <button
+            type="button"
+            id="btn-delete-char"
+            class="hidden px-4 py-2.5 rounded-lg font-extrabold text-xs uppercase tracking-wider bg-rose-600/20 hover:bg-rose-600 text-rose-400 hover:text-white border border-rose-500/40 transition"
+          >
+            🗑️ DEL
+          </button>
+          <div class="flex items-center gap-2 ml-auto">
+            <button type="button" data-close-modal="modal-char-form" class="px-4 py-2.5 rounded-lg font-bold text-xs uppercase app-secondary-btn">
+              Cancelar
+            </button>
+            <button type="submit" class="btn-gold px-5 py-2.5 font-serif-fantasy text-xs uppercase tracking-wider">
+              Salvar Personagem
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- MODAL 2: APLICAR DANO (Dano Rápido / Real + Pipeline Completa ADR-012)    -->
+  <!-- ========================================================================= -->
+  <div id="modal-damage" class="modal-backdrop hidden fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
+    <div class="modal-panel w-full max-w-lg rounded-2xl overflow-hidden flex flex-col max-h-[92vh]">
+      <div class="px-5 py-4 border-b flex items-center justify-between app-modal-header">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">🔥</span>
+          <div>
+            <h3 class="font-serif-fantasy text-base font-black tracking-wider uppercase app-title">APLICAR DANO</h3>
+            <p id="damage-char-name" class="text-xs font-bold text-rose-400"></p>
+          </div>
+        </div>
+        <button type="button" data-close-modal="modal-damage" class="w-8 h-8 rounded-lg flex items-center justify-center app-icon-btn">✕</button>
+      </div>
+
+      <form id="form-damage" class="p-5 overflow-y-auto space-y-4 text-xs">
+        <input type="hidden" id="damage-char-id" value="" />
+
+        <!-- Seletor de Modo: Dano Rápido vs Pipeline Completa (ADR-012) -->
+        <div class="grid grid-cols-2 gap-2">
+          <button type="button" id="btn-dmg-mode-simple" class="py-2 px-3 rounded-lg font-extrabold uppercase attr-op-btn active-op">
+            ⚡ Dano Direto / Rápido
+          </button>
+          <button type="button" id="btn-dmg-mode-pipeline" class="py-2 px-3 rounded-lg font-extrabold uppercase attr-op-btn">
+            🛡️ Pipeline Tática (Letalidade/Perf/Ruptura)
+          </button>
+        </div>
+
+        <!-- MODO 1: Dano Rápido -->
+        <div id="damage-simple-container" class="space-y-3">
+          <div>
+            <label for="damage-amount-input" class="block font-bold uppercase tracking-wider mb-1 app-label">Valor do Dano</label>
+            <input
+              id="damage-amount-input"
+              type="number"
+              min="0"
+              step="1"
+              placeholder="0"
+              class="w-full px-4 py-3 text-xl font-mono font-black text-center app-input"
+            />
+          </div>
+        </div>
+
+        <!-- MODO 2: Pipeline Completa (ADR-012) -->
+        <div id="damage-pipeline-container" class="hidden space-y-3 p-3.5 rounded-xl bg-black/25 border app-divider-border">
+          <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+            <div>
+              <label class="block font-bold mb-1 text-rose-400">🗡️ Dano Base</label>
+              <input id="pipe-base-dmg" type="number" min="0" value="25" class="w-full px-2.5 py-1.5 font-mono font-bold app-input" />
+            </div>
+            <div>
+              <label class="block font-bold mb-1 text-orange-400">➕ Multiplicadores</label>
+              <input id="pipe-multipliers" type="number" value="0" class="w-full px-2.5 py-1.5 font-mono font-bold app-input" />
+            </div>
+            <div>
+              <label class="block font-bold mb-1 text-amber-400">📈 Bônus Dano (%)</label>
+              <input id="pipe-bonus-pct" type="number" value="0" class="w-full px-2.5 py-1.5 font-mono font-bold app-input" />
+            </div>
+            <div>
+              <label class="block font-bold mb-1 text-emerald-400" title="Ignora Defesa fixa do alvo">🎯 Letalidade (%)</label>
+              <input id="pipe-lethality-pct" type="number" min="0" max="100" value="0" class="w-full px-2.5 py-1.5 font-mono font-bold app-input" />
+            </div>
+            <div>
+              <label class="block font-bold mb-1 text-sky-400" title="Ignora Resistência % do alvo">🏹 Perfuração (%)</label>
+              <input id="pipe-penetration-pct" type="number" min="0" max="100" value="0" class="w-full px-2.5 py-1.5 font-mono font-bold app-input" />
+            </div>
+            <div>
+              <label class="block font-bold mb-1 text-purple-400" title="Ignora Redução de Dano % do alvo">💥 Ruptura (%)</label>
+              <input id="pipe-rupture-pct" type="number" min="0" max="100" value="0" class="w-full px-2.5 py-1.5 font-mono font-bold app-input" />
+            </div>
+          </div>
+
+          <label class="flex items-center gap-2 pt-1 cursor-pointer">
+            <input type="checkbox" id="pipe-overload-armor" class="rounded" />
+            <span class="text-[11px] app-muted">Aplicar <strong>Sobrecarga de Armadura Máxima</strong> se o dano superar a armadura atual (Seção 6).</span>
+          </label>
+        </div>
+
+        <!-- Switch DANO REAL -->
+        <label for="damage-true-switch" class="flex items-center justify-between p-3 rounded-xl border cursor-pointer app-divider-border bg-black/20">
+          <div>
+            <div class="text-xs font-extrabold uppercase tracking-wider text-rose-400">⚡ DANO REAL</div>
+            <p class="text-[11px] app-muted mt-0.5">Ignora completamente a Armadura 🛡️ e mitigações, descontando direto da Vida ❤️.</p>
+          </div>
+          <div class="relative inline-flex items-center cursor-pointer ml-3">
+            <input type="checkbox" id="damage-true-switch" class="sr-only peer" />
+            <div class="w-11 h-6 bg-slate-700 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-rose-600"></div>
+          </div>
+        </label>
+
+        <!-- Prévia do Resultado -->
+        <div id="damage-preview-box" class="p-3 rounded-xl border app-divider-border bg-black/30 space-y-1.5">
+          <div id="damage-pipeline-breakdown" class="hidden text-[11px] font-mono app-muted pb-1.5 border-b app-divider-border"></div>
+          <div class="flex justify-between items-center">
+            <span class="app-muted font-semibold">🛡️ Armadura:</span>
+            <span id="damage-preview-armor" class="font-mono font-bold text-sky-400"></span>
+          </div>
+          <div class="flex justify-between items-center">
+            <span class="app-muted font-semibold">❤️ Vida:</span>
+            <span id="damage-preview-hp" class="font-mono font-bold text-rose-400"></span>
+          </div>
+        </div>
+
+        <div class="pt-2 flex items-center justify-end gap-2">
+          <button type="button" data-close-modal="modal-damage" class="px-4 py-2.5 rounded-lg font-bold uppercase app-secondary-btn">
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            class="px-5 py-2.5 rounded-lg font-serif-fantasy font-extrabold uppercase tracking-wider bg-gradient-to-r from-rose-700 to-red-600 hover:from-rose-600 hover:to-red-500 text-white shadow-lg transition"
+          >
+            🔥 Aplicar Dano
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- MODAL 3: GERENCIAR VIDA / ARMADURA / MANA                                 -->
+  <!-- ========================================================================= -->
+  <div id="modal-attribute" class="modal-backdrop hidden fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
+    <div class="modal-panel w-full max-w-md rounded-2xl overflow-hidden">
+      <div class="px-5 py-4 border-b flex items-center justify-between app-modal-header">
+        <div class="flex items-center gap-2">
+          <span id="attr-modal-icon" class="text-xl">❤️</span>
+          <div>
+            <h3 id="attr-modal-title" class="font-serif-fantasy text-base font-black tracking-wider uppercase app-title">GERENCIAR VIDA</h3>
+            <p id="attr-modal-subtitle" class="text-xs font-mono font-bold app-muted"></p>
+          </div>
+        </div>
+        <button type="button" data-close-modal="modal-attribute" class="w-8 h-8 rounded-lg flex items-center justify-center app-icon-btn">✕</button>
+      </div>
+
+      <form id="form-attribute" class="p-5 space-y-4">
+        <input type="hidden" id="attr-char-id" value="" />
+        <input type="hidden" id="attr-type-key" value="" />
+
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider mb-1.5 app-label">Operação (OP)</label>
+          <div class="grid grid-cols-3 gap-2" id="attr-op-group">
+            <button type="button" data-op="add" class="attr-op-btn active-op py-2.5 px-3 rounded-lg font-extrabold text-xs uppercase border transition">
+              ＋ Adicionar
+            </button>
+            <button type="button" data-op="sub" class="attr-op-btn py-2.5 px-3 rounded-lg font-extrabold text-xs uppercase border transition">
+              － Subtrair
+            </button>
+            <button type="button" data-op="set" class="attr-op-btn py-2.5 px-3 rounded-lg font-extrabold text-xs uppercase border transition">
+              ＝ Setar
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <label for="attr-value-input" class="block text-xs font-bold uppercase tracking-wider mb-1.5 app-label">Valor</label>
+          <input
+            id="attr-value-input"
+            type="number"
+            min="0"
+            step="1"
+            placeholder="0"
+            required
+            class="w-full px-4 py-3 text-xl font-mono font-black text-center app-input"
+          />
+        </div>
+
+        <label for="attr-overflow-switch" class="flex items-center justify-between p-3.5 rounded-xl border cursor-pointer app-divider-border bg-black/20">
+          <div>
+            <div class="text-xs font-extrabold uppercase tracking-wider text-amber-400">🚀 OVERFLOW</div>
+            <p class="text-[11px] app-muted mt-0.5">Permite que Adicionar e Setar ultrapassem o limite máximo.</p>
+          </div>
+          <div class="relative inline-flex items-center cursor-pointer ml-3">
+            <input type="checkbox" id="attr-overflow-switch" class="sr-only peer" />
+            <div class="w-11 h-6 bg-slate-700 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
+          </div>
+        </label>
+
+        <div class="pt-2 flex items-center justify-end gap-2">
+          <button type="button" data-close-modal="modal-attribute" class="px-4 py-2.5 rounded-lg font-bold text-xs uppercase app-secondary-btn">
+            Cancelar
+          </button>
+          <button type="submit" id="attr-submit-btn" class="btn-gold px-5 py-2.5 font-serif-fantasy text-xs uppercase tracking-wider">
+            Confirmar
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- MODAL 4: PAINEL DAS 7 RESISTÊNCIAS (💊) + SUB-MODAL 4.1                   -->
+  <!-- ========================================================================= -->
+  <div id="modal-resistances" class="modal-backdrop hidden fixed inset-0 z-40 flex items-center justify-center p-3 sm:p-4">
+    <div class="modal-panel w-full max-w-lg rounded-2xl overflow-hidden flex flex-col max-h-[90vh]">
+      <div class="px-5 py-4 border-b flex items-center justify-between app-modal-header">
+        <div class="flex items-center gap-2.5">
+          <span class="text-xl">💊</span>
+          <div>
+            <h3 class="font-serif-fantasy text-base font-black tracking-wider uppercase gold-title">PAINEL DE RESISTÊNCIAS</h3>
+            <p id="res-panel-char-name" class="text-xs font-bold app-muted"></p>
+          </div>
+        </div>
+        <button type="button" data-close-modal="modal-resistances" class="w-8 h-8 rounded-lg flex items-center justify-center app-icon-btn">✕</button>
+      </div>
+
+      <div class="p-5 overflow-y-auto space-y-2.5 flex-1">
+        <p class="text-xs app-muted mb-3">Clique em qualquer resistência abaixo para ajustar seus pontos:</p>
+        <div id="resistances-list-container" class="space-y-2.5"></div>
+      </div>
+
+      <div class="px-5 py-3.5 border-t flex items-center justify-end app-divider-border">
+        <button type="button" data-close-modal="modal-resistances" class="px-4 py-2 rounded-lg font-bold text-xs uppercase app-secondary-btn">
+          Fechar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div id="modal-single-resistance" class="modal-backdrop hidden fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
+    <div class="modal-panel w-full max-w-sm rounded-2xl overflow-hidden">
+      <div class="px-5 py-4 border-b flex items-center justify-between app-modal-header">
+        <div class="flex items-center gap-2">
+          <span id="single-res-icon" class="text-xl">❄️</span>
+          <div>
+            <h3 id="single-res-title" class="font-serif-fantasy text-base font-black tracking-wider uppercase app-title">RESISTÊNCIA</h3>
+            <p id="single-res-subtitle" class="text-xs font-mono font-bold app-muted"></p>
+          </div>
+        </div>
+        <button type="button" data-close-modal="modal-single-resistance" class="w-8 h-8 rounded-lg flex items-center justify-center app-icon-btn">✕</button>
+      </div>
+
+      <form id="form-single-resistance" class="p-5 space-y-4">
+        <input type="hidden" id="single-res-char-id" value="" />
+        <input type="hidden" id="single-res-name" value="" />
+
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider mb-1.5 app-label">Operação</label>
+          <div class="grid grid-cols-3 gap-2" id="single-res-op-group">
+            <button type="button" data-res-op="add" class="res-op-btn active-op py-2 px-2.5 rounded-lg font-extrabold text-xs uppercase border transition">
+              ADICIONAR
+            </button>
+            <button type="button" data-res-op="sub" class="res-op-btn py-2 px-2.5 rounded-lg font-extrabold text-xs uppercase border transition">
+              SUBTRAIR
+            </button>
+            <button type="button" data-res-op="set" class="res-op-btn py-2 px-2.5 rounded-lg font-extrabold text-xs uppercase border transition">
+              SETAR
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <label for="single-res-value-input" class="block text-xs font-bold uppercase tracking-wider mb-1.5 app-label">Pontos</label>
+          <input
+            id="single-res-value-input"
+            type="number"
+            min="0"
+            step="1"
+            placeholder="0"
+            required
+            class="w-full px-4 py-3 text-xl font-mono font-black text-center app-input"
+          />
+          <p class="text-[11px] app-muted mt-1.5 text-center">O resultado é limitado entre 0 e o máximo.</p>
+        </div>
+
+        <div class="pt-2 flex items-center justify-end gap-2">
+          <button type="button" data-close-modal="modal-single-resistance" class="px-4 py-2.5 rounded-lg font-bold text-xs uppercase app-secondary-btn">
+            Cancelar
+          </button>
+          <button type="submit" class="btn-gold px-5 py-2.5 font-serif-fantasy text-xs uppercase tracking-wider">
+            Aplicar
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- MODAL 5: FICHA COMPLETA, 5 ATRIBUTOS, TALENTOS & INVENTÁRIO P2P           -->
+  <!-- ========================================================================= -->
+  <div id="modal-char-sheet" class="modal-backdrop hidden fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
+    <div class="modal-panel w-full max-w-4xl rounded-2xl overflow-hidden flex flex-col max-h-[92vh]">
+      <div class="px-5 py-4 border-b flex items-center justify-between app-modal-header">
+        <div class="flex items-center gap-3">
+          <span class="text-2xl">📜</span>
+          <div>
+            <h3 id="sheet-char-name" class="font-serif-fantasy text-lg font-black uppercase gold-title">FICHA DE PERSONAGEM</h3>
+            <p id="sheet-char-meta" class="text-xs font-mono app-muted"></p>
+          </div>
+        </div>
+        <button type="button" data-close-modal="modal-char-sheet" class="w-8 h-8 rounded-lg flex items-center justify-center app-icon-btn">✕</button>
+      </div>
+
+      <div id="sheet-modal-body" class="p-5 overflow-y-auto space-y-5 flex-1 text-xs">
+        <!-- Preenchido dinamicamente pelo JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- MODAL 6: GERENCIAR MOEDA / COFRE DA SALA                                  -->
+  <!-- ========================================================================= -->
+  <div id="modal-gold" class="modal-backdrop hidden fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
+    <div class="modal-panel w-full max-w-md rounded-2xl overflow-hidden">
+      <div class="px-5 py-4 border-b flex items-center justify-between app-modal-header">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">🪙</span>
+          <h3 class="font-serif-fantasy text-base font-black uppercase gold-title">Gerenciar Cofre &amp; Moeda</h3>
+        </div>
+        <button type="button" data-close-modal="modal-gold" class="w-8 h-8 rounded-lg flex items-center justify-center app-icon-btn">✕</button>
+      </div>
+
+      <form id="form-gold" class="p-5 space-y-4 text-xs">
+        <div class="grid grid-cols-3 gap-2" id="gold-op-group">
+          <button type="button" data-gold-op="add" class="attr-op-btn active-op py-2 rounded-lg font-extrabold uppercase border">＋ Adicionar</button>
+          <button type="button" data-gold-op="sub" class="attr-op-btn py-2 rounded-lg font-extrabold uppercase border">－ Reduzir</button>
+          <button type="button" data-gold-op="set" class="attr-op-btn py-2 rounded-lg font-extrabold uppercase border">＝ Definir</button>
+        </div>
+
+        <div>
+          <label class="block font-bold uppercase mb-1 app-label">Quantia</label>
+          <input id="gold-amount-input" type="number" min="0" step="1" required class="w-full px-4 py-3 text-xl font-mono font-black text-center app-input" />
+        </div>
+
+        <div class="pt-2 flex justify-end gap-2">
+          <button type="button" data-close-modal="modal-gold" class="px-4 py-2 rounded-lg font-bold uppercase app-secondary-btn">Cancelar</button>
+          <button type="submit" class="btn-gold px-5 py-2 font-serif-fantasy uppercase">Confirmar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- MODAL 7: RESSURREIÇÃO DE PERSONAGEM CAÍDO (100%, 50%, Personalizado)      -->
+  <!-- ========================================================================= -->
+  <div id="modal-revive" class="modal-backdrop hidden fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
+    <div class="modal-panel w-full max-w-md rounded-2xl overflow-hidden">
+      <div class="px-5 py-4 border-b flex items-center justify-between app-modal-header">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">✨</span>
+          <div>
+            <h3 class="font-serif-fantasy text-base font-black uppercase gold-title">Ressurreição de Personagem</h3>
+            <p id="revive-char-name" class="text-xs font-bold app-muted"></p>
+          </div>
+        </div>
+        <button type="button" data-close-modal="modal-revive" class="w-8 h-8 rounded-lg flex items-center justify-center app-icon-btn">✕</button>
+      </div>
+
+      <form id="form-revive" class="p-5 space-y-4 text-xs">
+        <input type="hidden" id="revive-char-id" value="" />
+        <div class="grid grid-cols-3 gap-2" id="revive-mode-group">
+          <button type="button" data-revive-mode="100" class="attr-op-btn active-op py-2.5 rounded-lg font-extrabold uppercase border">100% Total</button>
+          <button type="button" data-revive-mode="50" class="attr-op-btn py-2.5 rounded-lg font-extrabold uppercase border">50% Rápido</button>
+          <button type="button" data-revive-mode="CUSTOM" class="attr-op-btn py-2.5 rounded-lg font-extrabold uppercase border">Personalizado</button>
+        </div>
+
+        <div id="revive-custom-inputs" class="hidden grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-bold mb-1 text-rose-400">❤️ Vida Restaurada</label>
+            <input id="revive-custom-hp" type="number" min="1" value="33" class="w-full px-3 py-2 font-mono font-bold app-input" />
+          </div>
+          <div>
+            <label class="block font-bold mb-1 text-sky-400">🛡️ Armadura Restaurada</label>
+            <input id="revive-custom-armor" type="number" min="0" value="0" class="w-full px-3 py-2 font-mono font-bold app-input" />
+          </div>
+        </div>
+
+        <div class="pt-2 flex justify-end gap-2">
+          <button type="button" data-close-modal="modal-revive" class="px-4 py-2 rounded-lg font-bold uppercase app-secondary-btn">Cancelar</button>
+          <button type="submit" class="btn-gold px-5 py-2 font-serif-fantasy uppercase">✨ Reviver Personagem</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- MODAL 8: CRIAR / EDITAR ITEM DO CATÁLOGO (Com Motor de Efeitos)           -->
+  <!-- ========================================================================= -->
+  <div id="modal-catalog-item" class="modal-backdrop hidden fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
+    <div class="modal-panel w-full max-w-xl rounded-2xl overflow-hidden flex flex-col max-h-[92vh]">
+      <div class="px-5 py-4 border-b flex items-center justify-between app-modal-header">
+        <h3 id="catalog-modal-title" class="font-serif-fantasy text-base font-black uppercase gold-title">📦 Cadastrar Item no Catálogo</h3>
+        <button type="button" data-close-modal="modal-catalog-item" class="w-8 h-8 rounded-lg flex items-center justify-center app-icon-btn">✕</button>
+      </div>
+
+      <form id="form-catalog-item" class="p-5 overflow-y-auto space-y-4 text-xs flex-1">
+        <input type="hidden" id="cat-item-id" value="" />
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block font-bold uppercase mb-1 app-label">Nome do Item</label>
+            <input id="cat-item-name" type="text" required class="w-full px-3 py-2 font-bold app-input" />
+          </div>
+          <div>
+            <label class="block font-bold uppercase mb-1 app-label">Tipo de Item</label>
+            <select id="cat-item-type" class="w-full px-3 py-2 font-bold app-input">
+              <option value="ARMADURA">ARMADURA (Equipável)</option>
+              <option value="ARMA">ARMA (Equipável)</option>
+              <option value="ACESSORIO">ACESSORIO (Equipável)</option>
+              <option value="CONSUMIVEL">CONSUMIVEL (Uso Imediato)</option>
+              <option value="OUTRO">OUTRO (Utilitário sem Efeito)</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-bold uppercase mb-1 app-label">Descrição</label>
+          <textarea id="cat-item-desc" rows="2" class="w-full px-3 py-2 app-input"></textarea>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-bold uppercase mb-1 app-label">Peso (kg)</label>
+            <input id="cat-item-weight" type="number" min="0" step="0.1" value="1.0" class="w-full px-3 py-2 font-mono font-bold app-input" />
+          </div>
+          <div>
+            <label class="block font-bold uppercase mb-1 app-label">Preço (Ouro)</label>
+            <input id="cat-item-price" type="number" min="0" step="1" value="100" class="w-full px-3 py-2 font-mono font-bold app-input" />
+          </div>
+        </div>
+
+        <div class="flex flex-wrap gap-4 pt-1">
+          <label class="flex items-center gap-1.5 cursor-pointer">
+            <input type="checkbox" id="cat-item-equipable" checked />
+            <span>Equipável (soma peso quando equipado)</span>
+          </label>
+          <label class="flex items-center gap-1.5 cursor-pointer">
+            <input type="checkbox" id="cat-item-non-tradable" />
+            <span>Não Negociável</span>
+          </label>
+          <label class="flex items-center gap-1.5 cursor-pointer">
+            <input type="checkbox" id="cat-item-visible" checked />
+            <span>Visível para Jogadores</span>
+          </label>
+        </div>
+
+        <!-- Motor de Efeitos do Item se Equipado -->
+        <div class="p-3.5 rounded-xl bg-black/25 border app-divider-border space-y-2.5">
+          <div class="flex items-center justify-between">
+            <h4 class="font-serif-fantasy font-extrabold uppercase gold-title">⚡ Efeitos do Item se Equipado (Flat / %)</h4>
+            <button type="button" id="btn-add-item-effect" class="px-2.5 py-1 rounded text-[11px] font-bold btn-gold-outline">
+              ＋ Adicionar Efeito
+            </button>
+          </div>
+          <div id="cat-item-effects-list" class="space-y-2"></div>
+        </div>
+
+        <div class="pt-3 border-t flex justify-end gap-2 app-divider-border">
+          <button type="button" data-close-modal="modal-catalog-item" class="px-4 py-2 rounded-lg font-bold uppercase app-secondary-btn">Cancelar</button>
+          <button type="submit" class="btn-gold px-5 py-2 font-serif-fantasy uppercase">Salvar Item</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- MODAL 9: CONCESSÃO EM LOTE (XP, ATRIBUTOS, OURO, ITENS)                   -->
+  <!-- ========================================================================= -->
+  <div id="modal-bulk-reward" class="modal-backdrop hidden fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
+    <div class="modal-panel w-full max-w-lg rounded-2xl overflow-hidden">
+      <div class="px-5 py-4 border-b flex items-center justify-between app-modal-header">
+        <h3 class="font-serif-fantasy text-base font-black uppercase gold-title">🎁 Conceder Recompensas em Lote (Mestre)</h3>
+        <button type="button" data-close-modal="modal-bulk-reward" class="w-8 h-8 rounded-lg flex items-center justify-center app-icon-btn">✕</button>
+      </div>
+
+      <form id="form-bulk-reward" class="p-5 space-y-4 text-xs">
+        <div>
+          <div class="flex items-center justify-between mb-1.5">
+            <label class="font-bold uppercase app-label">Selecionar Personagens</label>
+            <button type="button" id="btn-bulk-select-all" class="text-[11px] font-bold gold-title hover:underline">Marcar Todos</button>
+          </div>
+          <div id="bulk-chars-checkboxes" class="grid grid-cols-2 gap-2 p-3 rounded-xl bg-black/25 border app-divider-border max-h-36 overflow-y-auto"></div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-bold mb-1 text-amber-400">⭐ Experiência (XP)</label>
+            <input id="bulk-xp-input" type="number" min="0" value="80" class="w-full px-3 py-2 font-mono font-bold app-input" />
+          </div>
+          <div>
+            <label class="block font-bold mb-1 text-emerald-400">🧬 Pontos de Atributo Extras</label>
+            <input id="bulk-attr-pts-input" type="number" min="0" value="0" class="w-full px-3 py-2 font-mono font-bold app-input" />
+          </div>
+          <div>
+            <label class="block font-bold mb-1 text-purple-400">📘 Pontos de Habilidade (Talento)</label>
+            <input id="bulk-skill-pts-input" type="number" min="0" value="0" class="w-full px-3 py-2 font-mono font-bold app-input" />
+          </div>
+          <div>
+            <label class="block font-bold mb-1 gold-title">🪙 Ouro p/ o Grupo</label>
+            <input id="bulk-gold-input" type="number" min="0" value="0" class="w-full px-3 py-2 font-mono font-bold app-input" />
+          </div>
+        </div>
+
+        <div class="pt-2 flex justify-end gap-2">
+          <button type="button" data-close-modal="modal-bulk-reward" class="px-4 py-2 rounded-lg font-bold uppercase app-secondary-btn">Cancelar</button>
+          <button type="submit" class="btn-gold px-5 py-2 font-serif-fantasy uppercase">🎁 Conceder Recompensa</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- MODAL 10: NOVA MISSÃO (QUEST)                                             -->
+  <!-- ========================================================================= -->
+  <div id="modal-quest" class="modal-backdrop hidden fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
+    <div class="modal-panel w-full max-w-lg rounded-2xl overflow-hidden">
+      <div class="px-5 py-4 border-b flex items-center justify-between app-modal-header">
+        <h3 class="font-serif-fantasy text-base font-black uppercase gold-title">📜 Cadastrar / Editar Missão</h3>
+        <button type="button" data-close-modal="modal-quest" class="w-8 h-8 rounded-lg flex items-center justify-center app-icon-btn">✕</button>
+      </div>
+
+      <form id="form-quest" class="p-5 space-y-3.5 text-xs">
+        <input type="hidden" id="quest-form-id" value="" />
+        <div>
+          <label class="block font-bold uppercase mb-1 app-label">Título da Missão</label>
+          <input id="quest-title-input" type="text" required class="w-full px-3 py-2 font-bold app-input" />
+        </div>
+        <div>
+          <label class="block font-bold uppercase mb-1 app-label">Descrição e Objetivos</label>
+          <textarea id="quest-desc-input" rows="2" required class="w-full px-3 py-2 app-input"></textarea>
+        </div>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+          <div>
+            <label class="block font-bold mb-1 gold-title">🪙 Ouro</label>
+            <input id="quest-reward-gold" type="number" min="0" value="200" class="w-full px-2.5 py-1.5 font-mono font-bold app-input" />
+          </div>
+          <div>
+            <label class="block font-bold mb-1 text-amber-400">⭐ XP</label>
+            <input id="quest-reward-xp" type="number" min="0" value="80" class="w-full px-2.5 py-1.5 font-mono font-bold app-input" />
+          </div>
+          <div>
+            <label class="block font-bold mb-1 text-emerald-400">🧬 Pts Atrib.</label>
+            <input id="quest-reward-attr" type="number" min="0" value="0" class="w-full px-2.5 py-1.5 font-mono font-bold app-input" />
+          </div>
+          <div>
+            <label class="block font-bold mb-1 text-purple-400">📘 Pts Hab.</label>
+            <input id="quest-reward-skill" type="number" min="0" value="0" class="w-full px-2.5 py-1.5 font-mono font-bold app-input" />
+          </div>
+        </div>
+        <div>
+          <label class="block font-bold uppercase mb-1 app-label">Item de Recompensa (Opcional)</label>
+          <select id="quest-reward-item" class="w-full px-3 py-2 app-input"></select>
+        </div>
+        <div class="pt-2 flex justify-end gap-2">
+          <button type="button" data-close-modal="modal-quest" class="px-4 py-2 rounded-lg font-bold uppercase app-secondary-btn">Cancelar</button>
+          <button type="submit" class="btn-gold px-5 py-2 font-serif-fantasy uppercase">Salvar Missão</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- MODAL 11: PERFIL DO MEMBRO (APELIDO POR IP & PERMISSÕES GRANULARES)       -->
+  <!-- ========================================================================= -->
+  <div id="modal-member" class="modal-backdrop hidden fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
+    <div class="modal-panel w-full max-w-lg rounded-2xl overflow-hidden">
+      <div class="px-5 py-4 border-b flex items-center justify-between app-modal-header">
+        <h3 id="member-modal-title" class="font-serif-fantasy text-base font-black uppercase gold-title">👥 Definir Apelido &amp; Permissões do IP</h3>
+        <button type="button" data-close-modal="modal-member" class="w-8 h-8 rounded-lg flex items-center justify-center app-icon-btn">✕</button>
+      </div>
+
+      <form id="form-member" class="p-5 space-y-4 text-xs">
+        <input type="hidden" id="member-form-id" value="" />
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block font-bold uppercase mb-1 gold-title">🏷️ Apelido do Usuário (Na Mesa)</label>
+            <input
+              id="member-name-input"
+              type="text"
+              placeholder="Ex: João, Pedro, Mestre..."
+              required
+              class="w-full px-3 py-2 font-bold app-input"
+            />
+            <span class="block text-[10px] app-muted mt-1">Apelido para identificar facilmente este IP na sala.</span>
+          </div>
+          <div>
+            <label class="block font-bold uppercase mb-1 app-label">🌐 Endereço IP do Usuário</label>
+            <input
+              id="member-ip-input"
+              type="text"
+              placeholder="Ex: 26.45.12.90"
+              class="w-full px-3 py-2 font-mono font-bold app-input"
+            />
+            <span id="member-ip-hint" class="block text-[10px] app-muted mt-1">IP detectado automaticamente na rede.</span>
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-bold uppercase mb-1 app-label">⚔️ Personagem Vinculado</label>
+          <select id="member-char-select" class="w-full px-3 py-2 font-bold app-input"></select>
+        </div>
+
+        <div>
+          <div class="flex items-center justify-between mb-1.5">
+            <label class="block font-bold uppercase gold-title">🎨 Cor Permanente do Cursor (10 Cores)</label>
+            <span id="member-cursor-color-label" class="text-[10px] font-mono font-bold app-muted"></span>
+          </div>
+          <input type="hidden" id="member-cursor-color-input" value="" />
+          <div id="member-cursor-color-picker" class="grid grid-cols-5 sm:grid-cols-10 gap-2 p-2.5 rounded-xl bg-black/25 border app-divider-border"></div>
+        </div>
+
+        <div id="member-permissions-section" class="space-y-3 p-3.5 rounded-xl bg-black/25 border app-divider-border">
+          <div class="flex items-center justify-between">
+            <label class="font-serif-fantasy font-bold uppercase gold-title">🛡️ Perfil Rápido de Permissão (Preset)</label>
+            <select id="member-preset-select" class="px-2.5 py-1 app-input font-bold">
+              <option value="JOGADOR_COMUM">Jogador Comum</option>
+              <option value="MODERADOR">Moderador</option>
+              <option value="GERENTE_LOJA">Gerente de Loja</option>
+              <option value="GERENTE_INVENTARIO">Gerente de Inventário</option>
+              <option value="PERSONALIZADO">Personalizado</option>
+            </select>
+          </div>
+          <div class="grid grid-cols-2 gap-2 pt-1" id="member-perm-checkboxes">
+            <label class="flex items-center gap-1.5"><input type="checkbox" data-perm="canCreateCharacters" /> Criar Personagens</label>
+            <label class="flex items-center gap-1.5"><input type="checkbox" data-perm="canEditOtherCharacters" /> Editar Outros Chars</label>
+            <label class="flex items-center gap-1.5"><input type="checkbox" data-perm="canManageItemsCatalog" /> Gerenciar Catálogo Itens</label>
+            <label class="flex items-center gap-1.5"><input type="checkbox" data-perm="canManageShopNpcs" /> Gerenciar Loja / NPCs</label>
+            <label class="flex items-center gap-1.5"><input type="checkbox" data-perm="canApproveSales" /> Aprovar Vendas Escrow</label>
+            <label class="flex items-center gap-1.5"><input type="checkbox" data-perm="canManageGold" /> Gerenciar Moeda/Ouro</label>
+            <label class="flex items-center gap-1.5"><input type="checkbox" data-perm="canManageQuests" /> Gerenciar Missões</label>
+            <label class="flex items-center gap-1.5"><input type="checkbox" data-perm="canViewOtherInventories" /> Ver Outros Inventários</label>
+          </div>
+        </div>
+
+        <div class="pt-2 flex justify-between gap-2">
+          <button type="button" id="btn-remove-member" class="px-3 py-2 rounded-lg font-bold text-rose-400 bg-rose-500/15 border border-rose-500/30">
+            🗑️ Remover da Lista
+          </button>
+          <div class="flex gap-2 ml-auto">
+            <button type="button" data-close-modal="modal-member" class="px-4 py-2 rounded-lg font-bold uppercase app-secondary-btn">Cancelar</button>
+            <button type="submit" class="btn-gold px-5 py-2 font-serif-fantasy uppercase">Salvar Apelido / Dados</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- MODAL 12: CADASTRAR / EDITAR MERCADOR NPC                                 -->
+  <!-- ========================================================================= -->
+  <div id="modal-npc" class="modal-backdrop hidden fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
+    <div class="modal-panel w-full max-w-xl rounded-2xl overflow-hidden flex flex-col max-h-[92vh]">
+      <div class="px-5 py-4 border-b flex items-center justify-between app-modal-header">
+        <h3 class="font-serif-fantasy text-base font-black uppercase gold-title">🛍️ Cadastrar / Editar Mercador (NPC)</h3>
+        <button type="button" data-close-modal="modal-npc" class="w-8 h-8 rounded-lg flex items-center justify-center app-icon-btn">✕</button>
+      </div>
+      <form id="form-npc" class="p-5 overflow-y-auto space-y-4 text-xs flex-1">
+        <input type="hidden" id="npc-form-id" value="" />
+        <div>
+          <label class="block font-bold uppercase mb-1 app-label">Nome do Mercador</label>
+          <input id="npc-name-input" type="text" required class="w-full px-3 py-2 font-bold app-input" />
+        </div>
+        <div>
+          <label class="block font-bold uppercase mb-1 app-label">Descrição</label>
+          <input id="npc-desc-input" type="text" class="w-full px-3 py-2 app-input" />
+        </div>
+        <div class="space-y-2">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <label class="block font-bold uppercase app-label">Itens Vendidos pelo NPC &amp; Preço de Venda</label>
+            <span class="text-[10px] app-muted">Deixe o preço em branco para usar o valor padrão do item</span>
+          </div>
+          <!-- Filtro por Tipo de Item no Modal do Mercador -->
+          <div class="flex flex-wrap items-center gap-1.5" id="npc-modal-type-filters">
+            <button type="button" data-npc-filter="ALL" class="px-2.5 py-1 rounded-lg text-[11px] font-bold btn-gold">Todos</button>
+            <button type="button" data-npc-filter="ARMADURA" class="px-2.5 py-1 rounded-lg text-[11px] font-bold app-secondary-btn">🛡️ Armaduras</button>
+            <button type="button" data-npc-filter="ARMA" class="px-2.5 py-1 rounded-lg text-[11px] font-bold app-secondary-btn">⚔️ Armas</button>
+            <button type="button" data-npc-filter="ACESSORIO" class="px-2.5 py-1 rounded-lg text-[11px] font-bold app-secondary-btn">💍 Acessórios</button>
+            <button type="button" data-npc-filter="CONSUMIVEL" class="px-2.5 py-1 rounded-lg text-[11px] font-bold app-secondary-btn">🧪 Consumíveis</button>
+            <button type="button" data-npc-filter="OUTRO" class="px-2.5 py-1 rounded-lg text-[11px] font-bold app-secondary-btn">🎒 Outros</button>
+          </div>
+          <div id="npc-stock-checklist" class="space-y-2 max-h-60 overflow-y-auto p-3 rounded-xl bg-black/25 border app-divider-border"></div>
+        </div>
+        <div class="pt-2 flex items-center justify-between gap-2">
+          <button
+            type="button"
+            id="btn-delete-npc"
+            class="hidden px-3.5 py-2 rounded-lg font-extrabold uppercase bg-rose-600/20 hover:bg-rose-600 text-rose-400 hover:text-white border border-rose-500/40 transition"
+          >
+            🗑️ Excluir Mercador
+          </button>
+          <div class="flex items-center gap-2 ml-auto">
+            <button type="button" data-close-modal="modal-npc" class="px-4 py-2 rounded-lg font-bold uppercase app-secondary-btn">Cancelar</button>
+            <button type="submit" class="btn-gold px-5 py-2 font-serif-fantasy uppercase">Salvar Mercador</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- MODAL 14: DETALHES / EDIÇÃO DE HABILIDADE (PASSIVA, ATIVA, SUPREMA)       -->
+  <!-- ========================================================================= -->
+  <div id="modal-skill-detail" class="modal-backdrop hidden fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-6">
+    <div class="modal-panel w-[95vw] max-w-5xl h-[82vh] max-h-[88vh] rounded-2xl overflow-hidden flex flex-col">
+      <div class="px-6 py-4 border-b flex items-center justify-between app-modal-header shrink-0">
+        <div class="flex items-center gap-3">
+          <span id="skill-modal-icon" class="text-2xl">🛡️</span>
+          <div>
+            <h3 id="skill-modal-title" class="font-serif-fantasy text-lg font-black uppercase gold-title">HABILIDADE PASSIVA</h3>
+            <p id="skill-modal-subtitle" class="text-xs font-bold app-muted"></p>
+          </div>
+        </div>
+        <button type="button" data-close-modal="modal-skill-detail" class="w-9 h-9 rounded-lg flex items-center justify-center app-icon-btn text-base">✕</button>
+      </div>
+
+      <form id="form-skill-detail" class="p-6 flex flex-col gap-4 text-xs flex-1 min-h-0">
+        <input type="hidden" id="skill-modal-slot" value="PASSIVA" />
+        <input type="hidden" id="skill-modal-context" value="FORM" />
+        <input type="hidden" id="skill-modal-char-id" value="" />
+
+        <div class="flex flex-col flex-1 min-h-0">
+          <div class="flex items-center justify-between mb-2 shrink-0">
+            <label for="skill-modal-textarea" class="block font-bold uppercase tracking-wider app-label">
+              Texto / Descrição da Habilidade
+            </label>
+            <span id="skill-modal-readonly-badge" class="hidden px-2.5 py-0.5 rounded bg-amber-500/15 gold-title font-mono font-bold text-[11px]">
+              👁️ Somente Visualização
+            </span>
+          </div>
+          <textarea
+            id="skill-modal-textarea"
+            placeholder="Descreva os efeitos, custos, alcance e regras desta habilidade..."
+            class="w-full flex-1 min-h-[320px] px-4 py-3.5 text-sm sm:text-base leading-relaxed app-input resize-none overflow-y-auto"
+          ></textarea>
+        </div>
+
+        <div class="pt-2 flex items-center justify-end gap-2.5 shrink-0">
+          <button type="button" data-close-modal="modal-skill-detail" class="px-4 py-2.5 rounded-lg font-bold uppercase app-secondary-btn">
+            Fechar
+          </button>
+          <button type="submit" id="btn-save-skill-detail" class="btn-gold px-6 py-2.5 font-serif-fantasy uppercase tracking-wider">
+            💾 Salvar Habilidade
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- MODAL 15: INVENTÁRIO DEDICADO (FILTROS, PESQUISA & GRID 3x INFINITO)      -->
+  <!-- ========================================================================= -->
+  <div id="modal-char-inventory" class="modal-backdrop hidden fixed inset-0 z-[65] flex items-center justify-center p-3 sm:p-5">
+    <div class="modal-panel w-[96vw] max-w-7xl rounded-2xl overflow-hidden flex flex-col max-h-[92vh]">
+      <div class="px-6 py-4 border-b flex flex-wrap items-center justify-between gap-3 app-modal-header shrink-0">
+        <div class="flex items-center gap-3">
+          <span class="text-2xl">🎒</span>
+          <div>
+            <div class="flex flex-wrap items-center gap-2.5">
+              <h3 id="inv-modal-char-name" class="font-serif-fantasy text-base sm:text-lg font-black uppercase gold-title">
+                INVENTÁRIO DO PERSONAGEM
+              </h3>
+              <span id="inv-modal-weight-badge" class="font-mono font-black text-xs px-2 py-0.5 rounded bg-amber-500/15 gold-title border border-amber-500/30">
+                ⚖️ 0 / 27 kg
+              </span>
+            </div>
+            <p id="inv-modal-char-meta" class="text-xs font-mono font-bold app-muted mt-0.5"></p>
+          </div>
+        </div>
+
+        <!-- Controle de Limite de Peso (Padrão 27 kg, editável pelo Jogador dono e Mestre) + Botão X -->
+        <div class="flex items-center gap-2.5">
+          <div id="inv-modal-max-weight-box" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-black/30 border app-divider-border text-xs">
+            <span class="font-bold gold-title">⚖️ Limite Peso:</span>
+            <input
+              id="inv-modal-max-weight-input"
+              type="number"
+              min="0"
+              step="0.5"
+              value="27"
+              class="w-16 px-2 py-1 text-center font-mono font-black text-xs app-input"
+            />
+            <span class="font-mono app-muted">kg</span>
+            <button
+              type="button"
+              id="btn-save-inv-max-weight"
+              class="px-2.5 py-1 rounded-lg font-bold text-[11px] btn-gold"
+              title="Salvar novo limite de peso"
+            >
+              Salvar
+            </button>
+          </div>
+          <button type="button" data-close-modal="modal-char-inventory" class="w-9 h-9 rounded-lg flex items-center justify-center app-icon-btn text-base" title="Fechar Inventário">✕</button>
+        </div>
+      </div>
+
+      <!-- Barra de Pesquisa e Filtros do Inventário -->
+      <div class="px-6 py-3.5 border-b app-divider-border bg-black/20 flex flex-wrap items-center justify-between gap-3 text-xs shrink-0">
+        <div class="flex flex-wrap items-center gap-1.5" id="inv-modal-type-filters">
+          <button type="button" data-inv-filter="ALL" class="px-3 py-1.5 rounded-lg font-bold btn-gold">Todos</button>
+          <button type="button" data-inv-filter="EQUIPPED" class="px-3 py-1.5 rounded-lg font-bold app-secondary-btn">✅ Equipados</button>
+          <button type="button" data-inv-filter="ARMADURA" class="px-3 py-1.5 rounded-lg font-bold app-secondary-btn">🛡️ Armaduras</button>
+          <button type="button" data-inv-filter="ARMA" class="px-3 py-1.5 rounded-lg font-bold app-secondary-btn">⚔️ Armas</button>
+          <button type="button" data-inv-filter="ACESSORIO" class="px-3 py-1.5 rounded-lg font-bold app-secondary-btn">💍 Acessórios</button>
+          <button type="button" data-inv-filter="CONSUMIVEL" class="px-3 py-1.5 rounded-lg font-bold app-secondary-btn">🧪 Consumíveis</button>
+          <button type="button" data-inv-filter="OUTRO" class="px-3 py-1.5 rounded-lg font-bold app-secondary-btn">🎒 Outros</button>
+        </div>
+
+        <div class="relative w-full sm:w-72">
+          <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs opacity-60">🔍</span>
+          <input
+            id="inv-modal-search-input"
+            type="text"
+            placeholder="Pesquisar item no inventário..."
+            class="w-full pl-8 pr-3 py-1.5 text-xs app-input"
+          />
+        </div>
+      </div>
+
+      <!-- Grid 3x(Infinito) com Scroll Vertical -->
+      <div class="p-6 overflow-y-auto flex-1">
+        <div id="inv-modal-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <!-- Renderizado dinamicamente pelo JS em grade 3x(infinito) -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- MODAL 16: ESCOLHER DESTINATÁRIO DE ITEM (CONCEDER ITEM OU ENVIAR P2P)     -->
+  <!-- ========================================================================= -->
+  <div id="modal-item-recipient" class="modal-backdrop hidden fixed inset-0 z-[75] flex items-center justify-center p-3 sm:p-4">
+    <div class="modal-panel w-full max-w-md rounded-2xl overflow-hidden">
+      <div class="px-5 py-4 border-b flex items-center justify-between app-modal-header">
+        <div class="flex items-center gap-2.5">
+          <span id="recipient-modal-icon" class="text-xl">🎁</span>
+          <div>
+            <h3 id="recipient-modal-title" class="font-serif-fantasy text-base font-black uppercase gold-title">
+              CONCEDER ITEM A PERSONAGEM
+            </h3>
+            <p id="recipient-modal-subtitle" class="text-xs font-bold app-muted"></p>
+          </div>
+        </div>
+        <button type="button" data-close-modal="modal-item-recipient" class="w-8 h-8 rounded-lg flex items-center justify-center app-icon-btn">✕</button>
+      </div>
+
+      <form id="form-item-recipient" class="p-5 space-y-4 text-xs">
+        <input type="hidden" id="recipient-modal-mode" value="GRANT" />
+        <input type="hidden" id="recipient-modal-item-id" value="" />
+        <input type="hidden" id="recipient-modal-inv-id" value="" />
+        <input type="hidden" id="recipient-modal-sender-char-id" value="" />
+
+        <div>
+          <label for="recipient-char-select" class="block font-bold uppercase tracking-wider mb-1.5 gold-title">
+            👤 Escolha quem receberá o item:
+          </label>
+          <select id="recipient-char-select" required class="w-full px-3 py-2.5 text-sm font-bold app-input"></select>
+        </div>
+
+        <div>
+          <label for="recipient-item-qty" class="block font-bold uppercase tracking-wider mb-1.5 app-label">
+            🔢 Quantidade
+          </label>
+          <input
+            id="recipient-item-qty"
+            type="number"
+            min="1"
+            step="1"
+            value="1"
+            required
+            class="w-full px-3 py-2 text-base font-mono font-black text-center app-input"
+          />
+          <p id="recipient-qty-hint" class="text-[11px] app-muted mt-1"></p>
+        </div>
+
+        <div class="pt-2 flex items-center justify-end gap-2">
+          <button type="button" data-close-modal="modal-item-recipient" class="px-4 py-2 rounded-lg font-bold uppercase app-secondary-btn">
+            Cancelar
+          </button>
+          <button type="submit" id="recipient-submit-btn" class="btn-gold px-5 py-2 font-serif-fantasy uppercase tracking-wider">
+            🎁 Confirmar
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- MODAL 17: SOLICITAÇÃO DE VENDA EM ESCROW (PREÇO LIVRE ESCOLHIDO)          -->
+  <!-- ========================================================================= -->
+  <div id="modal-sell-escrow" class="modal-backdrop hidden fixed inset-0 z-[75] flex items-center justify-center p-3 sm:p-4">
+    <div class="modal-panel w-full max-w-md rounded-2xl overflow-hidden">
+      <div class="px-5 py-4 border-b flex items-center justify-between app-modal-header">
+        <div class="flex items-center gap-2.5">
+          <span class="text-xl">🪙</span>
+          <div>
+            <h3 class="font-serif-fantasy text-base font-black uppercase gold-title">
+              SOLICITAR VENDA DE ITEM
+            </h3>
+            <p id="sell-escrow-subtitle" class="text-xs font-bold app-muted"></p>
+          </div>
+        </div>
+        <button type="button" data-close-modal="modal-sell-escrow" class="w-8 h-8 rounded-lg flex items-center justify-center app-icon-btn">✕</button>
+      </div>
+
+      <form id="form-sell-escrow" class="p-5 space-y-4 text-xs">
+        <input type="hidden" id="sell-escrow-char-id" value="" />
+        <input type="hidden" id="sell-escrow-inv-id" value="" />
+
+        <div>
+          <label for="sell-escrow-price-input" class="block font-bold uppercase tracking-wider mb-1.5 gold-title">
+            🪙 Valor Desejado para Venda:
+          </label>
+          <input
+            id="sell-escrow-price-input"
+            type="number"
+            min="0"
+            step="1"
+            value="100"
+            required
+            class="w-full px-4 py-3 text-xl font-mono font-black text-center app-input"
+          />
+          <p id="sell-escrow-price-hint" class="text-[11px] app-muted mt-1"></p>
+        </div>
+
+        <div class="pt-2 flex items-center justify-end gap-2">
+          <button type="button" data-close-modal="modal-sell-escrow" class="px-4 py-2 rounded-lg font-bold uppercase app-secondary-btn">
+            Cancelar
+          </button>
+          <button type="submit" class="btn-gold px-5 py-2 font-serif-fantasy uppercase tracking-wider">
+            🪙 Enviar Solicitação de Venda
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- MODAL 13: CONFIRMAÇÃO (RESETAR ♻️ / DEL 🗑️ / COMPRAS)                     -->
+  <!-- ========================================================================= -->
+  <div id="modal-confirm" class="modal-backdrop hidden fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-4">
+    <div class="modal-panel w-full max-w-sm rounded-2xl overflow-hidden">
+      <div class="p-6 text-center space-y-3">
+        <div id="confirm-modal-icon" class="w-14 h-14 rounded-2xl mx-auto flex items-center justify-center text-3xl bg-amber-500/15 border border-amber-500/30">
+          ♻️
+        </div>
+        <h3 id="confirm-modal-title" class="font-serif-fantasy text-base font-black tracking-wider uppercase gold-title">CONFIRMAR AÇÃO</h3>
+        <p id="confirm-modal-message" class="text-xs sm:text-sm app-muted leading-relaxed"></p>
+      </div>
+      <div class="px-5 py-3.5 border-t flex items-center justify-end gap-2 app-divider-border">
+        <button type="button" id="btn-confirm-cancel" class="px-4 py-2 rounded-lg font-bold text-xs uppercase app-secondary-btn">
+          Cancelar
+        </button>
+        <button type="button" id="btn-confirm-ok" class="btn-gold px-5 py-2 font-serif-fantasy text-xs uppercase">
+          Confirmar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
