@@ -34,57 +34,57 @@
   ];
 
   const CANONICAL_ATTRIBUTES = [
-    { key: 'FORCA', label: 'Força', short: 'FOR', icon: '💪' },
-    { key: 'DESTREZA', label: 'Destreza', short: 'DES', icon: '🏹' },
-    { key: 'INTELIGENCIA', label: 'Inteligência', short: 'INT', icon: '📘' },
-    { key: 'SABEDORIA', label: 'Sabedoria', short: 'SAB', icon: '🦉' },
-    { key: 'LABIA', label: 'Lábia', short: 'LAB', icon: '🗣️' },
+    { key: 'FORCA', label: 'Força', short: 'FOR', icon: '<iconify-icon icon="game-icons:biceps"></iconify-icon>' },
+    { key: 'DESTREZA', label: 'Destreza', short: 'DES', icon: '<iconify-icon icon="game-icons:bow-arrow"></iconify-icon>' },
+    { key: 'INTELIGENCIA', label: 'Inteligência', short: 'INT', icon: '<iconify-icon icon="game-icons:spell-book"></iconify-icon>' },
+    { key: 'SABEDORIA', label: 'Sabedoria', short: 'SAB', icon: '<iconify-icon icon="game-icons:owl"></iconify-icon>' },
+    { key: 'LABIA', label: 'Lábia', short: 'LAB', icon: '<iconify-icon icon="game-icons:conversation"></iconify-icon>' },
   ];
 
   const RESISTANCE_TYPES = [
-    { name: 'Congelamento', icon: '❄️', barClass: 'from-cyan-500 to-sky-400', textClass: 'text-cyan-400' },
-    { name: 'Choque', icon: '⚡', barClass: 'from-amber-400 to-yellow-300', textClass: 'text-amber-400' },
-    { name: 'Sangramento', icon: '🩸', barClass: 'from-rose-600 to-red-500', textClass: 'text-rose-400' },
-    { name: 'Chamas', icon: '🔥', barClass: 'from-orange-500 to-red-500', textClass: 'text-orange-400' },
-    { name: 'Veneno', icon: '🧪', barClass: 'from-emerald-500 to-lime-400', textClass: 'text-emerald-400' },
-    { name: 'Atordoamento', icon: '💫', barClass: 'from-purple-500 to-fuchsia-400', textClass: 'text-purple-400' },
-    { name: 'Cegueira', icon: '👁️', barClass: 'from-slate-500 to-zinc-400', textClass: 'text-slate-400' },
+    { name: 'Congelamento', icon: '<iconify-icon icon="game-icons:ice-cube" style="color: #38bdf8;"></iconify-icon>', barClass: 'from-cyan-500 to-sky-400', textClass: 'text-cyan-400' },
+    { name: 'Choque', icon: '<iconify-icon icon="game-icons:lightning-branches" style="color: #facc15;"></iconify-icon>', barClass: 'from-amber-400 to-yellow-300', textClass: 'text-amber-400' },
+    { name: 'Sangramento', icon: '<iconify-icon icon="game-icons:bleeding-wound" style="color: #ef4444;"></iconify-icon>', barClass: 'from-rose-600 to-red-500', textClass: 'text-rose-400' },
+    { name: 'Chamas', icon: '<iconify-icon icon="game-icons:ifrit" style="color: #f97316;"></iconify-icon>', barClass: 'from-orange-500 to-red-500', textClass: 'text-orange-400' },
+    { name: 'Veneno', icon: '<iconify-icon icon="game-icons:poison-bottle" style="color: #a3e635;"></iconify-icon>', barClass: 'from-emerald-500 to-lime-400', textClass: 'text-emerald-400' },
+    { name: 'Atordoamento', icon: '<iconify-icon icon="game-icons:knockout" style="color: #c084fc;"></iconify-icon>', barClass: 'from-purple-500 to-fuchsia-400', textClass: 'text-purple-400' },
+    { name: 'Cegueira', icon: '<iconify-icon icon="game-icons:blindfold" style="color: #94a3b8;"></iconify-icon>', barClass: 'from-slate-500 to-zinc-400', textClass: 'text-slate-400' },
   ];
 
   const ELEMENTAL_RESISTANCE_TYPES = [
-    { key: 'FISICO', label: 'Físico', icon: '🗡️', textClass: 'text-slate-300', bgClass: 'bg-slate-500/10 border-slate-500/30' },
-    { key: 'MAGICO', label: 'Mágico', icon: '🔮', textClass: 'text-indigo-300', bgClass: 'bg-indigo-500/10 border-indigo-500/30' },
-    { key: 'PYRO', label: 'Pyro', icon: '🔥', textClass: 'text-orange-400', bgClass: 'bg-orange-500/10 border-orange-500/30' },
-    { key: 'CRYO', label: 'Cryo', icon: '❄️', textClass: 'text-cyan-300', bgClass: 'bg-cyan-500/10 border-cyan-500/30' },
-    { key: 'ELETRICO', label: 'Elétrico', icon: '⚡', textClass: 'text-yellow-300', bgClass: 'bg-yellow-500/10 border-yellow-500/30' },
-    { key: 'PROFANO', label: 'Profano', icon: '🌑', textClass: 'text-purple-400', bgClass: 'bg-purple-500/10 border-purple-500/30' },
-    { key: 'SACRO', label: 'Sacro', icon: '✨', textClass: 'text-amber-300', bgClass: 'bg-amber-500/10 border-amber-500/30' },
+    { key: 'FISICO', label: 'Físico', icon: '<iconify-icon icon="game-icons:gladius"></iconify-icon>', textClass: 'text-slate-300', bgClass: 'bg-slate-500/10 border-slate-500/30' },
+    { key: 'MAGICO', label: 'Mágico', icon: '<iconify-icon icon="game-icons:crystal-ball"></iconify-icon>', textClass: 'text-indigo-300', bgClass: 'bg-indigo-500/10 border-indigo-500/30' },
+    { key: 'PYRO', label: 'Pyro', icon: '<iconify-icon icon="game-icons:ifrit" style="color: #f97316;"></iconify-icon>', textClass: 'text-orange-400', bgClass: 'bg-orange-500/10 border-orange-500/30' },
+    { key: 'CRYO', label: 'Cryo', icon: '<iconify-icon icon="game-icons:ice-cube" style="color: #38bdf8;"></iconify-icon>', textClass: 'text-cyan-300', bgClass: 'bg-cyan-500/10 border-cyan-500/30' },
+    { key: 'ELETRICO', label: 'Elétrico', icon: '<iconify-icon icon="game-icons:lightning-branches" style="color: #facc15;"></iconify-icon>', textClass: 'text-yellow-300', bgClass: 'bg-yellow-500/10 border-yellow-500/30' },
+    { key: 'PROFANO', label: 'Profano', icon: '<iconify-icon icon="game-icons:eclipse"></iconify-icon>', textClass: 'text-purple-400', bgClass: 'bg-purple-500/10 border-purple-500/30' },
+    { key: 'SACRO', label: 'Sacro', icon: '<iconify-icon icon="game-icons:sparkles"></iconify-icon>', textClass: 'text-amber-300', bgClass: 'bg-amber-500/10 border-amber-500/30' },
   ];
 
   const EFFECT_TARGET_OPTIONS = [
-    { value: 'VIDA', label: '❤️ Vida Máxima (HP)' },
-    { value: 'ARMADURA', label: '🛡️ Armadura Máxima' },
-    { value: 'MANA', label: '✨ Mana Máxima' },
-    { value: 'PA', label: '⚡ Pontos de Ação (PA)' },
-    { value: 'REGEN_VIDA', label: '❤️ Regenerar Vida' },
-    { value: 'REGEN_ARMADURA', label: '🛡️ Regenerar Armadura' },
-    { value: 'REGEN_MANA', label: '💧 Regenerar Mana' },
-    { value: 'DEFESA', label: '🔰 Defesa' },
-    { value: 'ATAQUE', label: '⚔️ Ataque' },
-    { value: 'ARCANA', label: '🔮 Arcana' },
-    { value: 'SANTIDADE', label: '✨ Santidade' },
-    { value: 'RES_FISICO', label: '🗡️ Resistência Físico (%)' },
-    { value: 'RES_MAGICO', label: '🔮 Resistência Mágico (%)' },
-    { value: 'RES_PYRO', label: '🔥 Resistência Pyro (%)' },
-    { value: 'RES_CRYO', label: '❄️ Resistência Cryo (%)' },
-    { value: 'RES_ELETRICO', label: '⚡ Resistência Elétrico (%)' },
-    { value: 'RES_PROFANO', label: '🌑 Resistência Profano (%)' },
-    { value: 'RES_SACRO', label: '✨ Resistência Sacro (%)' },
-    { value: 'FORCA', label: '💪 Força' },
-    { value: 'DESTREZA', label: '🏹 Destreza' },
-    { value: 'INTELIGENCIA', label: '📘 Inteligência' },
-    { value: 'SABEDORIA', label: '🦉 Sabedoria' },
-    { value: 'LABIA', label: '🗣️ Lábia' },
+    { value: 'VIDA', label: 'Vida Máxima (HP)' },
+    { value: 'ARMADURA', label: 'Armadura Máxima' },
+    { value: 'MANA', label: 'Mana Máxima' },
+    { value: 'PA', label: 'Pontos de Ação (PA)' },
+    { value: 'REGEN_VIDA', label: 'Regenerar Vida' },
+    { value: 'REGEN_ARMADURA', label: 'Regenerar Armadura' },
+    { value: 'REGEN_MANA', label: 'Regenerar Mana' },
+    { value: 'DEFESA', label: 'Defesa' },
+    { value: 'ATAQUE', label: 'Ataque' },
+    { value: 'ARCANA', label: 'Arcana' },
+    { value: 'SANTIDADE', label: 'Santidade' },
+    { value: 'RES_FISICO', label: 'Resistência Físico (%)' },
+    { value: 'RES_MAGICO', label: 'Resistência Mágico (%)' },
+    { value: 'RES_PYRO', label: 'Resistência Pyro (%)' },
+    { value: 'RES_CRYO', label: 'Resistência Cryo (%)' },
+    { value: 'RES_ELETRICO', label: 'Resistência Elétrico (%)' },
+    { value: 'RES_PROFANO', label: 'Resistência Profano (%)' },
+    { value: 'RES_SACRO', label: 'Resistência Sacro (%)' },
+    { value: 'FORCA', label: 'Força' },
+    { value: 'DESTREZA', label: 'Destreza' },
+    { value: 'INTELIGENCIA', label: 'Inteligência' },
+    { value: 'SABEDORIA', label: 'Sabedoria' },
+    { value: 'LABIA', label: 'Lábia' },
   ];
 
   const EFFECT_TARGET_SHORT_LABELS = {
@@ -619,11 +619,11 @@
     if (roleBtn && roleIcon && roleText) {
       if (masterMode) {
         roleBtn.classList.remove('role-player');
-        roleIcon.textContent = '👑';
+        roleIcon.innerHTML = '<iconify-icon icon="game-icons:crown"></iconify-icon>';
         roleText.textContent = 'MODO MESTRE';
       } else {
         roleBtn.classList.add('role-player');
-        roleIcon.textContent = '👤';
+        roleIcon.innerHTML = '<iconify-icon icon="game-icons:hooded-figure"></iconify-icon>';
         roleText.textContent = state.isHost ? 'VISÃO JOGADOR' : 'MODO JOGADOR';
       }
     }
@@ -655,7 +655,7 @@
       html.classList.remove('dark');
     }
     const icon = document.getElementById('theme-icon');
-    if (icon) icon.textContent = theme === 'dark' ? '🌙' : '☀️';
+    if (icon) icon.innerHTML = theme === 'dark' ? '<iconify-icon icon="game-icons:crescent-blade"></iconify-icon>' : '<iconify-icon icon="game-icons:sun"></iconify-icon>';
     try {
       localStorage.setItem(STORAGE_KEY_THEME, theme);
     } catch (_) {}
@@ -826,7 +826,7 @@
         name: 'Mestre',
         title: `IP Principal (Host): ${hostIp}`,
         role: 'MESTRE',
-        avatar: '👑',
+        avatar: 'crown',
         characterId: null,
         online: true,
         connectionsCount: 1,
@@ -867,7 +867,7 @@
         name: 'Mestre',
         title: `IP Principal (Host): ${hostIp}`,
         role: 'MESTRE',
-        avatar: '👑',
+        avatar: 'crown',
         characterId: null,
         online: true,
         connectionsCount: 1,
@@ -925,7 +925,7 @@
     toast.className = `toast-item flex items-center justify-between gap-3 px-4 py-3.5 rounded-xl border shadow-2xl bg-gradient-to-r ${bgClass} text-white`;
     toast.innerHTML = `
       <div class="flex items-center gap-2.5 min-w-0">
-        <span class="text-lg shrink-0">${variant === 'success' ? '✨' : '⚠️'}</span>
+        <span class="text-lg shrink-0 flex items-center">${variant === 'success' ? '<iconify-icon icon="game-icons:sparkles"></iconify-icon>' : '<iconify-icon icon="game-icons:hazard-sign"></iconify-icon>'}</span>
         <span class="font-extrabold text-xs sm:text-sm tracking-wide break-words">${escapeHtml(message)}</span>
       </div>
       <button type="button" class="shrink-0 w-6 h-6 rounded-lg bg-black/25 hover:bg-black/45 flex items-center justify-center text-xs font-bold">✕</button>
@@ -1869,7 +1869,7 @@
               <span class="px-1.5 py-0.2 rounded text-[10px] font-extrabold ${
                 conn.isHost ? 'bg-amber-400 text-black' : 'bg-black/40 text-amber-300'
               }">
-                ${conn.isHost ? '👑 HOST (MESTRE)' : `👤 ${escapeHtml(displayNick)}`}
+                ${conn.isHost ? '<iconify-icon icon="game-icons:crown"></iconify-icon> HOST (MESTRE)' : `<iconify-icon icon="game-icons:hooded-figure"></iconify-icon> ${escapeHtml(displayNick)}`}
               </span>
               ${
                 conn.isHost && displayNick && displayNick !== 'Mestre'
@@ -1940,7 +1940,7 @@
                   ? 'bg-amber-500/20 border-amber-400/60'
                   : 'bg-amber-500/10 border-amber-500/30'
               } border flex items-center justify-center text-base shrink-0" style="box-shadow: 0 0 0 2px ${escapeHtml(memberCursorColor)}44;">
-                ${escapeHtml(m.avatar || (isMasterRole ? '👑' : '🛡️'))}
+                ${isMasterRole ? '<iconify-icon icon="game-icons:crown" class="gold-title"></iconify-icon>' : '<iconify-icon icon="game-icons:hooded-figure"></iconify-icon>'}
               </div>
               <div>
                 <div class="font-bold text-sm app-title flex flex-wrap items-center gap-2">
@@ -1968,7 +1968,7 @@
           <td class="py-3.5 px-5">
             <div class="flex flex-wrap items-center gap-2">
               <code class="px-2.5 py-1 rounded-lg bg-black/35 border app-divider-border font-mono font-bold text-xs gold-title">
-                🌐 ${escapeHtml(memberIp)}
+                <iconify-icon icon="game-icons:crystal-ball"></iconify-icon> ${escapeHtml(memberIp)}
               </code>
               ${
                 isOnline
@@ -1977,7 +1977,7 @@
                       <span>ONLINE${(m.connectionsCount || 1) > 1 ? ` (${m.connectionsCount})` : ''}</span>
                     </span>`
                   : `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-black/30 app-muted border app-divider-border">
-                      <span>⚪ OFFLINE</span>
+                      <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-slate-500 inline-block"></span><span>OFFLINE</span></span>
                     </span>`
               }
             </div>
@@ -1985,8 +1985,8 @@
           <td class="py-3.5 px-5">
             ${
               isMasterRole
-                ? '<span class="role-badge-master">👑 MESTRE (HOST)</span>'
-                : '<span class="role-badge-player">👤 JOGADOR</span>'
+                ? '<span class="role-badge-master"><iconify-icon icon="game-icons:crown"></iconify-icon> MESTRE (HOST)</span>'
+                : '<span class="role-badge-player"><iconify-icon icon="game-icons:hooded-figure"></iconify-icon> JOGADOR</span>'
             }
           </td>
           <td class="py-3.5 px-5 text-xs">
@@ -1995,7 +1995,7 @@
                 ? `<div class="flex flex-wrap gap-1.5">${linkedChars
                     .map(
                       (lc) =>
-                        `<span class="px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/30 font-bold gold-title">⚔️ ${escapeHtml(
+                        `<span class="px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/30 font-bold gold-title flex items-center gap-1.5"><iconify-icon icon="game-icons:crossed-swords"></iconify-icon> ${escapeHtml(
                           lc.name
                         )} (Nv. ${lc.level})</span>`
                     )
@@ -2013,7 +2013,7 @@
                       class="px-2.5 py-1.5 rounded-lg text-xs font-bold btn-gold-outline flex items-center gap-1"
                       title="Dar ou editar apelido deste IP e configurar permissões"
                     >
-                      <span>🏷️</span>
+                      <iconify-icon icon="game-icons:quill-ink"></iconify-icon>
                       <span>${hasCustomNickname ? 'Editar Apelido' : 'Dar Apelido'}</span>
                     </button>`
                   : `<span class="text-xs app-muted">—</span>`
@@ -2111,20 +2111,20 @@
                 data-char-id="${escapeHtml(char.id)}"
                 class="w-full py-1.5 px-3 rounded-lg bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 text-[11px] font-extrabold flex items-center justify-between hover:bg-emerald-500/25 transition"
               >
-                <span>🎁 +${char.pendingAttributePoints} Ponto(s) de Atributo Pendente(s)!</span>
-                <span class="underline">Distribuir ➔</span>
+                <span class="flex items-center gap-1.5"><iconify-icon icon="game-icons:chest"></iconify-icon> <span>+${char.pendingAttributePoints} Ponto(s) de Atributo Pendente(s)!</span></span>
+                <span class="underline">Distribuir →</span>
               </button>`
             : '';
 
         const deadBannerHtml = char.isDead
           ? `<div class="p-2.5 rounded-lg bg-red-950/80 border border-red-500/50 flex items-center justify-between">
               <span class="text-xs font-extrabold text-red-300 flex items-center gap-1.5">
-                <span>💀</span>
+                <iconify-icon icon="game-icons:crowned-skull"></iconify-icon>
                 <span>PERSONAGEM MORTO (0 HP)</span>
               </span>
               ${
                 isEffectiveMaster()
-                  ? `<button type="button" data-action="open-revive" data-char-id="${escapeHtml(char.id)}" class="px-2.5 py-1 rounded text-[11px] font-extrabold btn-gold">✨ Reviver</button>`
+                  ? `<button type="button" data-action="open-revive" data-char-id="${escapeHtml(char.id)}" class="px-2.5 py-1 rounded text-[11px] font-extrabold btn-gold flex items-center gap-1"><iconify-icon icon="game-icons:sparkles"></iconify-icon> <span>Reviver</span></button>`
                   : ''
               }
             </div>`
@@ -2147,7 +2147,7 @@
           class="char-card p-4 sm:p-5 flex flex-col justify-between gap-3.5 relative ${char.isDead ? 'border-red-500/50 opacity-90' : ''}"
           data-char-id="${escapeHtml(char.id)}"
         >
-          <!-- Topo: Nome Arrastável + Nível/XP + Botões Flutuantes (📜, 🎒, 💊, ✏️) -->
+          <!-- Topo: Nome Arrastável + Nível/XP + Botões Flutuantes (Histórico, Inventário, Consumíveis, Editar) -->
           <div class="flex items-start justify-between gap-2">
             <div class="min-w-0 flex-1">
               <div class="flex items-center gap-2">
@@ -2172,7 +2172,7 @@
                   <div class="stat-bar-fill stat-bar-xp" style="width: ${xpPct}%"></div>
                 </div>
                 <span class="text-[10px] font-mono app-muted">XP ${char.xp || 0}/${char.xpNext || 80}</span>
-                <span class="text-[10px] font-mono app-muted" title="Membro/IP vinculado a este personagem">• 👤 ${escapeHtml(ownerLabel)}</span>
+                <span class="text-[10px] font-mono app-muted" title="Membro/IP vinculado a este personagem">• <iconify-icon icon="game-icons:hooded-figure"></iconify-icon> ${escapeHtml(ownerLabel)}</span>
                 ${
                   char.skillPoints > 0
                     ? `<span class="text-[10px] font-mono font-bold text-purple-400">• +${char.skillPoints} Hab</span>`
@@ -2183,20 +2183,20 @@
               <!-- Indicadores Táticos: PA, Defesa, Regen, Ataque, Carga -->
               <div class="flex flex-wrap items-center gap-1.5 mt-2">
                 <span class="px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-amber-500/10 text-amber-300 border border-amber-500/25">
-                  ⚡ PA: ${char.pa}/${char.maxPa}
+                  <iconify-icon icon="game-icons:lightning-branches"></iconify-icon> PA: ${char.pa}/${char.maxPa}
                 </span>
                 <span class="px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/25">
-                  🔰 DEF: ${char.defense}
+                  <iconify-icon icon="game-icons:dragon-shield"></iconify-icon> DEF: ${char.defense}
                 </span>
                 <span class="px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-violet-500/10 text-violet-400 border border-violet-500/25">
-                  ✨ REGEN: ${char.regen}%
+                  <iconify-icon icon="game-icons:fairy-wand" class="icon-mana"></iconify-icon> REGEN: ${char.regen}%
                 </span>
                 <span class="px-2 py-0.5 rounded text-[11px] font-mono font-bold ${
                   isOverweight
                     ? 'bg-rose-500/20 text-rose-300 border border-rose-500/50 animate-pulse'
                     : 'bg-black/25 app-muted border app-divider-border'
                 }">
-                  ⚖️ ${weight}/${maxWeight}kg
+                  <iconify-icon icon="game-icons:weight"></iconify-icon> ${weight}/${maxWeight}kg
                 </span>
               </div>
             </div>
@@ -2210,7 +2210,7 @@
                 title="${canEdit ? 'Abrir Ficha Completa, 5 Atributos e Habilidades' : 'Visualizar Ficha do Personagem'}"
                 class="w-9 h-9 rounded-lg flex items-center justify-center text-base app-icon-btn transition"
               >
-                <span>📜</span>
+                <iconify-icon icon="game-icons:tied-scroll"></iconify-icon>
               </button>
               <button
                 type="button"
@@ -2219,7 +2219,7 @@
                 title="${canEdit ? 'Abrir Inventário 3x(Infinito) com Filtros e Pesquisa' : 'Visualizar Inventário'}"
                 class="w-9 h-9 rounded-lg flex items-center justify-center text-base app-icon-btn transition"
               >
-                <span>🎒</span>
+                <iconify-icon icon="game-icons:knapsack"></iconify-icon>
               </button>
               <button
                 type="button"
@@ -2228,7 +2228,7 @@
                 title="Painel das 7 Resistências"
                 class="relative w-9 h-9 rounded-lg flex items-center justify-center text-base app-icon-btn transition"
               >
-                <span>💊</span>
+                <iconify-icon icon="game-icons:alembic"></iconify-icon>
                 ${
                   activeResCount > 0
                     ? `<span class="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-mono font-black flex items-center justify-center text-white ${
@@ -2246,7 +2246,7 @@
                       title="Editar Personagem"
                       class="w-9 h-9 rounded-lg flex items-center justify-center text-base app-icon-btn transition"
                     >
-                      <span>✏️</span>
+                      <iconify-icon icon="game-icons:quill-ink"></iconify-icon>
                     </button>`
                   : ''
               }
@@ -2256,13 +2256,13 @@
           ${deadBannerHtml}
           ${pendingBannerHtml}
 
-          <!-- Barras Visuais: Vida ❤️, Armadura 🛡️ e Mana ✨ -->
+          <!-- Barras Visuais: Vida, Armadura e Mana -->
           <div class="space-y-2.5">
-            <!-- VIDA ❤️ -->
+            <!-- VIDA -->
             <div>
               <div class="flex items-center justify-between text-xs font-bold mb-1">
                 <span class="flex items-center gap-1.5 text-rose-400 uppercase tracking-wider">
-                  <span>❤️</span>
+                  <iconify-icon icon="game-icons:heart-bottle" class="icon-hp"></iconify-icon>
                   <span>Vida</span>
                   ${hpOverflow ? '<span class="px-1.5 py-0.2 rounded text-[9px] bg-amber-500/20 text-amber-300 border border-amber-400/40">OVERFLOW</span>' : ''}
                 </span>
@@ -2275,11 +2275,11 @@
               </div>
             </div>
 
-            <!-- ARMADURA 🛡️ -->
+            <!-- ARMADURA -->
             <div>
               <div class="flex items-center justify-between text-xs font-bold mb-1">
                 <span class="flex items-center gap-1.5 text-sky-400 uppercase tracking-wider">
-                  <span>🛡️</span>
+                  <iconify-icon icon="game-icons:breastplate" class="icon-armor"></iconify-icon>
                   <span>Armadura</span>
                   ${
                     char.armorDegradation > 0
@@ -2297,11 +2297,11 @@
               </div>
             </div>
 
-            <!-- MANA ✨ -->
+            <!-- MANA -->
             <div>
               <div class="flex items-center justify-between text-xs font-bold mb-1">
                 <span class="flex items-center gap-1.5 text-indigo-400 uppercase tracking-wider">
-                  <span>✨</span>
+                  <iconify-icon icon="game-icons:crystal-bars" class="icon-mana"></iconify-icon>
                   <span>Mana</span>
                   ${manaOverflow ? '<span class="px-1.5 py-0.2 rounded text-[9px] bg-amber-500/20 text-amber-300 border border-amber-400/40">OVERFLOW</span>' : ''}
                 </span>
@@ -2326,7 +2326,7 @@
               class="action-pill action-pill-damage py-2 px-2 rounded-lg font-extrabold text-[11px] tracking-wide flex items-center justify-center gap-1"
             >
               <span>DANO</span>
-              <span>🔥</span>
+              <iconify-icon icon="game-icons:broadsword" class="icon-dmg"></iconify-icon>
             </button>
             <button
               type="button"
@@ -2336,7 +2336,7 @@
               class="action-pill py-2 px-2 rounded-lg font-extrabold text-[11px] tracking-wide flex items-center justify-center gap-1"
             >
               <span>VIDA</span>
-              <span>❤️</span>
+              <iconify-icon icon="game-icons:heart-bottle" class="icon-hp"></iconify-icon>
             </button>
             <button
               type="button"
@@ -2346,7 +2346,7 @@
               class="action-pill py-2 px-2 rounded-lg font-extrabold text-[11px] tracking-wide flex items-center justify-center gap-1"
             >
               <span>ARMADURA</span>
-              <span>🛡️</span>
+              <iconify-icon icon="game-icons:breastplate" class="icon-armor"></iconify-icon>
             </button>
             <button
               type="button"
@@ -2356,7 +2356,7 @@
               class="action-pill py-2 px-2 rounded-lg font-extrabold text-[11px] tracking-wide flex items-center justify-center gap-1"
             >
               <span>MANA</span>
-              <span>✨</span>
+              <iconify-icon icon="game-icons:crystal-bars" class="icon-mana"></iconify-icon>
             </button>
             <button
               type="button"
@@ -2365,7 +2365,7 @@
               class="action-pill action-pill-regen py-2 px-2 rounded-lg font-extrabold text-[11px] tracking-wide flex items-center justify-center gap-1"
             >
               <span>REGEN</span>
-              <span>✨</span>
+              <iconify-icon icon="game-icons:fairy-wand" class="icon-mana"></iconify-icon>
             </button>
             <button
               type="button"
@@ -2374,7 +2374,7 @@
               class="action-pill py-2 px-2 rounded-lg font-extrabold text-[11px] tracking-wide flex items-center justify-center gap-1"
             >
               <span>RESETAR</span>
-              <span>♻️</span>
+              <iconify-icon icon="game-icons:sands-of-time"></iconify-icon>
             </button>
           </div>
         </article>
@@ -2387,11 +2387,11 @@
   // ABA 3: CATÁLOGO DE ITENS
   // ---------------------------------------------------------------------------
   const ITEM_TYPE_ICONS = {
-    ARMADURA: '🛡️',
-    ARMA: '⚔️',
-    ACESSORIO: '💍',
-    CONSUMIVEL: '🧪',
-    OUTRO: '🎒',
+    ARMADURA: '<iconify-icon icon="game-icons:breastplate" class="icon-armor"></iconify-icon>',
+    ARMA: '<iconify-icon icon="game-icons:gladius"></iconify-icon>',
+    ACESSORIO: '<iconify-icon icon="game-icons:ring"></iconify-icon>',
+    CONSUMIVEL: '<iconify-icon icon="game-icons:health-potion"></iconify-icon>',
+    OUTRO: '<iconify-icon icon="game-icons:knapsack"></iconify-icon>',
   };
 
   function renderCatalogTab() {
@@ -2437,14 +2437,14 @@
           <div class="space-y-2">
             <div class="flex items-start justify-between gap-2">
               <div class="flex items-center gap-2">
-                <span class="text-xl">${ITEM_TYPE_ICONS[it.tipo] || '📦'}</span>
+                <span class="text-xl flex items-center">${ITEM_TYPE_ICONS[it.tipo] || '<iconify-icon icon="game-icons:knapsack"></iconify-icon>'}</span>
                 <div>
                   <h4 class="font-serif-fantasy font-bold text-sm app-title">${escapeHtml(it.nome)}</h4>
                   <span class="text-[10px] font-mono uppercase gold-title">${escapeHtml(it.tipo)}</span>
                 </div>
               </div>
               <span class="px-2.5 py-0.5 rounded-lg text-xs font-mono font-bold bg-amber-500/10 gold-title border border-amber-500/30">
-                ${it.precoIndefinido ? 'Preço Indef.' : `🪙 ${it.preco}`}
+                ${it.precoIndefinido ? 'Preço Indef.' : `<iconify-icon icon="game-icons:two-coins" class="icon-gold"></iconify-icon> ${it.preco}`}
               </span>
             </div>
 
@@ -2453,7 +2453,7 @@
             ${effectsHtml}
 
             <div class="flex flex-wrap gap-2 text-[10px] font-mono app-muted pt-1">
-              <span>⚖️ Peso: ${it.peso}kg</span>
+              <span class="flex items-center gap-1"><iconify-icon icon="game-icons:weight"></iconify-icon> <span>Peso: ${it.peso}kg</span></span>
               <span>• ${it.equipavel ? 'Equipável' : 'Não-equipável'}</span>
               ${it.naoNegociavel ? '<span class="text-rose-400">• Não Negociável</span>' : ''}
               ${it.visivelParaJogadores === false ? '<span class="text-amber-400">• Oculto p/ Jogadores</span>' : ''}
@@ -2465,11 +2465,11 @@
               canManage
                 ? `
               <button type="button" data-grant-item="${escapeHtml(it.id)}" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold btn-gold-outline">
-                🎁 Conceder Item
+                <iconify-icon icon="game-icons:chest"></iconify-icon> <span>Conceder Item</span>
               </button>
               <div class="flex items-center gap-1">
-                <button type="button" data-edit-item="${escapeHtml(it.id)}" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold app-secondary-btn">✏️</button>
-                <button type="button" data-delete-item="${escapeHtml(it.id)}" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-rose-400 app-secondary-btn">🗑️</button>
+                <button type="button" data-edit-item="${escapeHtml(it.id)}" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold app-secondary-btn"><iconify-icon icon="game-icons:quill-ink"></iconify-icon></button>
+                <button type="button" data-delete-item="${escapeHtml(it.id)}" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-rose-400 app-secondary-btn"><iconify-icon icon="game-icons:crowned-skull"></iconify-icon></button>
               </div>
             `
                 : `<span class="text-[11px] app-muted">Catálogo da Campanha</span>`
@@ -2495,7 +2495,7 @@
           (c) =>
             `<option value="${escapeHtml(c.id)}" ${c.id === state.selectedBuyerCharId ? 'selected' : ''}>${escapeHtml(
               c.name
-            )} ${state.room?.isSharedWallet ? '' : `(🪙 ${c.gold || 0})`}</option>`
+            )} ${state.room?.isSharedWallet ? '' : `(${c.gold || 0} ${state.room?.currencyName || 'Ouro'})`}</option>`
         )
         .join('');
     }
@@ -2515,16 +2515,16 @@
           <div class="p-3 rounded-lg bg-black/30 border app-divider-border flex flex-wrap items-center justify-between gap-2 text-xs">
             <div>
               <span class="font-bold gold-title">${escapeHtml(s.charName)}</span> solicita vender
-              <strong>${escapeHtml(s.itemName)}</strong> por <span class="font-mono font-bold text-amber-400">🪙 ${s.salePrice} ${escapeHtml(state.room.currencyName)}</span>
+              <strong>${escapeHtml(s.itemName)}</strong> por <span class="font-mono font-bold text-amber-400"><iconify-icon icon="game-icons:two-coins" class="icon-gold"></iconify-icon> ${s.salePrice} ${escapeHtml(state.room.currencyName)}</span>
             </div>
             <div class="flex items-center gap-2">
               ${
                 canApprove
                   ? `
-                <button type="button" data-approve-escrow="${escapeHtml(s.id)}" class="px-3 py-1 rounded font-bold bg-emerald-600 text-white hover:bg-emerald-500 transition">✅ Aprovar</button>
-                <button type="button" data-reject-escrow="${escapeHtml(s.id)}" class="px-3 py-1 rounded font-bold bg-rose-600 text-white hover:bg-rose-500 transition">❌ Recusar</button>
+                <button type="button" data-approve-escrow="${escapeHtml(s.id)}" class="px-3 py-1 rounded font-bold bg-emerald-600 text-white hover:bg-emerald-500 transition"><iconify-icon icon="game-icons:check-mark" style="color: #4ade80;"></iconify-icon> <span>Aprovar</span></button>
+                <button type="button" data-reject-escrow="${escapeHtml(s.id)}" class="px-3 py-1 rounded font-bold bg-rose-600 text-white hover:bg-rose-500 transition flex items-center gap-1"><iconify-icon icon="game-icons:crowned-skull"></iconify-icon> <span>Recusar</span></button>
               `
-                  : `<span class="px-2.5 py-1 rounded-lg font-mono font-bold text-[11px] bg-amber-500/15 text-amber-300 border border-amber-500/30">⏳ Aguardando aprovação do Mestre</span>`
+                  : `<span class="px-2.5 py-1 rounded-lg font-mono font-bold text-[11px] bg-amber-500/15 text-amber-300 border border-amber-500/30 inline-flex items-center gap-1.5"><iconify-icon icon="game-icons:sands-of-time"></iconify-icon> <span>Aguardando aprovação do Mestre</span></span>`
               }
             </div>
           </div>
@@ -2556,7 +2556,7 @@
         }" data-select-npc="${escapeHtml(npc.id)}">
           <div class="flex items-center justify-between gap-2">
             <div class="flex items-center gap-2.5 min-w-0">
-              <span class="text-2xl shrink-0">${escapeHtml(npc.avatar || '🧙‍♂️')}</span>
+              <span class="text-2xl shrink-0 flex items-center"><iconify-icon icon="game-icons:shop" class="text-amber-400"></iconify-icon></span>
               <div class="min-w-0">
                 <h4 class="font-serif-fantasy font-bold text-xs sm:text-sm gold-title truncate">${escapeHtml(npc.name)}</h4>
                 <p class="text-[11px] app-muted line-clamp-1">${escapeHtml(npc.description || '')}</p>
@@ -2565,8 +2565,8 @@
             ${
               canManageShop
                 ? `<div class="flex items-center gap-1 shrink-0">
-                    <button type="button" data-edit-npc="${escapeHtml(npc.id)}" title="Editar Mercador e Estoque" class="text-xs app-icon-btn px-2 py-1 rounded">✏️</button>
-                    <button type="button" data-delete-npc="${escapeHtml(npc.id)}" title="Excluir Mercador NPC" class="text-xs app-icon-btn px-2 py-1 rounded text-rose-400 hover:bg-rose-500/20">🗑️</button>
+                    <button type="button" data-edit-npc="${escapeHtml(npc.id)}" title="Editar Mercador e Estoque" class="text-xs app-icon-btn px-2 py-1 rounded"><iconify-icon icon="game-icons:quill-ink"></iconify-icon></button>
+                    <button type="button" data-delete-npc="${escapeHtml(npc.id)}" title="Excluir Mercador NPC" class="text-xs app-icon-btn px-2 py-1 rounded text-rose-400 hover:bg-rose-500/20"><iconify-icon icon="game-icons:crowned-skull"></iconify-icon></button>
                   </div>`
                 : ''
             }
@@ -2601,14 +2601,14 @@
           <div>
             <div class="flex items-start justify-between gap-2">
               <div>
-                <h4 class="font-serif-fantasy font-bold text-sm app-title">${ITEM_TYPE_ICONS[item.tipo] || '📦'} ${escapeHtml(item.nome)}</h4>
-                <span class="text-[10px] font-mono app-muted">⚖️ ${item.peso}kg • ${
+                <h4 class="font-serif-fantasy font-bold text-sm app-title flex items-center gap-1.5">${ITEM_TYPE_ICONS[item.tipo] || '<iconify-icon icon="game-icons:knapsack"></iconify-icon>'} <span>${escapeHtml(item.nome)}</span></h4>
+                <span class="text-[10px] font-mono app-muted flex items-center gap-1"><iconify-icon icon="game-icons:weight"></iconify-icon> <span>${item.peso}kg</span> • ${
                   st.infinite ? 'Estoque Infinito' : `Estoque: ${st.quantity}`
                 }</span>
               </div>
               <div class="flex items-center gap-1.5">
                 <span class="px-2.5 py-1 rounded-lg font-mono font-extrabold text-xs bg-amber-500/15 gold-title border border-amber-500/30">
-                  🪙 ${effectivePrice}
+                  <iconify-icon icon="game-icons:two-coins" class="icon-gold"></iconify-icon> ${effectivePrice}
                 </span>
                 ${
                   canManageShop
@@ -2619,7 +2619,7 @@
                         title="Remover este item da loja do NPC"
                         class="px-2 py-1 rounded-lg text-xs font-bold text-rose-400 app-secondary-btn hover:bg-rose-500/20"
                       >
-                        🗑️
+                        <iconify-icon icon="game-icons:crowned-skull"></iconify-icon>
                       </button>`
                     : ''
                 }
@@ -2633,7 +2633,7 @@
               canManageShop
                 ? `<div class="flex items-center justify-between gap-2 text-[11px]">
                     <span class="font-bold app-muted" title="Apenas o Mestre pode alterar o valor cobrado pelo NPC (vazio = preço padrão ${item.preco})">
-                      🪙 Valor no NPC <span class="opacity-60 font-mono">(Padrão: ${item.preco})</span>:
+                      <iconify-icon icon="game-icons:two-coins" class="icon-gold"></iconify-icon> Valor no NPC <span class="opacity-60 font-mono">(Padrão: ${item.preco})</span>:
                     </span>
                     <input
                       type="number"
@@ -2672,7 +2672,7 @@
                 ${outOfStock ? 'disabled' : ''}
                 class="btn-gold flex-1 py-2 px-3 text-xs font-serif-fantasy uppercase tracking-wider disabled:opacity-40"
               >
-                ${outOfStock ? 'Esgotado' : `🪙 Comprar (${effectivePrice} ${escapeHtml(state.room.currencyName)})`}
+                ${outOfStock ? 'Esgotado' : `<iconify-icon icon="game-icons:two-coins" class="icon-gold"></iconify-icon> Comprar (${effectivePrice} ${escapeHtml(state.room.currencyName)})`}
               </button>
             </div>
           </div>
@@ -2684,17 +2684,17 @@
     showcase.innerHTML = `
       <div class="fantasy-card p-4 border-amber-500/30 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h3 class="font-serif-fantasy text-base font-extrabold gold-title">${escapeHtml(activeNpc.avatar || '⚒️')} ${escapeHtml(activeNpc.name)}</h3>
+          <h3 class="font-serif-fantasy text-base font-extrabold gold-title flex items-center gap-2"><iconify-icon icon="game-icons:shop"></iconify-icon> <span>${escapeHtml(activeNpc.name)}</span></h3>
           <p class="text-xs app-muted mt-0.5">${escapeHtml(activeNpc.description || '')}</p>
         </div>
         ${
           canManageShop
             ? `<div class="flex items-center gap-2">
                 <button type="button" data-edit-npc="${escapeHtml(activeNpc.id)}" class="px-3 py-1.5 rounded-lg text-xs font-bold btn-gold-outline">
-                  ✏️ Editar Loja
+                  <iconify-icon icon="game-icons:quill-ink"></iconify-icon> <span>Editar Loja</span>
                 </button>
                 <button type="button" data-delete-npc="${escapeHtml(activeNpc.id)}" class="px-3 py-1.5 rounded-lg text-xs font-bold text-rose-400 bg-rose-500/15 border border-rose-500/35 hover:bg-rose-500/25 transition">
-                  🗑️ Excluir NPC
+                  <iconify-icon icon="game-icons:crowned-skull"></iconify-icon> <span>Excluir NPC</span>
                 </button>
               </div>`
             : ''
@@ -2717,7 +2717,7 @@
     if (statusPill) {
       if (b.isActive) {
         statusPill.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-red-600 text-white animate-pulse';
-        statusPill.textContent = '🔥 EM BATALHA';
+        statusPill.innerHTML = '<iconify-icon icon="game-icons:ifrit" style="color: #f97316;"></iconify-icon> <span>EM BATALHA</span>';
       } else {
         statusPill.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-slate-800 text-slate-300 border border-slate-600';
         statusPill.textContent = 'FORA DE COMBATE';
@@ -2725,7 +2725,7 @@
     }
 
     if (toggleBtn) {
-      toggleBtn.textContent = b.isActive ? '🏳️ Encerrar Combate (Restaurar Armaduras)' : '⚔️ Iniciar Combate';
+      toggleBtn.innerHTML = b.isActive ? '<iconify-icon icon="game-icons:white-flag"></iconify-icon> <span>Encerrar Combate (Restaurar Armaduras)</span>' : '<iconify-icon icon="game-icons:crossed-swords"></iconify-icon> <span>Iniciar Combate</span>';
       toggleBtn.className = b.isActive
         ? 'master-only-el px-4 py-2.5 rounded-lg font-serif-fantasy font-extrabold text-xs uppercase tracking-wider bg-amber-700 hover:bg-amber-600 text-white border border-amber-400/50 shadow-lg transition'
         : 'master-only-el px-4 py-2.5 rounded-lg font-serif-fantasy font-extrabold text-xs uppercase tracking-wider bg-red-700 hover:bg-red-600 text-white border border-red-400/50 shadow-lg transition';
@@ -2769,20 +2769,20 @@
             <div>
               <div class="flex items-center gap-2">
                 <span class="font-serif-fantasy font-bold text-sm app-title">
-                  ${p.isMaster ? '👑 ' : '⚔️ '}${escapeHtml(charObj ? charObj.name : p.name)}
+                  ${p.isMaster ? '<iconify-icon icon="game-icons:crown"></iconify-icon> ' : '<iconify-icon icon="game-icons:crossed-swords"></iconify-icon> '}${escapeHtml(charObj ? charObj.name : p.name)}
                 </span>
                 ${
                   isCurrentTurn
                     ? '<span class="px-2 py-0.5 rounded text-[10px] font-black bg-amber-400 text-black uppercase">▶ VEZ ATIVA</span>'
                     : ''
                 }
-                ${isDead ? '<span class="px-2 py-0.5 rounded text-[10px] font-black bg-red-600 text-white">💀 MORTO</span>' : ''}
+                ${isDead ? '<span class="px-2 py-0.5 rounded text-[10px] font-black bg-red-600 text-white flex items-center gap-1"><iconify-icon icon="game-icons:crowned-skull"></iconify-icon> MORTO</span>' : ''}
               </div>
               <div class="text-[11px] font-mono app-muted mt-0.5">
                 Iniciativa: <strong>${p.initiativeRoll ?? '-'}</strong> • Turnos Jogados: <strong>${p.turnsTaken || 0}</strong>
                 ${
                   charObj
-                    ? ` • ❤️ ${charObj.hp}/${charObj.maxHp} • 🛡️ ${charObj.armor}/${charObj.maxArmor} • ⚡ PA ${charObj.pa}/${charObj.maxPa}`
+                    ? ` • <iconify-icon icon="game-icons:heart-bottle" class="icon-hp"></iconify-icon> ${charObj.hp}/${charObj.maxHp} • <iconify-icon icon="game-icons:breastplate" class="icon-armor"></iconify-icon> ${charObj.armor}/${charObj.maxArmor} • <iconify-icon icon="game-icons:lightning-branches"></iconify-icon> PA ${charObj.pa}/${charObj.maxPa}`
                     : ''
                 }
               </div>
@@ -2797,12 +2797,12 @@
             }
             ${
               charObj
-                ? `<button type="button" data-action="pill-damage" data-char-id="${escapeHtml(charObj.id)}" class="px-2.5 py-1 rounded text-[11px] font-bold action-pill-damage">🔥 Dano</button>`
+                ? `<button type="button" data-action="pill-damage" data-char-id="${escapeHtml(charObj.id)}" class="px-2.5 py-1 rounded text-[11px] font-bold action-pill-damage flex items-center gap-1"><iconify-icon icon="game-icons:broadsword" class="icon-dmg"></iconify-icon> <span>Dano</span></button>`
                 : ''
             }
             ${
               charObj && isDead && isEffectiveMaster()
-                ? `<button type="button" data-action="open-revive" data-char-id="${escapeHtml(charObj.id)}" class="px-2.5 py-1 rounded text-[11px] font-bold btn-gold">✨ Reviver</button>`
+                ? `<button type="button" data-action="open-revive" data-char-id="${escapeHtml(charObj.id)}" class="px-2.5 py-1 rounded text-[11px] font-bold btn-gold flex items-center gap-1"><iconify-icon icon="game-icons:sparkles"></iconify-icon> <span>Reviver</span></button>`
                 : ''
             }
             ${
@@ -2871,14 +2871,14 @@
             <!-- Pacote de Recompensas -->
             <div class="p-3 rounded-xl bg-black/25 border app-divider-border space-y-1.5">
               <div class="text-[10px] font-serif-fantasy uppercase tracking-wider gold-title font-bold">
-                🎁 Pacote de Recompensas ${q.rewarded ? '(JÁ ENTREGUE ✅)' : ''}
+                <iconify-icon icon="game-icons:chest"></iconify-icon> Pacote de Recompensas ${q.rewarded ? '(JÁ ENTREGUE <iconify-icon icon="game-icons:check-mark" style="color: #4ade80;"></iconify-icon>)' : ''}
               </div>
               <div class="flex flex-wrap gap-2 text-xs font-mono">
-                ${rw.gold ? `<span class="text-amber-300">🪙 +${rw.gold} ${escapeHtml(state.room.currencyName)}</span>` : ''}
-                ${rw.xp ? `<span class="text-amber-400">⭐ +${rw.xp} XP</span>` : ''}
-                ${rw.attributePoints ? `<span class="text-emerald-400">🧬 +${rw.attributePoints} Pts Atrib.</span>` : ''}
-                ${rw.skillPoints ? `<span class="text-purple-400">📘 +${rw.skillPoints} Pts Hab.</span>` : ''}
-                ${rewardItemNames ? `<span class="text-sky-300">📦 ${escapeHtml(rewardItemNames)}</span>` : ''}
+                ${rw.gold ? `<span class="text-amber-300 flex items-center gap-1"><iconify-icon icon="game-icons:two-coins" class="icon-gold"></iconify-icon> +${rw.gold} ${escapeHtml(state.room.currencyName)}</span>` : ''}
+                ${rw.xp ? `<span class="text-amber-400 flex items-center gap-1"><iconify-icon icon="game-icons:sparkles" class="icon-gold"></iconify-icon> +${rw.xp} XP</span>` : ''}
+                ${rw.attributePoints ? `<span class="text-emerald-400 flex items-center gap-1"><iconify-icon icon="game-icons:dna1"></iconify-icon> +${rw.attributePoints} Pts Atrib.</span>` : ''}
+                ${rw.skillPoints ? `<span class="text-purple-400 flex items-center gap-1"><iconify-icon icon="game-icons:spell-book"></iconify-icon> +${rw.skillPoints} Pts Hab.</span>` : ''}
+                ${rewardItemNames ? `<span class="text-sky-300 flex items-center gap-1"><iconify-icon icon="game-icons:knapsack"></iconify-icon> ${escapeHtml(rewardItemNames)}</span>` : ''}
               </div>
             </div>
           </div>
@@ -2892,7 +2892,7 @@
               }
               ${
                 canManage && q.status !== 'CONCLUIDA'
-                  ? `<button type="button" data-quest-status="${escapeHtml(q.id)}" data-status="CONCLUIDA" class="px-3 py-1.5 rounded-lg font-bold bg-emerald-600 hover:bg-emerald-500 text-white">✅ Concluir &amp; Premiar</button>`
+                  ? `<button type="button" data-quest-status="${escapeHtml(q.id)}" data-status="CONCLUIDA" class="px-3 py-1.5 rounded-lg font-bold bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-1"><iconify-icon icon="game-icons:check-mark"></iconify-icon> <span>Concluir &amp; Premiar</span></button>`
                   : ''
               }
             </div>
@@ -2906,7 +2906,7 @@
                     .map((st) => `<option value="${st}" ${q.status === st ? 'selected' : ''}>${st}</option>`)
                     .join('')}
                 </select>
-                <button type="button" data-delete-quest="${escapeHtml(q.id)}" class="px-2 py-1 rounded app-secondary-btn text-rose-400">🗑️</button>
+                <button type="button" data-delete-quest="${escapeHtml(q.id)}" class="px-2 py-1 rounded app-secondary-btn text-rose-400"><iconify-icon icon="game-icons:crowned-skull"></iconify-icon></button>
               </div>
             `
                 : ''
@@ -3013,10 +3013,10 @@
   }
 
   function openConfirmModal({ icon, title, message, confirmText, onConfirm }) {
-    document.getElementById('confirm-modal-icon').textContent = icon || '⚠️';
+    document.getElementById('confirm-modal-icon').innerHTML = icon || '<iconify-icon icon="game-icons:hazard-sign"></iconify-icon>';
     document.getElementById('confirm-modal-title').textContent = title || 'CONFIRMAR';
     document.getElementById('confirm-modal-message').textContent = message || '';
-    document.getElementById('btn-confirm-ok').textContent = confirmText || 'Confirmar';
+    document.getElementById('btn-confirm-ok').innerHTML = confirmText || 'Confirmar';
     state.confirmCallback = onConfirm;
     openModal('modal-confirm');
   }
@@ -3071,12 +3071,12 @@
       if (Number.isFinite(rawV) && rawV < 7) {
         rawV = 7;
         changedInp.value = '7';
-        showToast('⚠️ O valor mínimo permitido para qualquer atributo é 7.');
+        showToast('O valor mínimo permitido para qualquer atributo é 7.');
       }
       const otherHasSeven = inputs.some((inp) => inp !== changedInp && Number(inp.value) <= 7);
       if (rawV === 7 && otherHasSeven) {
         changedInp.value = '8';
-        showToast('⚠️ Apenas UM atributo pode ficar em 7! Os demais devem ser no mínimo 8.');
+        showToast('Apenas UM atributo pode ficar em 7! Os demais devem ser no mínimo 8.');
       }
     }
 
@@ -3147,7 +3147,7 @@
       const badge = document.getElementById(s.badgeId);
       if (badge) {
         if (txt.length > 0) {
-          badge.textContent = `✓ Preenchida (${txt.length} car.)`;
+          badge.innerHTML = `<span class="inline-flex items-center gap-1"><iconify-icon icon="game-icons:check-mark" style="color: #4ade80;"></iconify-icon> <span>Preenchida (${txt.length} car.)</span></span>`;
           badge.className = 'text-[10px] font-mono text-emerald-400 font-bold';
         } else {
           badge.textContent = 'Clique p/ editar';
@@ -3205,7 +3205,7 @@
 
   function openCreateCharacterModal() {
     document.getElementById('char-form-id').value = '';
-    document.getElementById('char-form-icon').textContent = '✨';
+    document.getElementById('char-form-icon').innerHTML = '<iconify-icon icon="game-icons:sparkles"></iconify-icon>';
     document.getElementById('char-form-title').textContent = 'CRIAR PERSONAGEM';
     document.getElementById('char-name-input').value = '';
     document.getElementById('char-age-input').value = '';
@@ -3243,12 +3243,12 @@
     const char = state.characters.find((c) => c.id === charId);
     if (!char) return;
     if (!canEditCharacter(char)) {
-      showToast('🔒 Você só pode editar fichas de personagens criados por você!');
+      showToast('Você só pode editar fichas de personagens criados por você!');
       return;
     }
 
     document.getElementById('char-form-id').value = char.id;
-    document.getElementById('char-form-icon').textContent = '✏️';
+    document.getElementById('char-form-icon').innerHTML = '<iconify-icon icon="game-icons:quill-ink"></iconify-icon>';
     document.getElementById('char-form-title').textContent = 'EDITAR PERSONAGEM';
     document.getElementById('char-name-input').value = char.name;
     document.getElementById('char-age-input').value = char.age || '';
@@ -3294,7 +3294,7 @@
     if (charId) {
       const existingChar = state.characters.find((c) => c.id === charId);
       if (existingChar && !canEditCharacter(existingChar)) {
-        showToast('🔒 Você só pode editar fichas de personagens criados por você!');
+        showToast('Você só pode editar fichas de personagens criados por você!');
         return;
       }
     }
@@ -3600,7 +3600,7 @@
 
     return {
       ...res,
-      breakdownText: `Bruto: ${res.dRaw} ➔ Pós-Def(${char.defense}): ${res.dAfterDefense} ➔ Pós-Res(${char.resistancePercent || 0}%): ${res.dAfterResistance} ➔ Dano Final: ${res.finalDamage}`,
+      breakdownText: `Bruto: ${res.dRaw} → Pós-Def(${char.defense}): ${res.dAfterDefense} → Pós-Res(${char.resistancePercent || 0}%): ${res.dAfterResistance} → Dano Final: ${res.finalDamage}`,
     };
   }
 
@@ -3618,12 +3618,12 @@
       bdEl.textContent = outcome.breakdownText;
     }
     if (armorEl) {
-      armorEl.textContent = `${char.armor} ➔ ${outcome.nextArmor} / ${char.maxArmor}${
+      armorEl.textContent = `${char.armor} → ${outcome.nextArmor} / ${char.maxArmor}${
         outcome.armorDegradedBy > 0 ? ` (Sobrecarga: -${outcome.armorDegradedBy} Máx)` : ''
       }`;
     }
     if (hpEl) {
-      hpEl.textContent = `${char.hp} ➔ ${outcome.nextHp} / ${char.maxHp}${outcome.nextHp === 0 ? ' (💀 MORTO)' : ''}`;
+      hpEl.innerHTML = `${char.hp} → ${outcome.nextHp} / ${char.maxHp}${outcome.nextHp === 0 ? ' (<iconify-icon icon="game-icons:crowned-skull"></iconify-icon> MORTO)' : ''}`;
     }
   }
 
@@ -3662,7 +3662,7 @@
         if (target.hp === 0) {
           target.isDead = true;
           target.pa = 0;
-          toasts.push(`💀 ${target.name} caiu em batalha (MORTO)!`);
+          toasts.push(`${target.name} caiu em batalha (MORTO)!`);
         }
         return true;
       },
@@ -3680,9 +3680,9 @@
   // Modal 3: Gerenciar Vida / Armadura / Mana (Com OVERFLOW)
   // ---------------------------------------------------------------------------
   const ATTR_META = {
-    hp: { label: 'VIDA', icon: '❤️', maxKey: 'maxHp' },
-    armor: { label: 'ARMADURA', icon: '🛡️', maxKey: 'maxArmor' },
-    mana: { label: 'MANA', icon: '✨', maxKey: 'maxMana' },
+    hp: { label: 'VIDA', icon: '<iconify-icon icon="game-icons:heart-bottle" class="icon-hp"></iconify-icon>', maxKey: 'maxHp' },
+    armor: { label: 'ARMADURA', icon: '<iconify-icon icon="game-icons:breastplate" class="icon-armor"></iconify-icon>', maxKey: 'maxArmor' },
+    mana: { label: 'MANA', icon: '<iconify-icon icon="game-icons:crystal-bars" class="icon-mana"></iconify-icon>', maxKey: 'maxMana' },
   };
 
   function setAttrOpSelection(op) {
@@ -3699,7 +3699,7 @@
 
     document.getElementById('attr-char-id').value = char.id;
     document.getElementById('attr-type-key').value = attrKey;
-    document.getElementById('attr-modal-icon').textContent = meta.icon;
+    document.getElementById('attr-modal-icon').innerHTML = meta.icon;
     document.getElementById('attr-modal-title').textContent = `GERENCIAR ${meta.label}`;
     document.getElementById('attr-modal-subtitle').textContent = `${char.name} • Atual: ${char[attrKey]} / ${char[meta.maxKey]}`;
     document.getElementById('attr-value-input').value = '';
@@ -3749,7 +3749,7 @@
   }
 
   // ---------------------------------------------------------------------------
-  // Ações Rápidas: Regeneração de Mana (REGEN ✨) e Resetar (RESETAR ♻️)
+  // Ações Rápidas: Regeneração de Mana (REGEN) e Resetar (RESETAR)
   // ---------------------------------------------------------------------------
   function triggerInstantManaRegen(charId) {
     commitMutation((st) => {
@@ -3777,11 +3777,11 @@
     if (!char) return;
 
     openConfirmModal({
-      icon: '♻️',
+      icon: '<iconify-icon icon="game-icons:sands-of-time"></iconify-icon>',
       title: `RESETAR ${char.name.toUpperCase()}?`,
       message:
         'Todos os atributos (Vida, Armadura, Mana, limites máximos, Defesa e Regen%) voltarão ao estado inicial configurado e todas as 7 resistências serão zeradas.',
-      confirmText: '♻️ Resetar',
+      confirmText: '<iconify-icon icon="game-icons:sands-of-time"></iconify-icon> <span>Resetar</span>',
       onConfirm: () => {
         commitMutation(
           (st) => {
@@ -3828,15 +3828,15 @@
     const char = state.characters.find((c) => c.id === charId);
     if (!char) return;
     if (!canEditCharacter(char)) {
-      showToast('🔒 Você só pode excluir personagens criados por você!');
+      showToast('Você só pode excluir personagens criados por você!');
       return;
     }
 
     openConfirmModal({
-      icon: '🗑️',
+      icon: '<iconify-icon icon="game-icons:crowned-skull"></iconify-icon>',
       title: `EXCLUIR ${char.name.toUpperCase()}?`,
       message: `Tem certeza que deseja excluir permanentemente o personagem "${char.name}"?`,
-      confirmText: '🗑️ Excluir',
+      confirmText: '<iconify-icon icon="game-icons:crowned-skull"></iconify-icon> <span>Excluir</span>',
       onConfirm: () => {
         commitMutation(
           (st) => {
@@ -3918,7 +3918,7 @@
     const entry = char.resistances?.[resName] || { current: 0, max: 100 };
     document.getElementById('single-res-char-id').value = char.id;
     document.getElementById('single-res-name').value = resName;
-    document.getElementById('single-res-icon').textContent = meta.icon;
+    document.getElementById('single-res-icon').innerHTML = meta.icon;
     document.getElementById('single-res-title').textContent = resName.toUpperCase();
     document.getElementById('single-res-subtitle').textContent = `${char.name} • Atual: ${entry.current} / ${entry.max}`;
     document.getElementById('single-res-value-input').value = '';
@@ -3986,10 +3986,10 @@
     document.getElementById('sheet-char-name').textContent = `${char.name} — Nível ${char.level || 1}${
       !canEdit ? ' (Somente Visualização)' : ''
     }`;
-    document.getElementById('sheet-char-meta').textContent = `XP: ${char.xp || 0} / ${
+    document.getElementById('sheet-char-meta').innerHTML = `XP: ${char.xp || 0} / ${
       char.xpNext || 80
-    } • 👤 Vinculado a: ${ownerLabel} • ⚖️ Carga: ${weight} / ${maxWeight} kg • ${char.age || 'Idade n/d'} • ${
-      char.height || 'Altura n/d'
+    } • <iconify-icon icon="game-icons:hooded-figure"></iconify-icon> Vinculado a: ${escapeHtml(ownerLabel)} • <iconify-icon icon="game-icons:weight"></iconify-icon> Carga: ${weight} / ${maxWeight} kg • ${escapeHtml(char.age || 'Idade n/d')} • ${
+      escapeHtml(char.height || 'Altura n/d')
     }`;
 
     const body = document.getElementById('sheet-modal-body');
@@ -4070,11 +4070,11 @@
       <div class="space-y-2">
         <div class="flex items-center justify-between">
           <h4 class="font-serif-fantasy font-extrabold uppercase gold-title">
-            🧬 5 Atributos Canônicos, Modificadores &amp; Sucesso Passivo
+            <iconify-icon icon="game-icons:dna1"></iconify-icon> <span>5 Atributos Canônicos, Modificadores &amp; Sucesso Passivo</span>
           </h4>
           ${
             pendingPts > 0
-              ? `<span class="px-2.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold">🎁 ${pendingPts} Ponto(s) Pendente(s) p/ Distribuir!</span>`
+              ? `<span class="px-2.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold flex items-center gap-1"><iconify-icon icon="game-icons:chest"></iconify-icon> <span>${pendingPts} Ponto(s) Pendente(s) p/ Distribuir!</span></span>`
               : ''
           }
         </div>
@@ -4085,17 +4085,17 @@
 
       <!-- Status Secundários de Combate (Sem RES. DANO e RED. FINAL) -->
       <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 p-3 rounded-xl bg-black/20 border app-divider-border text-center font-mono">
-        <div><span class="block text-[10px] app-muted">⚔️ ATAQUE</span><strong class="text-sm text-orange-400">${char.attack || 0}</strong></div>
-        <div><span class="block text-[10px] app-muted">🔰 DEFESA</span><strong class="text-sm text-emerald-400">${char.defense || 0}</strong></div>
-        <div><span class="block text-[10px] app-muted">🔮 ARCANA</span><strong class="text-sm text-purple-400">${char.arcana || 0}</strong></div>
-        <div><span class="block text-[10px] app-muted">✨ SANTIDADE</span><strong class="text-sm text-amber-300">${char.santidade || 0}</strong></div>
+        <div><span class="block text-[10px] app-muted flex items-center justify-center gap-1"><iconify-icon icon="game-icons:gladius" class="icon-dmg"></iconify-icon> <span>ATAQUE</span></span><strong class="text-sm text-orange-400">${char.attack || 0}</strong></div>
+        <div><span class="block text-[10px] app-muted flex items-center justify-center gap-1"><iconify-icon icon="game-icons:dragon-shield"></iconify-icon> <span>DEFESA</span></span><strong class="text-sm text-emerald-400">${char.defense || 0}</strong></div>
+        <div><span class="block text-[10px] app-muted flex items-center justify-center gap-1"><iconify-icon icon="game-icons:crystal-ball"></iconify-icon> <span>ARCANA</span></span><strong class="text-sm text-purple-400">${char.arcana || 0}</strong></div>
+        <div><span class="block text-[10px] app-muted flex items-center justify-center gap-1"><iconify-icon icon="game-icons:sparkles"></iconify-icon> <span>SANTIDADE</span></span><strong class="text-sm text-amber-300">${char.santidade || 0}</strong></div>
       </div>
 
       <!-- Resistências Visuais em Porcentagem (Físico, Mágico, Pyro, Cryo, Elétrico, Profano, Sacro) -->
       <div class="p-3.5 rounded-xl bg-black/25 border app-divider-border space-y-2">
         <div class="flex flex-wrap items-center justify-between gap-2">
           <h4 class="font-serif-fantasy font-extrabold uppercase gold-title">
-            🛡️ Resistências da Ficha (%)
+            <iconify-icon icon="game-icons:breastplate" class="icon-armor"></iconify-icon> <span>Resistências da Ficha (%)</span>
           </h4>
           <span class="text-[11px] app-muted">Físico • Mágico • Pyro • Cryo • Elétrico • Profano • Sacro</span>
         </div>
@@ -4108,7 +4108,7 @@
       <div class="p-3.5 rounded-xl bg-black/25 border app-divider-border space-y-2.5">
         <div class="flex flex-wrap items-center justify-between gap-2">
           <h4 class="font-serif-fantasy font-extrabold uppercase gold-title">
-            ⚡ Habilidades Principais (Clique para Abrir Modal com o Texto)
+            <iconify-icon icon="game-icons:fairy-wand"></iconify-icon> <span>Habilidades Principais (Clique para Abrir Modal com o Texto)</span>
           </h4>
           <span class="text-[11px] app-muted">Os textos ficam guardados em seus respectivos modais.</span>
         </div>
@@ -4118,9 +4118,9 @@
             data-open-sheet-skill="PASSIVA"
             class="py-3 px-3 rounded-xl font-serif-fantasy font-extrabold text-xs uppercase tracking-wider border border-sky-500/40 bg-sky-500/10 text-sky-300 hover:bg-sky-500/20 transition flex flex-col items-center justify-center gap-1"
           >
-            <span>🛡️ PASSIVA</span>
+            <span class="flex items-center gap-1.5"><iconify-icon icon="game-icons:dragon-shield"></iconify-icon> <span>PASSIVA</span></span>
             <span class="text-[10px] font-mono ${hasPassive ? 'text-emerald-400 font-bold' : 'app-muted'}">
-              ${hasPassive ? (canEdit ? '📖 Ver / Editar Texto' : '👁️ Visualizar Texto') : canEdit ? 'Vazia (Clique p/ escrever)' : 'Vazia'}
+              ${hasPassive ? (canEdit ? 'Ver / Editar Texto' : 'Visualizar Texto') : canEdit ? 'Vazia (Clique p/ escrever)' : 'Vazia'}
             </span>
           </button>
           <button
@@ -4128,9 +4128,9 @@
             data-open-sheet-skill="ATIVA"
             class="py-3 px-3 rounded-xl font-serif-fantasy font-extrabold text-xs uppercase tracking-wider border border-amber-500/40 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20 transition flex flex-col items-center justify-center gap-1"
           >
-            <span>⚔️ ATIVA</span>
+            <span class="flex items-center gap-1.5"><iconify-icon icon="game-icons:crossed-swords"></iconify-icon> <span>ATIVA</span></span>
             <span class="text-[10px] font-mono ${hasActive ? 'text-emerald-400 font-bold' : 'app-muted'}">
-              ${hasActive ? (canEdit ? '📖 Ver / Editar Texto' : '👁️ Visualizar Texto') : canEdit ? 'Vazia (Clique p/ escrever)' : 'Vazia'}
+              ${hasActive ? (canEdit ? 'Ver / Editar Texto' : 'Visualizar Texto') : canEdit ? 'Vazia (Clique p/ escrever)' : 'Vazia'}
             </span>
           </button>
           <button
@@ -4138,9 +4138,9 @@
             data-open-sheet-skill="SUPREMA"
             class="py-3 px-3 rounded-xl font-serif-fantasy font-extrabold text-xs uppercase tracking-wider border border-rose-500/40 bg-rose-500/10 text-rose-300 hover:bg-rose-500/20 transition flex flex-col items-center justify-center gap-1"
           >
-            <span>🔥 SUPREMA</span>
+            <span class="flex items-center gap-1.5"><iconify-icon icon="game-icons:ifrit" style="color: #f97316;"></iconify-icon> <span>SUPREMA</span></span>
             <span class="text-[10px] font-mono ${hasSupreme ? 'text-emerald-400 font-bold' : 'app-muted'}">
-              ${hasSupreme ? (canEdit ? '📖 Ver / Editar Texto' : '👁️ Visualizar Texto') : canEdit ? 'Vazia (Clique p/ escrever)' : 'Vazia'}
+              ${hasSupreme ? (canEdit ? 'Ver / Editar Texto' : 'Visualizar Texto') : canEdit ? 'Vazia (Clique p/ escrever)' : 'Vazia'}
             </span>
           </button>
         </div>
@@ -4150,13 +4150,13 @@
       <div class="p-3.5 rounded-xl bg-black/25 border app-divider-border flex flex-wrap items-center justify-between gap-3">
         <div class="space-y-1">
           <h4 class="font-serif-fantasy font-extrabold uppercase gold-title flex items-center gap-2">
-            <span>🎒 Inventário &amp; Equipamentos</span>
+            <span class="flex items-center gap-1.5"><iconify-icon icon="game-icons:knapsack"></iconify-icon> <span>Inventário &amp; Equipamentos</span></span>
             <span class="px-2 py-0.5 rounded text-[11px] font-mono ${
               isOverweight
                 ? 'bg-rose-500/20 text-rose-300 border border-rose-500/50 animate-pulse'
                 : 'bg-amber-500/15 gold-title border border-amber-500/30'
             }">
-              ⚖️ ${weight} / ${maxWeight} kg
+              <iconify-icon icon="game-icons:weight"></iconify-icon> <span>${weight} / ${maxWeight} kg</span>
             </span>
           </h4>
           <p class="text-[11px] app-muted">
@@ -4170,7 +4170,7 @@
           id="btn-sheet-open-inventory"
           class="px-4 py-2.5 rounded-xl font-serif-fantasy font-extrabold text-xs uppercase tracking-wider btn-gold flex items-center gap-2 shadow-lg"
         >
-          <span>🎒</span>
+          <iconify-icon icon="game-icons:knapsack"></iconify-icon>
           <span>ABRIR INVENTÁRIO (${totalInvEntries})</span>
         </button>
       </div>
@@ -4179,13 +4179,13 @@
       <div class="p-3.5 rounded-xl bg-black/25 border app-divider-border space-y-2.5">
         <div class="flex flex-wrap items-center justify-between gap-2">
           <h4 class="font-serif-fantasy font-extrabold uppercase gold-title">
-            📘 Talentos de Nível (Pontos Disponíveis: <span class="text-purple-400 font-mono">${char.skillPoints || 0}</span>)
+            <iconify-icon icon="game-icons:spell-book"></iconify-icon> <span>Talentos de Nível (Pontos Disponíveis: <span class="text-purple-400 font-mono">${char.skillPoints || 0}</span>)</span>
           </h4>
         </div>
         <div class="space-y-1.5">
           ${
             (char.talents || []).map(
-              (t) => `<div class="p-2 rounded bg-black/30 border app-divider-border"><strong>✨ ${escapeHtml(t.name)}:</strong> <span class="app-muted">${escapeHtml(t.description || '')}</span></div>`
+              (t) => `<div class="p-2 rounded bg-black/30 border app-divider-border"><strong><iconify-icon icon="game-icons:sparkles"></iconify-icon> ${escapeHtml(t.name)}:</strong> <span class="app-muted">${escapeHtml(t.description || '')}</span></div>`
             ).join('') || '<p class="app-muted italic">Nenhum talento adquirido ainda.</p>'
           }
         </div>
@@ -4202,7 +4202,7 @@
 
       <!-- Biografia -->
       <div class="pt-2 border-t app-divider-border">
-        <span class="font-bold uppercase gold-title block mb-1">📖 História</span>
+        <span class="font-bold uppercase gold-title flex items-center gap-1 mb-1"><iconify-icon icon="game-icons:book-cover"></iconify-icon> <span>História</span></span>
         <p class="app-muted whitespace-pre-line">${escapeHtml(char.history || 'Sem história registrada.')}</p>
       </div>
     `;
@@ -4213,19 +4213,19 @@
   // ---------------------------------------------------------------------------
   const SKILL_SLOT_META = {
     PASSIVA: {
-      icon: '🛡️',
+      icon: '<iconify-icon icon="game-icons:dragon-shield"></iconify-icon>',
       title: 'HABILIDADE PASSIVA',
       field: 'skillPassive',
       formInputId: 'char-skill-passive',
     },
     ATIVA: {
-      icon: '⚔️',
+      icon: '<iconify-icon icon="game-icons:crossed-swords"></iconify-icon>',
       title: 'HABILIDADE ATIVA',
       field: 'skillActive',
       formInputId: 'char-skill-active',
     },
     SUPREMA: {
-      icon: '🔥',
+      icon: '<iconify-icon icon="game-icons:ifrit" style="color: #f97316;"></iconify-icon>',
       title: 'HABILIDADE SUPREMA',
       field: 'skillSupreme',
       formInputId: 'char-skill-supreme',
@@ -4239,7 +4239,7 @@
     document.getElementById('skill-modal-context').value = context;
     document.getElementById('skill-modal-slot').value = slot;
     document.getElementById('skill-modal-char-id').value = charId || '';
-    document.getElementById('skill-modal-icon').textContent = meta.icon;
+    document.getElementById('skill-modal-icon').innerHTML = meta.icon;
     document.getElementById('skill-modal-title').textContent = meta.title;
 
     let currentText = '';
@@ -4294,7 +4294,7 @@
 
     const targetChar = state.characters.find((c) => c.id === charId);
     if (!targetChar || !canEditCharacter(targetChar)) {
-      showToast('🔒 Você só pode editar habilidades de personagens criados por você!');
+      showToast('Você só pode editar habilidades de personagens criados por você!');
       return;
     }
 
@@ -4354,10 +4354,10 @@
       titleEl.textContent = `INVENTÁRIO — ${char.name.toUpperCase()}${!canEdit ? ' (SOMENTE VISUALIZAÇÃO)' : ''}`;
     }
     if (metaEl) {
-      metaEl.textContent = `🪙 ${char.gold || 0} ${state.room?.currencyName || 'Golds'} • ${(char.inventory || []).length} tipo(s) de item na mochila`;
+      metaEl.innerHTML = `<iconify-icon icon="game-icons:two-coins" class="icon-gold"></iconify-icon> ${char.gold || 0} ${escapeHtml(state.room?.currencyName || 'Golds')} • ${(char.inventory || []).length} tipo(s) de item na mochila`;
     }
     if (weightBadge) {
-      weightBadge.textContent = `⚖️ ${weight} / ${maxWeight} kg`;
+      weightBadge.innerHTML = `<iconify-icon icon="game-icons:weight"></iconify-icon> <span>${weight} / ${maxWeight} kg</span>`;
       weightBadge.className = isOverweight
         ? 'font-mono font-black text-xs px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/50 animate-pulse'
         : 'font-mono font-black text-xs px-2 py-0.5 rounded bg-amber-500/15 gold-title border border-amber-500/30';
@@ -4393,7 +4393,7 @@
     if (filteredInv.length === 0) {
       gridEl.innerHTML = `
         <div class="col-span-3 p-10 text-center app-muted border border-dashed app-divider-border rounded-2xl">
-          <div class="text-3xl mb-2">🎒</div>
+          <div class="text-3xl mb-2 flex justify-center"><iconify-icon icon="game-icons:knapsack"></iconify-icon></div>
           <div class="font-bold text-sm app-title">Nenhum item encontrado</div>
           <p class="text-xs app-muted mt-1">
             ${
@@ -4431,7 +4431,7 @@
             <div class="space-y-1.5">
               <div class="flex items-start justify-between gap-2">
                 <div class="flex items-center gap-2 min-w-0">
-                  <span class="text-xl shrink-0">${ITEM_TYPE_ICONS[tpl.tipo] || '📦'}</span>
+                  <span class="text-xl shrink-0 flex items-center">${ITEM_TYPE_ICONS[tpl.tipo] || '<iconify-icon icon="game-icons:knapsack"></iconify-icon>'}</span>
                   <div class="min-w-0">
                     <h5 class="font-bold text-sm app-title truncate" title="${escapeHtml(tpl.nome)}">
                       ${escapeHtml(tpl.nome)}
@@ -4449,7 +4449,7 @@
                   }
                   ${
                     inEscrow
-                      ? '<span class="px-2 py-0.5 rounded text-[9px] font-black bg-amber-600 text-white">⏳ ESCROW</span>'
+                      ? '<span class="px-2 py-0.5 rounded text-[9px] font-black bg-amber-600 text-white inline-flex items-center gap-1"><iconify-icon icon="game-icons:sands-of-time"></iconify-icon> <span>ESCROW</span></span>'
                       : ''
                   }
                 </div>
@@ -4462,12 +4462,12 @@
               }
 
               <div class="px-2 py-1 rounded bg-black/35 border app-divider-border text-[10px] font-mono gold-title truncate" title="${escapeHtml(effectsSummary)}">
-                ✨ ${escapeHtml(effectsSummary)}
+                <iconify-icon icon="game-icons:sparkles"></iconify-icon> ${escapeHtml(effectsSummary)}
               </div>
 
               <div class="flex items-center justify-between text-[11px] font-mono app-muted pt-0.5">
-                <span>⚖️ ${tpl.peso}kg un. (${totalItemWeight}kg)</span>
-                <span>🪙 ${tpl.preco} ${escapeHtml(state.room?.currencyName || 'Golds')}</span>
+                <span class="flex items-center gap-1"><iconify-icon icon="game-icons:weight"></iconify-icon> <span>${tpl.peso}kg un. (${totalItemWeight}kg)</span></span>
+                <span class="flex items-center gap-1"><iconify-icon icon="game-icons:two-coins" class="icon-gold"></iconify-icon> <span>${tpl.preco} ${escapeHtml(state.room?.currencyName || 'Golds')}</span></span>
               </div>
             </div>
 
@@ -4483,27 +4483,27 @@
                     }
                     ${
                       !inEscrow && tpl.tipo === 'CONSUMIVEL'
-                        ? `<button type="button" data-inv-use-consumable="${escapeHtml(inv.id)}" class="flex-1 py-1.5 px-2 rounded-lg font-bold text-[11px] bg-purple-600 hover:bg-purple-500 text-white">🧪 Usar</button>`
+                        ? `<button type="button" data-inv-use-consumable="${escapeHtml(inv.id)}" class="flex-1 py-1.5 px-2 rounded-lg font-bold text-[11px] bg-purple-600 hover:bg-purple-500 text-white flex items-center justify-center gap-1"><iconify-icon icon="game-icons:health-potion"></iconify-icon> <span>Usar</span></button>`
                         : ''
                     }
                     ${
                       !inEscrow && !tpl.naoNegociavel && otherChars.length > 0
-                        ? `<button type="button" data-inv-transfer="${escapeHtml(inv.id)}" class="py-1.5 px-2.5 rounded-lg font-bold text-[11px] app-secondary-btn" title="Escolher personagem para enviar este item">📤 P2P</button>`
+                        ? `<button type="button" data-inv-transfer="${escapeHtml(inv.id)}" class="py-1.5 px-2.5 rounded-lg font-bold text-[11px] app-secondary-btn flex items-center gap-1" title="Escolher personagem para enviar este item"><iconify-icon icon="game-icons:knapsack"></iconify-icon> <span>P2P</span></button>`
                         : ''
                     }
                     ${
                       !inEscrow && !tpl.naoNegociavel
-                        ? `<button type="button" data-inv-sell-escrow="${escapeHtml(inv.id)}" class="py-1.5 px-2.5 rounded-lg font-bold text-[11px] btn-gold-outline" title="Solicitar venda para aprovação do Mestre">🪙 Vender</button>`
+                        ? `<button type="button" data-inv-sell-escrow="${escapeHtml(inv.id)}" class="py-1.5 px-2.5 rounded-lg font-bold text-[11px] btn-gold-outline flex items-center gap-1" title="Solicitar venda para aprovação do Mestre"><iconify-icon icon="game-icons:two-coins" class="icon-gold"></iconify-icon> <span>Vender</span></button>`
                         : ''
                     }
                     ${
                       !inEscrow
-                        ? `<button type="button" data-inv-remove="${escapeHtml(inv.id)}" class="py-1.5 px-2 rounded-lg font-bold text-[11px] text-rose-400 app-secondary-btn" title="Descartar item">🗑️</button>`
+                        ? `<button type="button" data-inv-remove="${escapeHtml(inv.id)}" class="py-1.5 px-2 rounded-lg font-bold text-[11px] text-rose-400 app-secondary-btn flex items-center justify-center" title="Descartar item"><iconify-icon icon="game-icons:crowned-skull"></iconify-icon></button>`
                         : ''
                     }
                   </div>`
                 : `<div class="pt-2 border-t app-divider-border text-center">
-                    <span class="text-[10px] font-mono app-muted italic">👁️ Somente visualização</span>
+                    <span class="text-[10px] font-mono app-muted italic flex items-center justify-center gap-1"><iconify-icon icon="game-icons:eyeball"></iconify-icon> <span>Somente visualização</span></span>
                   </div>`
             }
           </div>
@@ -4540,10 +4540,10 @@
       const item = state.itemsCatalog.find((i) => i.id === itemId);
       if (!item) return;
       if (state.characters.length === 0) {
-        showToast('⚠️ Crie pelo menos um personagem antes de conceder itens.');
+        showToast('Crie pelo menos um personagem antes de conceder itens.');
         return;
       }
-      if (iconEl) iconEl.textContent = '🎁';
+      if (iconEl) iconEl.innerHTML = '<iconify-icon icon="game-icons:chest" class="icon-gold"></iconify-icon>';
       if (titleEl) titleEl.textContent = 'CONCEDER ITEM A PERSONAGEM';
       if (subtitleEl) subtitleEl.textContent = `Item: ${item.nome} (${item.peso}kg)`;
       qtyInput.max = '999';
@@ -4554,7 +4554,7 @@
         .map((c) => {
           const w = c.derived?.totalWeight ?? 0;
           const mw = c.maxWeight ?? 27;
-          return `<option value="${escapeHtml(c.id)}">⚔️ ${escapeHtml(c.name)} (Nv. ${c.level || 1} • Carga: ${w}/${mw}kg)</option>`;
+          return `<option value="${escapeHtml(c.id)}">${escapeHtml(c.name)} (Nv. ${c.level || 1} • Carga: ${w}/${mw}kg)</option>`;
         })
         .join('');
     } else {
@@ -4563,11 +4563,11 @@
       const tpl = state.itemsCatalog.find((i) => i.id === inv?.itemId);
       const others = state.characters.filter((c) => c.id !== senderCharId);
       if (!sender || !inv || !tpl || others.length === 0) {
-        showToast('⚠️ Não há outros personagens disponíveis para receber este item.');
+        showToast('Não há outros personagens disponíveis para receber este item.');
         return;
       }
       const maxQty = Math.max(1, Number(inv.quantity || 1));
-      if (iconEl) iconEl.textContent = '📤';
+      if (iconEl) iconEl.innerHTML = '<iconify-icon icon="game-icons:knapsack"></iconify-icon>';
       if (titleEl) titleEl.textContent = 'ENVIAR ITEM (P2P)';
       if (subtitleEl) subtitleEl.textContent = `De: ${sender.name} • Item: ${tpl.nome} (Disponível: x${maxQty})`;
       qtyInput.max = String(maxQty);
@@ -4578,7 +4578,7 @@
         .map((c) => {
           const w = c.derived?.totalWeight ?? 0;
           const mw = c.maxWeight ?? 27;
-          return `<option value="${escapeHtml(c.id)}">⚔️ ${escapeHtml(c.name)} (Nv. ${c.level || 1} • Carga: ${w}/${mw}kg)</option>`;
+          return `<option value="${escapeHtml(c.id)}">${escapeHtml(c.name)} (Nv. ${c.level || 1} • Carga: ${w}/${mw}kg)</option>`;
         })
         .join('');
     }
@@ -4611,12 +4611,12 @@
           const target = st.characters.find((c) => c.id === targetCharId);
           if (!target) return false;
           addItemsToCharacterInventory(target, item, rawQty);
-          toasts.push(`🎁 ${rawQty}x ${item.nome} concedido(s) para ${target.name}!`);
+          toasts.push(`${rawQty}x ${item.nome} concedido(s) para ${target.name}!`);
           return true;
         },
         {
           actionType: 'ITEM_GRANTED',
-          targetEntity: `${rawQty}x ${item.nome} ➔ ${targetChar.name}`,
+          targetEntity: `${rawQty}x ${item.nome} → ${targetChar.name}`,
           summary: `Mestre concedeu ${rawQty}x ${item.nome} para ${targetChar.name}.`,
         }
       );
@@ -4651,12 +4651,12 @@
           sChar.inventory.splice(idx, 1);
         }
 
-        toasts.push(`📤 ${sendQty}x ${tpl?.nome || 'Item'} enviado(s) de ${sChar.name} para ${rChar.name}!`);
+        toasts.push(`${sendQty}x ${tpl?.nome || 'Item'} enviado(s) de ${sChar.name} para ${rChar.name}!`);
         return true;
       },
       {
         actionType: 'ITEM_TRANSFER_P2P',
-        targetEntity: `${senderPreview.name} ➔ ${receiverPreview.name}`,
+        targetEntity: `${senderPreview.name} → ${receiverPreview.name}`,
         summary: `Transferência P2P realizada (${rawQty} unid.).`,
       }
     );
@@ -4683,7 +4683,7 @@
     if (subtitleEl) subtitleEl.textContent = `Item: ${tpl.nome} • Personagem: ${char.name}`;
     if (priceInput) priceInput.value = String(tpl.preco ?? 0);
     if (priceHint) {
-      priceHint.textContent = `Valor padrão do item no catálogo: 🪙 ${tpl.preco ?? 0} ${
+      priceHint.textContent = `Valor padrão do item no catálogo: ${tpl.preco ?? 0} ${
         state.room?.currencyName || 'Ouro'
       }. Você pode definir qualquer preço para esta solicitação.`;
     }
@@ -4725,7 +4725,7 @@
           salePrice: customSalePrice,
         });
         toasts.push(
-          `⚖️ Solicitação de venda de ${tpl.nome} por 🪙 ${customSalePrice} ${
+          `Solicitação de venda de ${tpl.nome} por ${customSalePrice} ${
             st.room?.currencyName || 'Ouro'
           } enviada para aprovação do Mestre!`
         );
@@ -4903,7 +4903,7 @@
             }
             // 3. Incrementa +1 Carga no Pool Compartilhado do Grupo
             b.groupCharges = (b.groupCharges || 0) + 1;
-            toasts.push(`⚔️ Turno de ${nextChar.name}: PA recarregado, +${manaRec} Mana e +1 Carga do Grupo!`);
+            toasts.push(`Turno de ${nextChar.name}: PA recarregado, +${manaRec} Mana e +1 Carga do Grupo!`);
           }
         }
         return true;
@@ -4947,8 +4947,8 @@
       state.simulatingPlayer = !state.simulatingPlayer;
       showToast(
         state.simulatingPlayer
-          ? '👁️ Simulando visão de JOGADOR (Clique novamente para voltar ao Modo Mestre)'
-          : '👑 Modo MESTRE ativado',
+          ? 'Simulando visão de JOGADOR (Clique novamente para voltar ao Modo Mestre)'
+          : 'Modo MESTRE ativado',
         'success'
       );
       renderAll();
@@ -5000,7 +5000,7 @@
             class="cursor-color-swatch ${isSelected ? 'active-swatch' : ''}"
             style="background-color: ${escapeHtml(c.hex)}; --swatch-color: ${escapeHtml(c.hex)};"
           >
-            ${isSelected ? '<span class="text-[11px] font-black text-white drop-shadow">✓</span>' : ''}
+            ${isSelected ? '<span class="text-[11px] font-black text-white drop-shadow flex items-center justify-center"><iconify-icon icon="game-icons:check-mark"></iconify-icon></span>' : ''}
           </button>
         `;
       }).join('');
@@ -5083,7 +5083,7 @@
           name: `Jogador ${idx}`,
           title: `Jogador (${placeholderIp})`,
           role: 'JOGADOR',
-          avatar: '🛡️',
+          avatar: 'hooded-figure',
           characterId: null,
           cursorColor: assignedColor,
           online: false,
@@ -5155,7 +5155,7 @@
             m.permissions = perms;
           }
           toasts.push(
-            `🏷️ Apelido "${m.name}" e cor ${getColorNameByHex(m.cursorColor)} salvos para o IP ${m.ip}!`
+            `Apelido "${m.name}" e cor ${getColorNameByHex(m.cursorColor)} salvos para o IP ${m.ip}!`
           );
           return true;
         },
@@ -5329,7 +5329,7 @@
             target.armor = Math.max(0, Number(document.getElementById('revive-custom-armor').value || 0));
           }
           target.pa = target.maxPa;
-          toasts.push(`✨ ${target.name} foi ressuscitado (${target.hp} HP / ${target.armor} Armadura)!`);
+          toasts.push(`${target.name} foi ressuscitado (${target.hp} HP / ${target.armor} Armadura)!`);
           return true;
         },
         {
@@ -5413,7 +5413,7 @@
             else c.inventory.splice(idx, 1);
 
             const effectText = appliedSummary.length ? ` (${appliedSummary.join(', ')})` : '';
-            toasts.push(`🧪 ${c.name} usou ${tpl.nome}${effectText}!`);
+            toasts.push(`${c.name} usou ${tpl.nome}${effectText}!`);
             return true;
           },
           {
@@ -5535,7 +5535,7 @@
       if (!charId) return;
       const targetChar = state.characters.find((x) => x.id === charId);
       if (!targetChar || !canEditCharacter(targetChar)) {
-        showToast('🔒 Você só pode editar o limite de peso do seu próprio personagem!');
+        showToast('Você só pode editar o limite de peso do seu próprio personagem!');
         return;
       }
       const raw = Number(document.getElementById('inv-modal-max-weight-input')?.value ?? 27);
@@ -5546,7 +5546,7 @@
           if (!c) return false;
           c.maxWeight = nextMaxWeight;
           if (c.initial) c.initial.maxWeight = nextMaxWeight;
-          toasts.push(`⚖️ Limite de peso de ${c.name} atualizado para ${nextMaxWeight} kg!`);
+          toasts.push(`Limite de peso de ${c.name} atualizado para ${nextMaxWeight} kg!`);
           return true;
         },
         {
@@ -5791,10 +5791,10 @@
       if (!npc) return;
 
       openConfirmModal({
-        icon: '🗑️',
+        icon: '<iconify-icon icon="game-icons:crowned-skull"></iconify-icon>',
         title: `EXCLUIR ${npc.name.toUpperCase()}?`,
         message: `Tem certeza que deseja excluir permanentemente o mercador NPC "${npc.name}" e a vitrine de loja dele?`,
-        confirmText: '🗑️ Excluir NPC',
+        confirmText: '<iconify-icon icon="game-icons:crowned-skull"></iconify-icon> <span>Excluir NPC</span>',
         onConfirm: () => {
           commitMutation(
             (st, toasts) => {
@@ -5805,7 +5805,7 @@
               if (state.selectedShopNpcId === npcId) {
                 state.selectedShopNpcId = st.npcs[0]?.id || null;
               }
-              toasts.push(`🗑️ Mercador "${removed.name}" foi excluído da sala.`);
+              toasts.push(`Mercador "${removed.name}" foi excluído da sala.`);
               return true;
             },
             {
@@ -5829,7 +5829,7 @@
           const targetNpc = (st.npcs || []).find((n) => n.id === npcId);
           if (!targetNpc) return false;
           targetNpc.stock = (targetNpc.stock || []).filter((s) => s.itemId !== itemId);
-          toasts.push(`🗑️ "${item ? item.nome : itemId}" removido da loja de ${targetNpc.name}.`);
+          toasts.push(`"${item ? item.nome : itemId}" removido da loja de ${targetNpc.name}.`);
           return true;
         },
         {
@@ -5881,10 +5881,10 @@
           <div data-npc-item-row-type="${escapeHtml(it.tipo)}" class="flex items-center justify-between gap-2 p-2 rounded bg-black/20 hover:bg-amber-500/10">
             <label class="flex items-center gap-2 cursor-pointer flex-1 min-w-0">
               <input type="checkbox" data-npc-item="${escapeHtml(it.id)}" ${st ? 'checked' : ''} />
-              <span class="font-bold truncate">${ITEM_TYPE_ICONS[it.tipo] || '📦'} ${escapeHtml(it.nome)} <span class="text-[10px] font-mono app-muted">(Padrão: 🪙 ${it.preco})</span></span>
+              <span class="font-bold truncate flex items-center gap-1.5">${ITEM_TYPE_ICONS[it.tipo] || '<iconify-icon icon="game-icons:knapsack"></iconify-icon>'} <span>${escapeHtml(it.nome)}</span> <span class="text-[10px] font-mono app-muted">(Padrão: <iconify-icon icon="game-icons:two-coins" class="icon-gold"></iconify-icon> ${it.preco})</span></span>
             </label>
             <div class="flex items-center gap-1.5 shrink-0">
-              <span class="text-[10px] font-bold app-muted">🪙 Preço NPC:</span>
+              <span class="text-[10px] font-bold app-muted flex items-center gap-1"><iconify-icon icon="game-icons:two-coins" class="icon-gold"></iconify-icon> <span>Preço NPC:</span></span>
               <input
                 type="number"
                 min="0"
@@ -5951,7 +5951,7 @@
 
       commitMutation((st) => {
         if (!id) {
-          const newNpc = { id: `npc_${Date.now()}`, name, description, avatar: '⚖️', stock };
+          const newNpc = { id: `npc_${Date.now()}`, name, description, avatar: 'shop', stock };
           st.npcs.push(newNpc);
           state.selectedShopNpcId = newNpc.id;
         } else {
@@ -6023,7 +6023,7 @@
       const maxStock = stockObj && !stockObj.infinite ? Math.max(1, Number(stockObj.quantity || 1)) : 999;
       const buyQty = Math.max(1, Math.min(maxStock, Number.isFinite(rawQty) ? rawQty : 1));
       const totalCost = unitPrice * buyQty;
-      buyBtn.textContent = buyQty > 1 ? `🪙 Comprar (${buyQty}x • ${totalCost})` : `🪙 Comprar (${unitPrice})`;
+      buyBtn.innerHTML = buyQty > 1 ? `<iconify-icon icon="game-icons:two-coins" class="icon-gold"></iconify-icon> Comprar (${buyQty}x • ${totalCost})` : `<iconify-icon icon="game-icons:two-coins" class="icon-gold"></iconify-icon> Comprar (${unitPrice})`;
     });
 
     document.getElementById('shop-npc-showcase')?.addEventListener('click', (e) => {
@@ -6095,10 +6095,10 @@
       }
 
       openConfirmModal({
-        icon: '🪙',
+        icon: '<iconify-icon icon="game-icons:two-coins" class="icon-gold"></iconify-icon>',
         title: 'CONFIRMAR COMPRA NA LOJA',
         message: `Deseja comprar ${buyQty}x "${item.nome}" para ${buyer.name} por ${totalBuyPrice} ${state.room.currencyName} (${finalUnitPrice} cada)?`,
-        confirmText: `🪙 Comprar ${buyQty}x Agora`,
+        confirmText: `<iconify-icon icon="game-icons:two-coins" class="icon-gold"></iconify-icon> <span>Comprar ${buyQty}x Agora</span>`,
         onConfirm: () => {
           commitMutation(
             (st, toasts) => {
@@ -6126,7 +6126,7 @@
 
               addItemsToCharacterInventory(bChar, item, buyQty);
 
-              toasts.push(`🛍️ ${bChar.name} comprou ${buyQty}x ${item.nome} por 🪙 ${totalBuyPrice}!`);
+              toasts.push(`${bChar.name} comprou ${buyQty}x ${item.nome} por ${totalBuyPrice} ${state.room.currencyName}!`);
               return true;
             },
             {
@@ -6165,7 +6165,7 @@
             } else if (char) {
               char.gold = (char.gold || 0) + (sale.salePrice || 0);
             }
-            toasts.push(`✅ Venda de ${sale.itemName} aprovada (+${sale.salePrice} ${st.room.currencyName})!`);
+            toasts.push(`Venda de ${sale.itemName} aprovada (+${sale.salePrice} ${st.room.currencyName})!`);
           } else {
             const inv = char?.inventory?.find((i) => i.id === sale.invItemId);
             if (inv) inv.status = 'IN_INVENTORY';
@@ -6215,14 +6215,14 @@
                 initiativeRoll: 15,
               });
             }
-            toasts.push('⚔️ Modo de Combate iniciado!');
+            toasts.push('Modo de Combate iniciado!');
           } else {
             // Restaura integralmente a Armadura Máxima degradada por sobrecarga durante a batalha (Seção 6.3)
             st.characters.forEach((c) => {
               c.armorDegradation = 0;
               c.activeBuffs = [];
             });
-            toasts.push('🏳️ Combate encerrado! Degradações de armadura foram restauradas.');
+            toasts.push('Combate encerrado! Degradações de armadura foram restauradas.');
           }
           return true;
         },
@@ -6287,7 +6287,7 @@
           });
           st.battle.participantsOrder.sort((a, b) => (b.initiativeRoll || 0) - (a.initiativeRoll || 0));
           st.battle.currentTurnIndex = 0;
-          toasts.push('🎲 Iniciativa 1d20 rolada e ordenada para todos os participantes!');
+          toasts.push('Iniciativa 1d20 rolada e ordenada para todos os participantes!');
           return true;
         },
         {
@@ -6336,7 +6336,7 @@
         const roll = Math.floor(Math.random() * sides) + 1;
         const box = document.getElementById('dice-roller-result');
         if (box) {
-          box.innerHTML = `🎲 <strong>1d${sides}</strong> ➔ Resultado: <span class="text-lg font-black gold-title">${roll}</span>`;
+          box.innerHTML = `<iconify-icon icon="game-icons:rolling-dices"></iconify-icon> <strong>1d${sides}</strong> → Resultado: <span class="text-lg font-black gold-title">${roll}</span>`;
         }
       });
     });
@@ -6389,13 +6389,13 @@
             if (xpVal > 0) {
               const lvls = grantXpToCharacter(c, xpVal);
               if (lvls > 0) {
-                toasts.push(`🎉 ${c.name} subiu para o Nível ${c.level} (+${lvls * 2} Pts de Habilidade)!`);
+                toasts.push(`${c.name} subiu para o Nível ${c.level} (+${lvls * 2} Pts de Habilidade)!`);
               }
             }
             if (attrPts > 0) c.pendingAttributePoints = (c.pendingAttributePoints || 0) + attrPts;
             if (skillPts > 0) c.skillPoints = (c.skillPoints || 0) + skillPts;
           }
-          toasts.push('🎁 Recompensas em lote entregues com sucesso!');
+          toasts.push('Recompensas em lote entregues com sucesso!');
           return true;
         },
         {
@@ -6495,7 +6495,7 @@
                 }
               }
             }
-            toasts.push(`🏆 Missão "${q.title}" concluída! Recompensas entregues ao grupo.`);
+            toasts.push(`Missão "${q.title}" concluída! Recompensas entregues ao grupo.`);
           }
           return true;
         },
@@ -6546,7 +6546,7 @@
           st.room.unlimitedInventory = document.getElementById('cfg-inv-unlimited').value === 'true';
           st.room.inventoryLimit = Math.max(1, Number(document.getElementById('cfg-inv-limit').value || 10));
           st.room.quote = document.getElementById('cfg-room-quote').value;
-          toasts.push('⚙️ Configurações da campanha salvas e aplicadas!');
+          toasts.push('Configurações da campanha salvas e aplicadas!');
           return true;
         },
         {

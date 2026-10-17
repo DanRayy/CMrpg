@@ -25,6 +25,9 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800;900&family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
   <!-- Estilos Customizados -->
+  <!-- Iconify Web Component (game-icons) -->
+  <script src="https://code.iconify.design/iconify-icon/2.1.0/iconify-icon.min.js"></script>
+  <!-- Estilos Customizados -->
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body class="min-h-screen flex select-none">
@@ -61,7 +64,7 @@
       <nav class="px-3 space-y-1.5 mt-1" aria-label="Navegação Principal">
         <button type="button" data-nav-tab="overview" class="sidebar-nav-item active">
           <span class="flex items-center gap-2.5">
-            <span class="text-sm">🏠</span>
+            <iconify-icon icon="game-icons:castle" class="text-base"></iconify-icon>
             <span>Visão Geral</span>
           </span>
           <span class="flex items-center gap-1.5">
@@ -71,7 +74,7 @@
 
         <button type="button" data-nav-tab="characters" class="sidebar-nav-item">
           <span class="flex items-center gap-2.5 text-left">
-            <span class="text-sm">👤</span>
+            <iconify-icon icon="game-icons:hooded-figure" class="text-base"></iconify-icon>
             <span class="leading-tight">Personagens &amp;<br />Fichas</span>
           </span>
           <span class="flex items-center gap-1.5">
@@ -82,7 +85,7 @@
 
         <button type="button" data-nav-tab="catalog" class="sidebar-nav-item">
           <span class="flex items-center gap-2.5">
-            <span class="text-sm">📦</span>
+            <iconify-icon icon="game-icons:knapsack" class="text-base"></iconify-icon>
             <span>Catálogo de Itens</span>
           </span>
           <span class="flex items-center gap-1.5">
@@ -93,7 +96,7 @@
 
         <button type="button" data-nav-tab="shop" class="sidebar-nav-item">
           <span class="flex items-center gap-2.5">
-            <span class="text-sm">🛍️</span>
+            <iconify-icon icon="game-icons:shop" class="text-base"></iconify-icon>
             <span>Loja &amp; Mercadores</span>
           </span>
           <span class="flex items-center gap-1.5">
@@ -104,7 +107,7 @@
 
         <button type="button" data-nav-tab="combat" class="sidebar-nav-item sidebar-nav-combat mt-2">
           <span class="flex items-center gap-2.5">
-            <span class="text-sm">⚔️</span>
+            <iconify-icon icon="game-icons:crossed-swords" class="text-base"></iconify-icon>
             <span>Combate &amp; Turnos</span>
           </span>
           <span class="flex items-center gap-1.5">
@@ -115,7 +118,7 @@
 
         <button type="button" data-nav-tab="quests" class="sidebar-nav-item mt-2">
           <span class="flex items-center gap-2.5">
-            <span class="text-sm">📜</span>
+            <iconify-icon icon="game-icons:tied-scroll" class="text-base"></iconify-icon>
             <span>Missões</span>
           </span>
           <span class="flex items-center gap-1.5">
@@ -126,7 +129,7 @@
 
         <button type="button" data-nav-tab="admin" class="sidebar-nav-item">
           <span class="flex items-center gap-2.5">
-            <span class="text-sm">⚙️</span>
+            <iconify-icon icon="game-icons:cog-lock" class="text-base"></iconify-icon>
             <span>Administração</span>
           </span>
           <span class="flex items-center gap-1.5">
@@ -174,7 +177,7 @@
           title="Configurar seu apelido e personagem vinculado"
           class="text-[11px] font-bold gold-title hover:underline shrink-0"
         >
-          Perfil ✎
+          Perfil <iconify-icon icon="game-icons:quill-ink"></iconify-icon>
         </button>
       </div>
     </div>
@@ -195,7 +198,7 @@
           class="lg:hidden w-9 h-9 rounded-lg flex items-center justify-center app-icon-btn"
           aria-label="Abrir Menu"
         >
-          ☰
+          <iconify-icon icon="game-icons:hamburger-menu"></iconify-icon>
         </button>
         <div class="text-[11px] font-serif-fantasy tracking-[0.16em] uppercase app-muted flex items-center gap-2">
           <span>SALAS</span>
@@ -211,7 +214,7 @@
         <!-- Widget do Cofre da Sala (Igual à Imagem) -->
         <div class="topbar-wallet-pill">
           <span class="flex items-center gap-1.5 font-extrabold tracking-wide">
-            <span class="text-amber-400">🪙</span>
+            <iconify-icon icon="game-icons:two-coins" class="icon-gold"></iconify-icon>
             <span id="topbar-gold-amount" class="font-mono text-sm app-title">1620</span>
             <span id="topbar-currency-name" class="text-[11px] uppercase gold-title font-serif-fantasy">OURO</span>
           </span>
@@ -221,7 +224,7 @@
             id="btn-manage-gold"
             class="text-[11px] app-muted hover:text-amber-300 transition flex items-center gap-1 master-only-el"
           >
-            <span>✎</span>
+            <iconify-icon icon="game-icons:quill-ink"></iconify-icon>
             <span class="hidden sm:inline">Gerenciar Moeda</span>
           </button>
         </div>
@@ -233,7 +236,7 @@
           title="Host = Mestre Automático (Clique para alternar simulação de visão de Jogador)"
           class="topbar-role-pill"
         >
-          <span id="role-badge-icon">👑</span>
+          <span id="role-badge-icon" class="flex items-center"><iconify-icon icon="game-icons:crown"></iconify-icon></span>
           <span id="role-badge-text">MODO MESTRE</span>
         </button>
 
@@ -244,7 +247,7 @@
           title="Alternar Tema Escuro / Pergaminho Claro"
           class="w-9 h-9 rounded-lg flex items-center justify-center text-sm app-icon-btn transition"
         >
-          <span id="theme-icon">🌙</span>
+          <span id="theme-icon" class="flex items-center"><iconify-icon icon="game-icons:crescent-blade"></iconify-icon></span>
         </button>
       </div>
     </header>
@@ -260,9 +263,9 @@
         <div class="room-hero-banner p-6 sm:p-9 flex flex-col justify-center">
           <!-- Ilustração Decorativa de Taverna / Vela / Pena / Grimório -->
           <div class="room-hero-decor hidden md:flex items-center gap-6 select-none">
-            <span class="text-7xl">🕯️</span>
-            <span class="text-8xl">🍺</span>
-            <span class="text-7xl">🪶</span>
+            <iconify-icon icon="game-icons:candlebright" class="text-7xl"></iconify-icon>
+            <iconify-icon icon="game-icons:beer-stein" class="text-8xl"></iconify-icon>
+            <iconify-icon icon="game-icons:quill" class="text-7xl"></iconify-icon>
           </div>
 
           <div class="relative z-10 max-w-2xl">
@@ -276,7 +279,7 @@
                 title="Editar Nome e Frase da Sala"
                 class="master-only-el px-2.5 py-1 rounded-lg text-[11px] font-bold btn-gold-outline"
               >
-                ✎ Editar Sala
+                <iconify-icon icon="game-icons:quill-ink"></iconify-icon> <span>Editar Sala</span>
               </button>
             </div>
             <p id="hero-room-subtitle" class="text-xs font-serif-fantasy tracking-[0.22em] text-amber-200/75 uppercase mt-1">
@@ -300,8 +303,8 @@
         <div class="fantasy-card px-5 py-4 space-y-4">
           <div class="flex flex-wrap items-center justify-between gap-4">
             <div class="flex items-center gap-3.5">
-              <div class="w-10 h-10 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-center gold-title text-lg shrink-0">
-                🔗
+              <div class="w-10 h-10 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-center gold-title text-xl shrink-0">
+                <iconify-icon icon="game-icons:linked-rings"></iconify-icon>
               </div>
               <div>
                 <h3 class="font-serif-fantasy text-xs sm:text-sm font-extrabold tracking-wider uppercase app-title">
@@ -324,7 +327,7 @@
                 id="btn-copy-invite-link"
                 class="btn-gold px-4 py-2 text-xs font-serif-fantasy tracking-wider uppercase flex items-center gap-1.5"
               >
-                <span>📋</span>
+                <iconify-icon icon="game-icons:scroll-unfurled"></iconify-icon>
                 <span>COPIAR LINK</span>
               </button>
 
@@ -339,7 +342,7 @@
           <div class="pt-3 border-t app-divider-border flex flex-col gap-2">
             <div class="flex items-center justify-between">
               <span class="text-[11px] font-serif-fantasy font-extrabold uppercase tracking-wider gold-title flex items-center gap-2">
-                <span>📡</span>
+                <iconify-icon icon="game-icons:crystal-ball"></iconify-icon>
                 <span>IPs CONECTADOS NO MOMENTO (<span id="connected-ips-count">0</span>)</span>
               </span>
               <span class="text-[11px] app-muted">Atualização instantânea via WebSocket</span>
@@ -354,7 +357,7 @@
         <div class="space-y-3 pt-1">
           <div class="flex flex-wrap items-center justify-between gap-3">
             <div class="flex items-center gap-2">
-              <span class="gold-title text-base">👥</span>
+              <iconify-icon icon="game-icons:three-friends" class="gold-title text-xl"></iconify-icon>
               <h3 class="font-serif-fantasy text-sm sm:text-base font-extrabold tracking-wider uppercase app-title">
                 MEMBROS DA SALA (<span id="members-count-label">1</span>)
               </h3>
@@ -362,7 +365,7 @@
 
             <div class="flex flex-wrap items-center gap-2">
               <div class="relative">
-                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs opacity-50">🔍</span>
+                <iconify-icon icon="game-icons:magnifying-glass" class="absolute left-3 top-1/2 -translate-y-1/2 text-xs opacity-50"></iconify-icon>
                 <input
                   id="member-search-input"
                   type="text"
@@ -417,7 +420,7 @@
         <div class="fantasy-card p-4 flex flex-wrap items-center justify-between gap-3">
           <div class="flex items-center gap-3 flex-1 min-w-[220px] max-w-md">
             <div class="relative flex-1">
-              <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs opacity-60">🔍</span>
+              <iconify-icon icon="game-icons:magnifying-glass" class="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs opacity-60"></iconify-icon>
               <input
                 id="search-input"
                 type="text"
@@ -443,7 +446,7 @@
               id="btn-bulk-rewards"
               class="master-only-el px-3.5 py-2 text-xs font-serif-fantasy uppercase tracking-wider btn-gold-outline flex items-center gap-1.5"
             >
-              <span>🎁</span>
+              <iconify-icon icon="game-icons:chest"></iconify-icon>
               <span>Conceder XP / Atributos em Lote</span>
             </button>
 
@@ -459,7 +462,7 @@
         </div>
 
         <div class="flex items-center justify-between text-xs app-muted px-1">
-          <span>💡 Arraste pelo <strong>nome do personagem</strong> no topo do card para reordenar posições. Clique em <strong>📜 Ficha</strong> para abrir os 5 Atributos, Talentos e Inventário.</span>
+          <span><iconify-icon icon="game-icons:torch" class="text-amber-400"></iconify-icon> Arraste pelo <strong>nome do personagem</strong> no topo do card para reordenar posições. Clique em <strong><iconify-icon icon="game-icons:tied-scroll"></iconify-icon> Ficha</strong> para abrir os 5 Atributos, Talentos e Inventário.</span>
         </div>
 
         <!-- Estado Vazio de Busca ("NENHUM CHAR ENCONTRADO") -->
@@ -467,7 +470,7 @@
           id="empty-search-state"
           class="hidden flex-col items-center justify-center py-20 px-4 text-center fantasy-card border-dashed"
         >
-          <div class="text-5xl mb-3 opacity-75">🔍</div>
+          <div class="text-5xl mb-3 opacity-75 flex justify-center"><iconify-icon icon="game-icons:magnifying-glass"></iconify-icon></div>
           <h2 class="text-xl sm:text-2xl font-serif-fantasy font-black tracking-wider uppercase gold-title">
             NENHUM CHAR ENCONTRADO
           </h2>
@@ -485,7 +488,7 @@
         <div class="fantasy-card p-4 flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 class="font-serif-fantasy text-lg font-extrabold gold-title uppercase tracking-wider">
-              📦 Catálogo Canônico de Itens da Sala
+              <iconify-icon icon="game-icons:knapsack"></iconify-icon> <span>Catálogo Canônico de Itens da Sala</span>
             </h2>
             <p class="text-xs app-muted">
               Alterações feitas em qualquer item do catálogo atualizam automaticamente a loja e os inventários de todos os personagens.
@@ -505,11 +508,11 @@
         <div class="flex flex-wrap items-center justify-between gap-3">
           <div class="flex flex-wrap items-center gap-1.5" id="catalog-type-filters">
             <button type="button" data-item-type="ALL" class="px-3 py-1.5 rounded-lg text-xs font-bold btn-gold">Todos</button>
-            <button type="button" data-item-type="ARMADURA" class="px-3 py-1.5 rounded-lg text-xs font-bold app-secondary-btn">🛡️ Armaduras</button>
-            <button type="button" data-item-type="ARMA" class="px-3 py-1.5 rounded-lg text-xs font-bold app-secondary-btn">⚔️ Armas</button>
-            <button type="button" data-item-type="ACESSORIO" class="px-3 py-1.5 rounded-lg text-xs font-bold app-secondary-btn">💍 Acessórios</button>
-            <button type="button" data-item-type="CONSUMIVEL" class="px-3 py-1.5 rounded-lg text-xs font-bold app-secondary-btn">🧪 Consumíveis</button>
-            <button type="button" data-item-type="OUTRO" class="px-3 py-1.5 rounded-lg text-xs font-bold app-secondary-btn">🎒 Outros</button>
+            <button type="button" data-item-type="ARMADURA" class="px-3 py-1.5 rounded-lg text-xs font-bold app-secondary-btn flex items-center gap-1.5"><iconify-icon icon="game-icons:breastplate" class="icon-armor"></iconify-icon> <span>Armaduras</span></button>
+            <button type="button" data-item-type="ARMA" class="px-3 py-1.5 rounded-lg text-xs font-bold app-secondary-btn flex items-center gap-1.5"><iconify-icon icon="game-icons:gladius"></iconify-icon> <span>Armas</span></button>
+            <button type="button" data-item-type="ACESSORIO" class="px-3 py-1.5 rounded-lg text-xs font-bold app-secondary-btn flex items-center gap-1.5"><iconify-icon icon="game-icons:ring"></iconify-icon> <span>Acessórios</span></button>
+            <button type="button" data-item-type="CONSUMIVEL" class="px-3 py-1.5 rounded-lg text-xs font-bold app-secondary-btn flex items-center gap-1.5"><iconify-icon icon="game-icons:health-potion"></iconify-icon> <span>Consumíveis</span></button>
+            <button type="button" data-item-type="OUTRO" class="px-3 py-1.5 rounded-lg text-xs font-bold app-secondary-btn flex items-center gap-1.5"><iconify-icon icon="game-icons:knapsack"></iconify-icon> <span>Outros</span></button>
           </div>
           <input
             id="catalog-search-input"
@@ -529,7 +532,7 @@
         <div class="fantasy-card p-4 flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 class="font-serif-fantasy text-lg font-extrabold gold-title uppercase tracking-wider">
-              🛍️ Loja &amp; NPCs Mercadores
+              <iconify-icon icon="game-icons:shop"></iconify-icon> <span>Loja &amp; NPCs Mercadores</span>
             </h2>
             <p class="text-xs app-muted">
               Selecione seu personagem comprador e interaja com os mercadores da campanha.
@@ -555,7 +558,7 @@
         <div id="escrow-approvals-box" class="hidden fantasy-card p-4 border-amber-500/40 space-y-3">
           <div class="flex items-center justify-between">
             <h3 class="font-serif-fantasy text-xs sm:text-sm font-extrabold uppercase gold-title flex items-center gap-2">
-              <span>⚖️</span>
+              <iconify-icon icon="game-icons:scales" class="icon-gold"></iconify-icon>
               <span>Solicitações de Venda em Escrow Pendentes de Aprovação</span>
             </h3>
           </div>
@@ -576,8 +579,8 @@
         <!-- Painel de Controle de Batalha -->
         <div class="fantasy-card p-5 border-red-500/30 flex flex-wrap items-center justify-between gap-4">
           <div class="flex items-center gap-3.5">
-            <div class="w-12 h-12 rounded-xl bg-red-950/70 border border-red-500/40 flex items-center justify-center text-2xl">
-              ⚔️
+            <div class="w-12 h-12 rounded-xl bg-red-950/70 border border-red-500/40 flex items-center justify-center text-2xl text-red-400">
+              <iconify-icon icon="game-icons:crossed-swords"></iconify-icon>
             </div>
             <div>
               <div class="flex items-center gap-2.5">
@@ -600,7 +603,7 @@
               id="btn-toggle-battle"
               class="master-only-el px-4 py-2.5 rounded-lg font-serif-fantasy font-extrabold text-xs uppercase tracking-wider bg-red-700 hover:bg-red-600 text-white border border-red-400/50 shadow-lg transition"
             >
-              ⚔️ Iniciar Combate
+              <iconify-icon icon="game-icons:crossed-swords"></iconify-icon> <span>Iniciar Combate</span>
             </button>
 
             <button
@@ -608,7 +611,7 @@
               id="btn-end-turn"
               class="px-4 py-2.5 rounded-lg font-serif-fantasy font-extrabold text-xs uppercase tracking-wider btn-gold"
             >
-              ⏭️ Finalizar Turno
+              <iconify-icon icon="game-icons:sands-of-time"></iconify-icon> <span>Finalizar Turno</span>
             </button>
 
             <button
@@ -617,7 +620,7 @@
               title="Avanço Forçado pelo Mestre (Anti-AFK)"
               class="master-only-el px-3.5 py-2.5 rounded-lg font-serif-fantasy font-bold text-xs uppercase tracking-wider app-secondary-btn"
             >
-              ⚡ Forçar Avanço
+              <iconify-icon icon="game-icons:lightning-branches"></iconify-icon> <span>Forçar Avanço</span>
             </button>
           </div>
         </div>
@@ -638,7 +641,7 @@
           </div>
           <div class="fantasy-card p-4 border-amber-500/40">
             <div class="flex items-center justify-between">
-              <span class="text-[10px] font-serif-fantasy uppercase tracking-widest gold-title font-bold">⚡ Cargas do Grupo</span>
+              <span class="text-[10px] font-serif-fantasy uppercase tracking-widest gold-title font-bold"><iconify-icon icon="game-icons:lightning-branches"></iconify-icon> <span>Cargas do Grupo</span></span>
               <span class="text-[10px] app-muted">Pool Coletivo</span>
             </div>
             <div class="flex items-center justify-between mt-1.5">
@@ -657,7 +660,7 @@
           <div class="lg:col-span-2 fantasy-card p-5 space-y-4">
             <div class="flex flex-wrap items-center justify-between gap-2">
               <h3 class="font-serif-fantasy text-sm font-extrabold uppercase tracking-wider gold-title">
-                📜 Ordem de Iniciativa (Jogadores &amp; Mestre)
+                <iconify-icon icon="game-icons:tied-scroll"></iconify-icon> <span>Ordem de Iniciativa (Jogadores &amp; Mestre)</span>
               </h3>
               <div class="flex items-center gap-2">
                 <button
@@ -665,14 +668,14 @@
                   id="btn-sync-initiative-chars"
                   class="master-only-el px-3 py-1.5 rounded-lg text-xs font-bold app-secondary-btn"
                 >
-                  🔄 Sincronizar Participantes
+                  <iconify-icon icon="game-icons:cycle"></iconify-icon> <span>Sincronizar Participantes</span>
                 </button>
                 <button
                   type="button"
                   id="btn-roll-all-initiative"
                   class="master-only-el px-3 py-1.5 rounded-lg text-xs font-bold btn-gold-outline"
                 >
-                  🎲 Rolar 1d20 p/ Todos
+                  <iconify-icon icon="game-icons:dice-twenty-faces-twenty"></iconify-icon> <span>Rolar 1d20 p/ Todos</span>
                 </button>
               </div>
             </div>
@@ -684,7 +687,7 @@
           <div class="space-y-4">
             <div class="fantasy-card p-5 space-y-3">
               <h3 class="font-serif-fantasy text-sm font-extrabold uppercase tracking-wider gold-title">
-                🎲 Rolador Tático de Dados
+                <iconify-icon icon="game-icons:rolling-dices"></iconify-icon> <span>Rolador Tático de Dados</span>
               </h3>
               <div class="grid grid-cols-3 gap-2">
                 <button type="button" data-roll-die="20" class="py-2.5 rounded-lg font-mono font-extrabold text-xs btn-gold">1d20</button>
@@ -700,7 +703,7 @@
             </div>
 
             <div class="fantasy-card p-5 space-y-2 text-xs app-muted leading-relaxed">
-              <h4 class="font-serif-fantasy font-bold uppercase gold-title">⚙️ Regras Automáticas de Combate</h4>
+              <h4 class="font-serif-fantasy font-bold uppercase gold-title"><iconify-icon icon="game-icons:cog-lock"></iconify-icon> <span>Regras Automáticas de Combate</span></h4>
               <p>• <strong>Início de Turno (Jogador Vivo):</strong> Recarrega PA para o máximo (3 PA), recupera Mana pela taxa de Regen e soma <strong>+1 Carga do Grupo</strong>.</p>
               <p>• <strong>Turno do Mestre / Morto:</strong> Não acumula cargas nem regenera recursos.</p>
               <p>• <strong>Sobrecarga de Armadura:</strong> Se o Dano Final superar a Armadura Atual, a Armadura Máxima sofre degradação temporária até o fim do combate.</p>
@@ -716,7 +719,7 @@
         <div class="fantasy-card p-4 flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 class="font-serif-fantasy text-lg font-extrabold gold-title uppercase tracking-wider">
-              📜 Quadro de Missões &amp; Contratos
+              <iconify-icon icon="game-icons:tied-scroll"></iconify-icon> <span>Quadro de Missões &amp; Contratos</span>
             </h2>
             <p class="text-xs app-muted">
               Acompanhe os objetivos do grupo e receba pacotes de Ouro, XP, Pontos de Atributo, Talentos e Itens ao concluir.
@@ -728,7 +731,7 @@
               id="btn-quests-bulk-xp"
               class="master-only-el px-3.5 py-2 text-xs font-serif-fantasy uppercase btn-gold-outline"
             >
-              🎁 Recompensa em Lote
+              <iconify-icon icon="game-icons:chest"></iconify-icon> <span>Recompensa em Lote</span>
             </button>
             <button
               type="button"
@@ -751,7 +754,7 @@
           <!-- Configurações da Sala e Matemática (ADR-009) -->
           <div class="fantasy-card p-5 space-y-4">
             <h3 class="font-serif-fantasy text-base font-extrabold uppercase gold-title">
-              ⚙️ Configurações da Campanha &amp; Motor Matemático (ADR-009)
+              <iconify-icon icon="game-icons:cog-lock"></iconify-icon> <span>Configurações da Campanha &amp; Motor Matemático (ADR-009)</span>
             </h3>
             <form id="form-room-settings" class="space-y-3.5 text-xs">
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -817,7 +820,7 @@
 
               <div class="pt-2 flex justify-end gap-2">
                 <button type="button" id="btn-export-json" class="px-3.5 py-2 rounded-lg font-bold app-secondary-btn">
-                  💾 Exportar Backup JSON
+                  <iconify-icon icon="game-icons:save"></iconify-icon> <span>Exportar Backup JSON</span>
                 </button>
                 <button type="submit" class="master-only-el btn-gold px-5 py-2 font-serif-fantasy uppercase tracking-wider">
                   Salvar Configurações
@@ -831,7 +834,7 @@
             <div class="flex items-center justify-between mb-3">
               <div>
                 <h3 class="font-serif-fantasy text-base font-extrabold uppercase gold-title">
-                  🕵️ Histórico de Auditoria Perpétuo (RoomAuditLog)
+                  <iconify-icon icon="game-icons:tied-scroll"></iconify-icon> <span>Histórico de Auditoria Perpétuo (RoomAuditLog)</span>
                 </h3>
                 <p class="text-[11px] app-muted">Registro cronológico imutável de todas as ações da mesa.</p>
               </div>
@@ -851,7 +854,7 @@
     <div class="modal-panel w-full max-w-2xl rounded-2xl overflow-hidden flex flex-col max-h-[92vh]">
       <div class="px-5 py-4 border-b flex items-center justify-between app-modal-header">
         <div class="flex items-center gap-2">
-          <span id="char-form-icon" class="text-xl">✨</span>
+          <span id="char-form-icon" class="text-xl flex items-center"><iconify-icon icon="game-icons:sparkles"></iconify-icon></span>
           <h3 id="char-form-title" class="font-serif-fantasy text-base font-black tracking-wider gold-title uppercase">
             CRIAR PERSONAGEM
           </h3>
@@ -877,7 +880,7 @@
             <input id="char-height-input" type="text" placeholder="Ex: 1,80m" class="w-full px-3 py-2 app-input" />
           </div>
           <div>
-            <label for="char-max-weight" class="block font-bold uppercase tracking-wider mb-1 gold-title">⚖️ Limite de Peso (kg)</label>
+            <label for="char-max-weight" class="block font-bold uppercase tracking-wider mb-1 gold-title"><iconify-icon icon="game-icons:weight"></iconify-icon> <span>Limite de Peso (kg)</span></label>
             <input id="char-max-weight" type="number" min="0" step="0.5" value="27" required class="w-full px-3 py-2 font-mono font-bold app-input" />
           </div>
         </div>
@@ -886,7 +889,7 @@
         <div>
           <div class="flex items-center justify-between mb-2">
             <h4 class="font-serif-fantasy font-extrabold uppercase tracking-wider gold-title">
-              ❤️ Recursos Vitais &amp; Status Base
+              <iconify-icon icon="game-icons:heart-bottle" class="icon-hp"></iconify-icon> <span>Recursos Vitais &amp; Status Base</span>
             </h4>
             <button type="button" id="btn-set-canonical-lvl1" class="text-[11px] font-bold text-amber-400 hover:underline">
               Padrão Nível 1 Canônico (HP 80, Arm 0, Mana 100, Regen 20%)
@@ -894,35 +897,35 @@
           </div>
           <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
             <div>
-              <label for="char-max-hp" class="block font-bold mb-1 text-rose-400">❤️ Vida Máx</label>
+              <label for="char-max-hp" class="block font-bold mb-1 text-rose-400"><iconify-icon icon="game-icons:heart-bottle" class="icon-hp"></iconify-icon> <span>Vida Máx</span></label>
               <input id="char-max-hp" type="number" min="0" step="1" value="100" required class="w-full px-3 py-2 font-mono font-bold app-input" />
             </div>
             <div>
-              <label for="char-max-armor" class="block font-bold mb-1 text-sky-400">🛡️ Armadura Máx</label>
+              <label for="char-max-armor" class="block font-bold mb-1 text-sky-400"><iconify-icon icon="game-icons:breastplate" class="icon-armor"></iconify-icon> <span>Armadura Máx</span></label>
               <input id="char-max-armor" type="number" min="0" step="1" value="10" required class="w-full px-3 py-2 font-mono font-bold app-input" />
             </div>
             <div>
-              <label for="char-max-mana" class="block font-bold mb-1 text-indigo-400">✨ Mana Máx</label>
+              <label for="char-max-mana" class="block font-bold mb-1 text-indigo-400"><iconify-icon icon="game-icons:crystal-bars" class="icon-mana"></iconify-icon> <span>Mana Máx</span></label>
               <input id="char-max-mana" type="number" min="0" step="1" value="100" required class="w-full px-3 py-2 font-mono font-bold app-input" />
             </div>
             <div>
-              <label for="char-regen" class="block font-bold mb-1 text-violet-400">⚡ Regeneração %</label>
+              <label for="char-regen" class="block font-bold mb-1 text-violet-400"><iconify-icon icon="game-icons:fairy-wand" class="icon-mana"></iconify-icon> <span>Regeneração %</span></label>
               <input id="char-regen" type="number" min="0" step="any" value="10" required class="w-full px-3 py-2 font-mono font-bold app-input" />
             </div>
             <div>
-              <label for="char-defense" class="block font-bold mb-1 text-emerald-400">🔰 Defesa</label>
+              <label for="char-defense" class="block font-bold mb-1 text-emerald-400"><iconify-icon icon="game-icons:dragon-shield"></iconify-icon> <span>Defesa</span></label>
               <input id="char-defense" type="number" step="1" value="0" required class="w-full px-3 py-2 font-mono font-bold app-input" />
             </div>
             <div>
-              <label for="char-attack" class="block font-bold mb-1 text-orange-400">⚔️ Ataque</label>
+              <label for="char-attack" class="block font-bold mb-1 text-orange-400"><iconify-icon icon="game-icons:gladius" class="icon-dmg"></iconify-icon> <span>Ataque</span></label>
               <input id="char-attack" type="number" step="1" value="0" class="w-full px-3 py-2 font-mono font-bold app-input" />
             </div>
             <div>
-              <label for="char-arcana" class="block font-bold mb-1 text-purple-400">🔮 Arcana</label>
+              <label for="char-arcana" class="block font-bold mb-1 text-purple-400"><iconify-icon icon="game-icons:crystal-ball"></iconify-icon> <span>Arcana</span></label>
               <input id="char-arcana" type="number" step="1" value="0" class="w-full px-3 py-2 font-mono font-bold app-input" />
             </div>
             <div>
-              <label for="char-santidade" class="block font-bold mb-1 text-amber-300">✨ Santidade</label>
+              <label for="char-santidade" class="block font-bold mb-1 text-amber-300"><iconify-icon icon="game-icons:sparkles"></iconify-icon> <span>Santidade</span></label>
               <input id="char-santidade" type="number" step="1" value="0" class="w-full px-3 py-2 font-mono font-bold app-input" />
             </div>
           </div>
@@ -933,7 +936,7 @@
           <div class="flex flex-wrap items-center justify-between gap-2">
             <div>
               <h4 class="font-serif-fantasy font-extrabold uppercase tracking-wider gold-title">
-                🧬 5 Atributos Canônicos (Point Buy: Base 8 + 17 pts = 57 Total)
+                <iconify-icon icon="game-icons:dna1"></iconify-icon> <span>5 Atributos Canônicos (Point Buy: Base 8 + 17 pts = 57 Total)</span>
               </h4>
               <p class="text-[11px] app-muted">
                 Piso mínimo 8 (apenas <strong>1 único atributo</strong> pode ser reduzido para 7, liberando teto 19). Não é permitido reduzir abaixo de 7.
@@ -953,7 +956,7 @@
           <div class="flex items-center justify-between">
             <div>
               <h4 class="font-serif-fantasy font-extrabold uppercase tracking-wider gold-title">
-                🛡️ Resistências da Ficha (% Visual: Físico, Mágico, Pyro, Cryo, Elétrico, Profano, Sacro)
+                <iconify-icon icon="game-icons:breastplate" class="icon-armor"></iconify-icon> <span>Resistências da Ficha (% Visual: Físico, Mágico, Pyro, Cryo, Elétrico, Profano, Sacro)</span>
               </h4>
               <p class="text-[11px] app-muted">
                 Valores visuais em porcentagem (%) exibidos diretamente na Ficha Completa do personagem.
@@ -970,7 +973,7 @@
         <div>
           <div class="flex items-center justify-between mb-2">
             <h4 class="font-serif-fantasy font-extrabold uppercase tracking-wider app-muted">
-              💊 Limites Máximos das 7 Barras de Status (Sangramento, Veneno, etc.)
+              <iconify-icon icon="game-icons:alembic"></iconify-icon> <span>Limites Máximos das 7 Barras de Status (Sangramento, Veneno, etc.)</span>
             </h4>
             <button type="button" id="btn-reset-res-defaults" class="text-[11px] font-bold gold-title hover:underline">
               Padrão (100)
@@ -984,7 +987,7 @@
           <div class="p-3.5 rounded-xl bg-black/25 border app-divider-border space-y-2.5">
             <div class="flex items-center justify-between">
               <label class="font-serif-fantasy font-extrabold uppercase gold-title">
-                ⚡ Habilidades do Personagem (Clique para escrever/editar o texto de cada uma)
+                <iconify-icon icon="game-icons:fairy-wand"></iconify-icon> <span>Habilidades do Personagem (Clique para escrever/editar o texto de cada uma)</span>
               </label>
               <span class="text-[10px] app-muted">Textos abrem em modal dedicado</span>
             </div>
@@ -1000,7 +1003,7 @@
                 data-open-form-skill="PASSIVA"
                 class="py-2.5 px-3 rounded-xl font-serif-fantasy font-extrabold text-xs uppercase tracking-wider border border-sky-500/40 bg-sky-500/10 hover:bg-sky-500/20 text-sky-300 flex items-center justify-between transition"
               >
-                <span class="flex items-center gap-1.5"><span>🛡️</span><span>PASSIVA</span></span>
+                <span class="flex items-center gap-1.5"><iconify-icon icon="game-icons:dragon-shield"></iconify-icon><span>PASSIVA</span></span>
                 <span id="form-skill-badge-PASSIVA" class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-black/40 app-muted">Vazio</span>
               </button>
 
@@ -1009,7 +1012,7 @@
                 data-open-form-skill="ATIVA"
                 class="py-2.5 px-3 rounded-xl font-serif-fantasy font-extrabold text-xs uppercase tracking-wider border border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 flex items-center justify-between transition"
               >
-                <span class="flex items-center gap-1.5"><span>⚔️</span><span>ATIVA</span></span>
+                <span class="flex items-center gap-1.5"><iconify-icon icon="game-icons:crossed-swords"></iconify-icon><span>ATIVA</span></span>
                 <span id="form-skill-badge-ATIVA" class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-black/40 app-muted">Vazio</span>
               </button>
 
@@ -1018,14 +1021,14 @@
                 data-open-form-skill="SUPREMA"
                 class="py-2.5 px-3 rounded-xl font-serif-fantasy font-extrabold text-xs uppercase tracking-wider border border-rose-500/40 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 flex items-center justify-between transition"
               >
-                <span class="flex items-center gap-1.5"><span>🔥</span><span>SUPREMA</span></span>
+                <span class="flex items-center gap-1.5"><iconify-icon icon="game-icons:ifrit" style="color: #f97316;"></iconify-icon><span>SUPREMA</span></span>
                 <span id="form-skill-badge-SUPREMA" class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-black/40 app-muted">Vazio</span>
               </button>
             </div>
           </div>
 
           <div>
-            <label for="char-history-input" class="block font-bold uppercase mb-1 app-label">📖 História / Antecedentes</label>
+            <label for="char-history-input" class="block font-bold uppercase mb-1 app-label"><iconify-icon icon="game-icons:book-cover"></iconify-icon> <span>História / Antecedentes</span></label>
             <textarea id="char-history-input" rows="2" placeholder="História e origem do personagem..." class="w-full px-3 py-2 app-input"></textarea>
           </div>
         </div>
@@ -1037,7 +1040,7 @@
             id="btn-delete-char"
             class="hidden px-4 py-2.5 rounded-lg font-extrabold text-xs uppercase tracking-wider bg-rose-600/20 hover:bg-rose-600 text-rose-400 hover:text-white border border-rose-500/40 transition"
           >
-            🗑️ DEL
+            <iconify-icon icon="game-icons:crowned-skull"></iconify-icon> <span>DEL</span>
           </button>
           <div class="flex items-center gap-2 ml-auto">
             <button type="button" data-close-modal="modal-char-form" class="px-4 py-2.5 rounded-lg font-bold text-xs uppercase app-secondary-btn">
@@ -1059,7 +1062,7 @@
     <div class="modal-panel w-full max-w-lg rounded-2xl overflow-hidden flex flex-col max-h-[92vh]">
       <div class="px-5 py-4 border-b flex items-center justify-between app-modal-header">
         <div class="flex items-center gap-2">
-          <span class="text-xl">🔥</span>
+          <iconify-icon icon="game-icons:broadsword" class="icon-dmg text-2xl"></iconify-icon>
           <div>
             <h3 class="font-serif-fantasy text-base font-black tracking-wider uppercase app-title">APLICAR DANO</h3>
             <p id="damage-char-name" class="text-xs font-bold text-rose-400"></p>
@@ -1074,10 +1077,10 @@
         <!-- Seletor de Modo: Dano Rápido vs Pipeline Completa (ADR-012) -->
         <div class="grid grid-cols-2 gap-2">
           <button type="button" id="btn-dmg-mode-simple" class="py-2 px-3 rounded-lg font-extrabold uppercase attr-op-btn active-op">
-            ⚡ Dano Direto / Rápido
+            <iconify-icon icon="game-icons:broadsword" class="icon-dmg"></iconify-icon> <span>Dano Direto / Rápido</span>
           </button>
           <button type="button" id="btn-dmg-mode-pipeline" class="py-2 px-3 rounded-lg font-extrabold uppercase attr-op-btn">
-            🛡️ Pipeline Tática (Letalidade/Perf/Ruptura)
+            <iconify-icon icon="game-icons:dragon-shield"></iconify-icon> <span>Pipeline Tática (Letalidade/Perf/Ruptura)</span>
           </button>
         </div>
 
@@ -1100,27 +1103,27 @@
         <div id="damage-pipeline-container" class="hidden space-y-3 p-3.5 rounded-xl bg-black/25 border app-divider-border">
           <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
             <div>
-              <label class="block font-bold mb-1 text-rose-400">🗡️ Dano Base</label>
+              <label class="block font-bold mb-1 text-rose-400"><iconify-icon icon="game-icons:gladius" class="icon-dmg"></iconify-icon> <span>Dano Base</span></label>
               <input id="pipe-base-dmg" type="number" min="0" value="25" class="w-full px-2.5 py-1.5 font-mono font-bold app-input" />
             </div>
             <div>
-              <label class="block font-bold mb-1 text-orange-400">➕ Multiplicadores</label>
+              <label class="block font-bold mb-1 text-orange-400"><iconify-icon icon="game-icons:cycle"></iconify-icon> <span>Multiplicadores</span></label>
               <input id="pipe-multipliers" type="number" value="0" class="w-full px-2.5 py-1.5 font-mono font-bold app-input" />
             </div>
             <div>
-              <label class="block font-bold mb-1 text-amber-400">📈 Bônus Dano (%)</label>
+              <label class="block font-bold mb-1 text-amber-400"><iconify-icon icon="game-icons:chart"></iconify-icon> <span>Bônus Dano (%)</span></label>
               <input id="pipe-bonus-pct" type="number" value="0" class="w-full px-2.5 py-1.5 font-mono font-bold app-input" />
             </div>
             <div>
-              <label class="block font-bold mb-1 text-emerald-400" title="Ignora Defesa fixa do alvo">🎯 Letalidade (%)</label>
+              <label class="block font-bold mb-1 text-emerald-400" title="Ignora Defesa fixa do alvo"><iconify-icon icon="game-icons:bullseye"></iconify-icon> <span>Letalidade (%)</span></label>
               <input id="pipe-lethality-pct" type="number" min="0" max="100" value="0" class="w-full px-2.5 py-1.5 font-mono font-bold app-input" />
             </div>
             <div>
-              <label class="block font-bold mb-1 text-sky-400" title="Ignora Resistência % do alvo">🏹 Perfuração (%)</label>
+              <label class="block font-bold mb-1 text-sky-400" title="Ignora Resistência % do alvo"><iconify-icon icon="game-icons:bow-arrow"></iconify-icon> <span>Perfuração (%)</span></label>
               <input id="pipe-penetration-pct" type="number" min="0" max="100" value="0" class="w-full px-2.5 py-1.5 font-mono font-bold app-input" />
             </div>
             <div>
-              <label class="block font-bold mb-1 text-purple-400" title="Ignora Redução de Dano % do alvo">💥 Ruptura (%)</label>
+              <label class="block font-bold mb-1 text-purple-400" title="Ignora Redução de Dano % do alvo"><iconify-icon icon="game-icons:explosion-rays"></iconify-icon> <span>Ruptura (%)</span></label>
               <input id="pipe-rupture-pct" type="number" min="0" max="100" value="0" class="w-full px-2.5 py-1.5 font-mono font-bold app-input" />
             </div>
           </div>
@@ -1134,8 +1137,8 @@
         <!-- Switch DANO REAL -->
         <label for="damage-true-switch" class="flex items-center justify-between p-3 rounded-xl border cursor-pointer app-divider-border bg-black/20">
           <div>
-            <div class="text-xs font-extrabold uppercase tracking-wider text-rose-400">⚡ DANO REAL</div>
-            <p class="text-[11px] app-muted mt-0.5">Ignora completamente a Armadura 🛡️ e mitigações, descontando direto da Vida ❤️.</p>
+            <div class="text-xs font-extrabold uppercase tracking-wider text-rose-400 flex items-center gap-1.5"><iconify-icon icon="game-icons:pierced-heart" class="icon-dmg"></iconify-icon> <span>DANO REAL</span></div>
+            <p class="text-[11px] app-muted mt-0.5">Ignora completamente a Armadura <iconify-icon icon="game-icons:breastplate" class="icon-armor"></iconify-icon> e mitigações, descontando direto da Vida <iconify-icon icon="game-icons:heart-bottle" class="icon-hp"></iconify-icon>.</p>
           </div>
           <div class="relative inline-flex items-center cursor-pointer ml-3">
             <input type="checkbox" id="damage-true-switch" class="sr-only peer" />
@@ -1147,11 +1150,11 @@
         <div id="damage-preview-box" class="p-3 rounded-xl border app-divider-border bg-black/30 space-y-1.5">
           <div id="damage-pipeline-breakdown" class="hidden text-[11px] font-mono app-muted pb-1.5 border-b app-divider-border"></div>
           <div class="flex justify-between items-center">
-            <span class="app-muted font-semibold">🛡️ Armadura:</span>
+            <span class="app-muted font-semibold flex items-center gap-1"><iconify-icon icon="game-icons:breastplate" class="icon-armor"></iconify-icon> <span>Armadura:</span></span>
             <span id="damage-preview-armor" class="font-mono font-bold text-sky-400"></span>
           </div>
           <div class="flex justify-between items-center">
-            <span class="app-muted font-semibold">❤️ Vida:</span>
+            <span class="app-muted font-semibold flex items-center gap-1"><iconify-icon icon="game-icons:heart-bottle" class="icon-hp"></iconify-icon> <span>Vida:</span></span>
             <span id="damage-preview-hp" class="font-mono font-bold text-rose-400"></span>
           </div>
         </div>
@@ -1164,7 +1167,7 @@
             type="submit"
             class="px-5 py-2.5 rounded-lg font-serif-fantasy font-extrabold uppercase tracking-wider bg-gradient-to-r from-rose-700 to-red-600 hover:from-rose-600 hover:to-red-500 text-white shadow-lg transition"
           >
-            🔥 Aplicar Dano
+            <iconify-icon icon="game-icons:broadsword" class="icon-dmg"></iconify-icon> <span>Aplicar Dano</span>
           </button>
         </div>
       </form>
@@ -1178,7 +1181,7 @@
     <div class="modal-panel w-full max-w-md rounded-2xl overflow-hidden">
       <div class="px-5 py-4 border-b flex items-center justify-between app-modal-header">
         <div class="flex items-center gap-2">
-          <span id="attr-modal-icon" class="text-xl">❤️</span>
+          <span id="attr-modal-icon" class="text-xl flex items-center"><iconify-icon icon="game-icons:heart-bottle" class="icon-hp"></iconify-icon></span>
           <div>
             <h3 id="attr-modal-title" class="font-serif-fantasy text-base font-black tracking-wider uppercase app-title">GERENCIAR VIDA</h3>
             <p id="attr-modal-subtitle" class="text-xs font-mono font-bold app-muted"></p>
@@ -1221,7 +1224,7 @@
 
         <label for="attr-overflow-switch" class="flex items-center justify-between p-3.5 rounded-xl border cursor-pointer app-divider-border bg-black/20">
           <div>
-            <div class="text-xs font-extrabold uppercase tracking-wider text-amber-400">🚀 OVERFLOW</div>
+            <div class="text-xs font-extrabold uppercase tracking-wider text-amber-400"><iconify-icon icon="game-icons:comet-spark"></iconify-icon> <span>OVERFLOW</span></div>
             <p class="text-[11px] app-muted mt-0.5">Permite que Adicionar e Setar ultrapassem o limite máximo.</p>
           </div>
           <div class="relative inline-flex items-center cursor-pointer ml-3">
@@ -1243,13 +1246,13 @@
   </div>
 
   <!-- ========================================================================= -->
-  <!-- MODAL 4: PAINEL DAS 7 RESISTÊNCIAS (💊) + SUB-MODAL 4.1                   -->
+  <!-- MODAL 4: PAINEL DAS 7 RESISTÊNCIAS + SUB-MODAL 4.1                   -->
   <!-- ========================================================================= -->
   <div id="modal-resistances" class="modal-backdrop hidden fixed inset-0 z-40 flex items-center justify-center p-3 sm:p-4">
     <div class="modal-panel w-full max-w-lg rounded-2xl overflow-hidden flex flex-col max-h-[90vh]">
       <div class="px-5 py-4 border-b flex items-center justify-between app-modal-header">
         <div class="flex items-center gap-2.5">
-          <span class="text-xl">💊</span>
+          <iconify-icon icon="game-icons:alembic" class="text-xl gold-title"></iconify-icon>
           <div>
             <h3 class="font-serif-fantasy text-base font-black tracking-wider uppercase gold-title">PAINEL DE RESISTÊNCIAS</h3>
             <p id="res-panel-char-name" class="text-xs font-bold app-muted"></p>
@@ -1275,7 +1278,7 @@
     <div class="modal-panel w-full max-w-sm rounded-2xl overflow-hidden">
       <div class="px-5 py-4 border-b flex items-center justify-between app-modal-header">
         <div class="flex items-center gap-2">
-          <span id="single-res-icon" class="text-xl">❄️</span>
+          <span id="single-res-icon" class="text-xl flex items-center"><iconify-icon icon="game-icons:ice-cube" style="color: #38bdf8;"></iconify-icon></span>
           <div>
             <h3 id="single-res-title" class="font-serif-fantasy text-base font-black tracking-wider uppercase app-title">RESISTÊNCIA</h3>
             <p id="single-res-subtitle" class="text-xs font-mono font-bold app-muted"></p>
@@ -1336,7 +1339,7 @@
     <div class="modal-panel w-full max-w-4xl rounded-2xl overflow-hidden flex flex-col max-h-[92vh]">
       <div class="px-5 py-4 border-b flex items-center justify-between app-modal-header">
         <div class="flex items-center gap-3">
-          <span class="text-2xl">📜</span>
+          <iconify-icon icon="game-icons:tied-scroll" class="text-2xl gold-title"></iconify-icon>
           <div>
             <h3 id="sheet-char-name" class="font-serif-fantasy text-lg font-black uppercase gold-title">FICHA DE PERSONAGEM</h3>
             <p id="sheet-char-meta" class="text-xs font-mono app-muted"></p>
@@ -1358,7 +1361,7 @@
     <div class="modal-panel w-full max-w-md rounded-2xl overflow-hidden">
       <div class="px-5 py-4 border-b flex items-center justify-between app-modal-header">
         <div class="flex items-center gap-2">
-          <span class="text-xl">🪙</span>
+          <iconify-icon icon="game-icons:two-coins" class="icon-gold text-xl"></iconify-icon>
           <h3 class="font-serif-fantasy text-base font-black uppercase gold-title">Gerenciar Cofre &amp; Moeda</h3>
         </div>
         <button type="button" data-close-modal="modal-gold" class="w-8 h-8 rounded-lg flex items-center justify-center app-icon-btn">✕</button>
@@ -1391,7 +1394,7 @@
     <div class="modal-panel w-full max-w-md rounded-2xl overflow-hidden">
       <div class="px-5 py-4 border-b flex items-center justify-between app-modal-header">
         <div class="flex items-center gap-2">
-          <span class="text-xl">✨</span>
+          <iconify-icon icon="game-icons:sparkles" class="text-xl gold-title"></iconify-icon>
           <div>
             <h3 class="font-serif-fantasy text-base font-black uppercase gold-title">Ressurreição de Personagem</h3>
             <p id="revive-char-name" class="text-xs font-bold app-muted"></p>
@@ -1410,18 +1413,18 @@
 
         <div id="revive-custom-inputs" class="hidden grid grid-cols-2 gap-3">
           <div>
-            <label class="block font-bold mb-1 text-rose-400">❤️ Vida Restaurada</label>
+            <label class="block font-bold mb-1 text-rose-400"><iconify-icon icon="game-icons:heart-bottle" class="icon-hp"></iconify-icon> <span>Vida Restaurada</span></label>
             <input id="revive-custom-hp" type="number" min="1" value="33" class="w-full px-3 py-2 font-mono font-bold app-input" />
           </div>
           <div>
-            <label class="block font-bold mb-1 text-sky-400">🛡️ Armadura Restaurada</label>
+            <label class="block font-bold mb-1 text-sky-400"><iconify-icon icon="game-icons:breastplate" class="icon-armor"></iconify-icon> <span>Armadura Restaurada</span></label>
             <input id="revive-custom-armor" type="number" min="0" value="0" class="w-full px-3 py-2 font-mono font-bold app-input" />
           </div>
         </div>
 
         <div class="pt-2 flex justify-end gap-2">
           <button type="button" data-close-modal="modal-revive" class="px-4 py-2 rounded-lg font-bold uppercase app-secondary-btn">Cancelar</button>
-          <button type="submit" class="btn-gold px-5 py-2 font-serif-fantasy uppercase">✨ Reviver Personagem</button>
+          <button type="submit" class="btn-gold px-5 py-2 font-serif-fantasy uppercase"><iconify-icon icon="game-icons:sparkles"></iconify-icon> <span>Reviver Personagem</span></button>
         </div>
       </form>
     </div>
@@ -1433,7 +1436,7 @@
   <div id="modal-catalog-item" class="modal-backdrop hidden fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
     <div class="modal-panel w-full max-w-xl rounded-2xl overflow-hidden flex flex-col max-h-[92vh]">
       <div class="px-5 py-4 border-b flex items-center justify-between app-modal-header">
-        <h3 id="catalog-modal-title" class="font-serif-fantasy text-base font-black uppercase gold-title">📦 Cadastrar Item no Catálogo</h3>
+        <h3 id="catalog-modal-title" class="font-serif-fantasy text-base font-black uppercase gold-title"><iconify-icon icon="game-icons:knapsack"></iconify-icon> <span>Cadastrar Item no Catálogo</span></h3>
         <button type="button" data-close-modal="modal-catalog-item" class="w-8 h-8 rounded-lg flex items-center justify-center app-icon-btn">✕</button>
       </div>
 
@@ -1490,7 +1493,7 @@
         <!-- Motor de Efeitos do Item se Equipado -->
         <div class="p-3.5 rounded-xl bg-black/25 border app-divider-border space-y-2.5">
           <div class="flex items-center justify-between">
-            <h4 class="font-serif-fantasy font-extrabold uppercase gold-title">⚡ Efeitos do Item se Equipado (Flat / %)</h4>
+            <h4 class="font-serif-fantasy font-extrabold uppercase gold-title"><iconify-icon icon="game-icons:lightning-branches"></iconify-icon> <span>Efeitos do Item se Equipado (Flat / %)</span></h4>
             <button type="button" id="btn-add-item-effect" class="px-2.5 py-1 rounded text-[11px] font-bold btn-gold-outline">
               ＋ Adicionar Efeito
             </button>
@@ -1512,7 +1515,7 @@
   <div id="modal-bulk-reward" class="modal-backdrop hidden fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
     <div class="modal-panel w-full max-w-lg rounded-2xl overflow-hidden">
       <div class="px-5 py-4 border-b flex items-center justify-between app-modal-header">
-        <h3 class="font-serif-fantasy text-base font-black uppercase gold-title">🎁 Conceder Recompensas em Lote (Mestre)</h3>
+        <h3 class="font-serif-fantasy text-base font-black uppercase gold-title"><iconify-icon icon="game-icons:chest"></iconify-icon> <span>Conceder Recompensas em Lote (Mestre)</span></h3>
         <button type="button" data-close-modal="modal-bulk-reward" class="w-8 h-8 rounded-lg flex items-center justify-center app-icon-btn">✕</button>
       </div>
 
@@ -1527,26 +1530,26 @@
 
         <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="block font-bold mb-1 text-amber-400">⭐ Experiência (XP)</label>
+            <label class="block font-bold mb-1 text-amber-400"><iconify-icon icon="game-icons:sparkles" class="icon-gold"></iconify-icon> <span>Experiência (XP)</span></label>
             <input id="bulk-xp-input" type="number" min="0" value="80" class="w-full px-3 py-2 font-mono font-bold app-input" />
           </div>
           <div>
-            <label class="block font-bold mb-1 text-emerald-400">🧬 Pontos de Atributo Extras</label>
+            <label class="block font-bold mb-1 text-emerald-400"><iconify-icon icon="game-icons:dna1"></iconify-icon> <span>Pontos de Atributo Extras</span></label>
             <input id="bulk-attr-pts-input" type="number" min="0" value="0" class="w-full px-3 py-2 font-mono font-bold app-input" />
           </div>
           <div>
-            <label class="block font-bold mb-1 text-purple-400">📘 Pontos de Habilidade (Talento)</label>
+            <label class="block font-bold mb-1 text-purple-400"><iconify-icon icon="game-icons:spell-book"></iconify-icon> <span>Pontos de Habilidade (Talento)</span></label>
             <input id="bulk-skill-pts-input" type="number" min="0" value="0" class="w-full px-3 py-2 font-mono font-bold app-input" />
           </div>
           <div>
-            <label class="block font-bold mb-1 gold-title">🪙 Ouro p/ o Grupo</label>
+            <label class="block font-bold mb-1 gold-title"><iconify-icon icon="game-icons:two-coins" class="icon-gold"></iconify-icon> <span>Ouro p/ o Grupo</span></label>
             <input id="bulk-gold-input" type="number" min="0" value="0" class="w-full px-3 py-2 font-mono font-bold app-input" />
           </div>
         </div>
 
         <div class="pt-2 flex justify-end gap-2">
           <button type="button" data-close-modal="modal-bulk-reward" class="px-4 py-2 rounded-lg font-bold uppercase app-secondary-btn">Cancelar</button>
-          <button type="submit" class="btn-gold px-5 py-2 font-serif-fantasy uppercase">🎁 Conceder Recompensa</button>
+          <button type="submit" class="btn-gold px-5 py-2 font-serif-fantasy uppercase"><iconify-icon icon="game-icons:chest"></iconify-icon> <span>Conceder Recompensa</span></button>
         </div>
       </form>
     </div>
@@ -1558,7 +1561,7 @@
   <div id="modal-quest" class="modal-backdrop hidden fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
     <div class="modal-panel w-full max-w-lg rounded-2xl overflow-hidden">
       <div class="px-5 py-4 border-b flex items-center justify-between app-modal-header">
-        <h3 class="font-serif-fantasy text-base font-black uppercase gold-title">📜 Cadastrar / Editar Missão</h3>
+        <h3 class="font-serif-fantasy text-base font-black uppercase gold-title"><iconify-icon icon="game-icons:tied-scroll"></iconify-icon> <span>Cadastrar / Editar Missão</span></h3>
         <button type="button" data-close-modal="modal-quest" class="w-8 h-8 rounded-lg flex items-center justify-center app-icon-btn">✕</button>
       </div>
 
@@ -1574,19 +1577,19 @@
         </div>
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
           <div>
-            <label class="block font-bold mb-1 gold-title">🪙 Ouro</label>
+            <label class="block font-bold mb-1 gold-title"><iconify-icon icon="game-icons:two-coins" class="icon-gold"></iconify-icon> <span>Ouro</span></label>
             <input id="quest-reward-gold" type="number" min="0" value="200" class="w-full px-2.5 py-1.5 font-mono font-bold app-input" />
           </div>
           <div>
-            <label class="block font-bold mb-1 text-amber-400">⭐ XP</label>
+            <label class="block font-bold mb-1 text-amber-400"><iconify-icon icon="game-icons:sparkles" class="icon-gold"></iconify-icon> <span>XP</span></label>
             <input id="quest-reward-xp" type="number" min="0" value="80" class="w-full px-2.5 py-1.5 font-mono font-bold app-input" />
           </div>
           <div>
-            <label class="block font-bold mb-1 text-emerald-400">🧬 Pts Atrib.</label>
+            <label class="block font-bold mb-1 text-emerald-400"><iconify-icon icon="game-icons:dna1"></iconify-icon> <span>Pts Atrib.</span></label>
             <input id="quest-reward-attr" type="number" min="0" value="0" class="w-full px-2.5 py-1.5 font-mono font-bold app-input" />
           </div>
           <div>
-            <label class="block font-bold mb-1 text-purple-400">📘 Pts Hab.</label>
+            <label class="block font-bold mb-1 text-purple-400"><iconify-icon icon="game-icons:spell-book"></iconify-icon> <span>Pts Hab.</span></label>
             <input id="quest-reward-skill" type="number" min="0" value="0" class="w-full px-2.5 py-1.5 font-mono font-bold app-input" />
           </div>
         </div>
@@ -1608,7 +1611,7 @@
   <div id="modal-member" class="modal-backdrop hidden fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
     <div class="modal-panel w-full max-w-lg rounded-2xl overflow-hidden">
       <div class="px-5 py-4 border-b flex items-center justify-between app-modal-header">
-        <h3 id="member-modal-title" class="font-serif-fantasy text-base font-black uppercase gold-title">👥 Definir Apelido &amp; Permissões do IP</h3>
+        <h3 id="member-modal-title" class="font-serif-fantasy text-base font-black uppercase gold-title"><iconify-icon icon="game-icons:three-friends"></iconify-icon> <span>Definir Apelido &amp; Permissões do IP</span></h3>
         <button type="button" data-close-modal="modal-member" class="w-8 h-8 rounded-lg flex items-center justify-center app-icon-btn">✕</button>
       </div>
 
@@ -1616,7 +1619,7 @@
         <input type="hidden" id="member-form-id" value="" />
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label class="block font-bold uppercase mb-1 gold-title">🏷️ Apelido do Usuário (Na Mesa)</label>
+            <label class="block font-bold uppercase mb-1 gold-title"><iconify-icon icon="game-icons:quill-ink"></iconify-icon> <span>Apelido do Usuário (Na Mesa)</span></label>
             <input
               id="member-name-input"
               type="text"
@@ -1627,7 +1630,7 @@
             <span class="block text-[10px] app-muted mt-1">Apelido para identificar facilmente este IP na sala.</span>
           </div>
           <div>
-            <label class="block font-bold uppercase mb-1 app-label">🌐 Endereço IP do Usuário</label>
+            <label class="block font-bold uppercase mb-1 app-label"><iconify-icon icon="game-icons:crystal-ball"></iconify-icon> <span>Endereço IP do Usuário</span></label>
             <input
               id="member-ip-input"
               type="text"
@@ -1639,13 +1642,13 @@
         </div>
 
         <div>
-          <label class="block font-bold uppercase mb-1 app-label">⚔️ Personagem Vinculado</label>
+          <label class="block font-bold uppercase mb-1 app-label"><iconify-icon icon="game-icons:hooded-figure"></iconify-icon> <span>Personagem Vinculado</span></label>
           <select id="member-char-select" class="w-full px-3 py-2 font-bold app-input"></select>
         </div>
 
         <div>
           <div class="flex items-center justify-between mb-1.5">
-            <label class="block font-bold uppercase gold-title">🎨 Cor Permanente do Cursor (10 Cores)</label>
+            <label class="block font-bold uppercase gold-title"><iconify-icon icon="game-icons:sparkles"></iconify-icon> <span>Cor Permanente do Cursor (10 Cores)</span></label>
             <span id="member-cursor-color-label" class="text-[10px] font-mono font-bold app-muted"></span>
           </div>
           <input type="hidden" id="member-cursor-color-input" value="" />
@@ -1654,7 +1657,7 @@
 
         <div id="member-permissions-section" class="space-y-3 p-3.5 rounded-xl bg-black/25 border app-divider-border">
           <div class="flex items-center justify-between">
-            <label class="font-serif-fantasy font-bold uppercase gold-title">🛡️ Perfil Rápido de Permissão (Preset)</label>
+            <label class="font-serif-fantasy font-bold uppercase gold-title"><iconify-icon icon="game-icons:dragon-shield"></iconify-icon> <span>Perfil Rápido de Permissão (Preset)</span></label>
             <select id="member-preset-select" class="px-2.5 py-1 app-input font-bold">
               <option value="JOGADOR_COMUM">Jogador Comum</option>
               <option value="MODERADOR">Moderador</option>
@@ -1677,7 +1680,7 @@
 
         <div class="pt-2 flex justify-between gap-2">
           <button type="button" id="btn-remove-member" class="px-3 py-2 rounded-lg font-bold text-rose-400 bg-rose-500/15 border border-rose-500/30">
-            🗑️ Remover da Lista
+            <iconify-icon icon="game-icons:crowned-skull"></iconify-icon> <span>Remover da Lista</span>
           </button>
           <div class="flex gap-2 ml-auto">
             <button type="button" data-close-modal="modal-member" class="px-4 py-2 rounded-lg font-bold uppercase app-secondary-btn">Cancelar</button>
@@ -1694,7 +1697,7 @@
   <div id="modal-npc" class="modal-backdrop hidden fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
     <div class="modal-panel w-full max-w-xl rounded-2xl overflow-hidden flex flex-col max-h-[92vh]">
       <div class="px-5 py-4 border-b flex items-center justify-between app-modal-header">
-        <h3 class="font-serif-fantasy text-base font-black uppercase gold-title">🛍️ Cadastrar / Editar Mercador (NPC)</h3>
+        <h3 class="font-serif-fantasy text-base font-black uppercase gold-title"><iconify-icon icon="game-icons:shop"></iconify-icon> <span>Cadastrar / Editar Mercador (NPC)</span></h3>
         <button type="button" data-close-modal="modal-npc" class="w-8 h-8 rounded-lg flex items-center justify-center app-icon-btn">✕</button>
       </div>
       <form id="form-npc" class="p-5 overflow-y-auto space-y-4 text-xs flex-1">
@@ -1715,11 +1718,11 @@
           <!-- Filtro por Tipo de Item no Modal do Mercador -->
           <div class="flex flex-wrap items-center gap-1.5" id="npc-modal-type-filters">
             <button type="button" data-npc-filter="ALL" class="px-2.5 py-1 rounded-lg text-[11px] font-bold btn-gold">Todos</button>
-            <button type="button" data-npc-filter="ARMADURA" class="px-2.5 py-1 rounded-lg text-[11px] font-bold app-secondary-btn">🛡️ Armaduras</button>
-            <button type="button" data-npc-filter="ARMA" class="px-2.5 py-1 rounded-lg text-[11px] font-bold app-secondary-btn">⚔️ Armas</button>
-            <button type="button" data-npc-filter="ACESSORIO" class="px-2.5 py-1 rounded-lg text-[11px] font-bold app-secondary-btn">💍 Acessórios</button>
-            <button type="button" data-npc-filter="CONSUMIVEL" class="px-2.5 py-1 rounded-lg text-[11px] font-bold app-secondary-btn">🧪 Consumíveis</button>
-            <button type="button" data-npc-filter="OUTRO" class="px-2.5 py-1 rounded-lg text-[11px] font-bold app-secondary-btn">🎒 Outros</button>
+            <button type="button" data-npc-filter="ARMADURA" class="px-2.5 py-1 rounded-lg text-[11px] font-bold app-secondary-btn flex items-center gap-1.5"><iconify-icon icon="game-icons:breastplate" class="icon-armor"></iconify-icon> <span>Armaduras</span></button>
+            <button type="button" data-npc-filter="ARMA" class="px-2.5 py-1 rounded-lg text-[11px] font-bold app-secondary-btn flex items-center gap-1.5"><iconify-icon icon="game-icons:gladius"></iconify-icon> <span>Armas</span></button>
+            <button type="button" data-npc-filter="ACESSORIO" class="px-2.5 py-1 rounded-lg text-[11px] font-bold app-secondary-btn flex items-center gap-1.5"><iconify-icon icon="game-icons:ring"></iconify-icon> <span>Acessórios</span></button>
+            <button type="button" data-npc-filter="CONSUMIVEL" class="px-2.5 py-1 rounded-lg text-[11px] font-bold app-secondary-btn flex items-center gap-1.5"><iconify-icon icon="game-icons:health-potion"></iconify-icon> <span>Consumíveis</span></button>
+            <button type="button" data-npc-filter="OUTRO" class="px-2.5 py-1 rounded-lg text-[11px] font-bold app-secondary-btn flex items-center gap-1.5"><iconify-icon icon="game-icons:knapsack"></iconify-icon> <span>Outros</span></button>
           </div>
           <div id="npc-stock-checklist" class="space-y-2 max-h-60 overflow-y-auto p-3 rounded-xl bg-black/25 border app-divider-border"></div>
         </div>
@@ -1729,7 +1732,7 @@
             id="btn-delete-npc"
             class="hidden px-3.5 py-2 rounded-lg font-extrabold uppercase bg-rose-600/20 hover:bg-rose-600 text-rose-400 hover:text-white border border-rose-500/40 transition"
           >
-            🗑️ Excluir Mercador
+            <iconify-icon icon="game-icons:crowned-skull"></iconify-icon> <span>Excluir Mercador</span>
           </button>
           <div class="flex items-center gap-2 ml-auto">
             <button type="button" data-close-modal="modal-npc" class="px-4 py-2 rounded-lg font-bold uppercase app-secondary-btn">Cancelar</button>
@@ -1747,7 +1750,7 @@
     <div class="modal-panel w-[95vw] max-w-5xl h-[82vh] max-h-[88vh] rounded-2xl overflow-hidden flex flex-col">
       <div class="px-6 py-4 border-b flex items-center justify-between app-modal-header shrink-0">
         <div class="flex items-center gap-3">
-          <span id="skill-modal-icon" class="text-2xl">🛡️</span>
+          <span id="skill-modal-icon" class="text-2xl flex items-center"><iconify-icon icon="game-icons:dragon-shield"></iconify-icon></span>
           <div>
             <h3 id="skill-modal-title" class="font-serif-fantasy text-lg font-black uppercase gold-title">HABILIDADE PASSIVA</h3>
             <p id="skill-modal-subtitle" class="text-xs font-bold app-muted"></p>
@@ -1767,7 +1770,7 @@
               Texto / Descrição da Habilidade
             </label>
             <span id="skill-modal-readonly-badge" class="hidden px-2.5 py-0.5 rounded bg-amber-500/15 gold-title font-mono font-bold text-[11px]">
-              👁️ Somente Visualização
+              <iconify-icon icon="game-icons:eyeball"></iconify-icon> <span>Somente Visualização</span>
             </span>
           </div>
           <textarea
@@ -1782,7 +1785,7 @@
             Fechar
           </button>
           <button type="submit" id="btn-save-skill-detail" class="btn-gold px-6 py-2.5 font-serif-fantasy uppercase tracking-wider">
-            💾 Salvar Habilidade
+            <iconify-icon icon="game-icons:save"></iconify-icon> <span>Salvar Habilidade</span>
           </button>
         </div>
       </form>
@@ -1796,14 +1799,14 @@
     <div class="modal-panel w-[96vw] max-w-7xl rounded-2xl overflow-hidden flex flex-col max-h-[92vh]">
       <div class="px-6 py-4 border-b flex flex-wrap items-center justify-between gap-3 app-modal-header shrink-0">
         <div class="flex items-center gap-3">
-          <span class="text-2xl">🎒</span>
+          <iconify-icon icon="game-icons:knapsack" class="text-2xl gold-title"></iconify-icon>
           <div>
             <div class="flex flex-wrap items-center gap-2.5">
               <h3 id="inv-modal-char-name" class="font-serif-fantasy text-base sm:text-lg font-black uppercase gold-title">
                 INVENTÁRIO DO PERSONAGEM
               </h3>
-              <span id="inv-modal-weight-badge" class="font-mono font-black text-xs px-2 py-0.5 rounded bg-amber-500/15 gold-title border border-amber-500/30">
-                ⚖️ 0 / 27 kg
+              <span id="inv-modal-weight-badge" class="font-mono font-black text-xs px-2 py-0.5 rounded bg-amber-500/15 gold-title border border-amber-500/30 flex items-center gap-1">
+                <iconify-icon icon="game-icons:weight"></iconify-icon> <span>0 / 27 kg</span>
               </span>
             </div>
             <p id="inv-modal-char-meta" class="text-xs font-mono font-bold app-muted mt-0.5"></p>
@@ -1813,7 +1816,7 @@
         <!-- Controle de Limite de Peso (Padrão 27 kg, editável pelo Jogador dono e Mestre) + Botão X -->
         <div class="flex items-center gap-2.5">
           <div id="inv-modal-max-weight-box" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-black/30 border app-divider-border text-xs">
-            <span class="font-bold gold-title">⚖️ Limite Peso:</span>
+            <span class="font-bold gold-title flex items-center gap-1"><iconify-icon icon="game-icons:weight"></iconify-icon> <span>Limite Peso:</span></span>
             <input
               id="inv-modal-max-weight-input"
               type="number"
@@ -1840,16 +1843,16 @@
       <div class="px-6 py-3.5 border-b app-divider-border bg-black/20 flex flex-wrap items-center justify-between gap-3 text-xs shrink-0">
         <div class="flex flex-wrap items-center gap-1.5" id="inv-modal-type-filters">
           <button type="button" data-inv-filter="ALL" class="px-3 py-1.5 rounded-lg font-bold btn-gold">Todos</button>
-          <button type="button" data-inv-filter="EQUIPPED" class="px-3 py-1.5 rounded-lg font-bold app-secondary-btn">✅ Equipados</button>
-          <button type="button" data-inv-filter="ARMADURA" class="px-3 py-1.5 rounded-lg font-bold app-secondary-btn">🛡️ Armaduras</button>
-          <button type="button" data-inv-filter="ARMA" class="px-3 py-1.5 rounded-lg font-bold app-secondary-btn">⚔️ Armas</button>
-          <button type="button" data-inv-filter="ACESSORIO" class="px-3 py-1.5 rounded-lg font-bold app-secondary-btn">💍 Acessórios</button>
-          <button type="button" data-inv-filter="CONSUMIVEL" class="px-3 py-1.5 rounded-lg font-bold app-secondary-btn">🧪 Consumíveis</button>
-          <button type="button" data-inv-filter="OUTRO" class="px-3 py-1.5 rounded-lg font-bold app-secondary-btn">🎒 Outros</button>
+          <button type="button" data-inv-filter="EQUIPPED" class="px-3 py-1.5 rounded-lg font-bold app-secondary-btn flex items-center gap-1.5"><iconify-icon icon="game-icons:check-mark" style="color: #4ade80;"></iconify-icon> <span>Equipados</span></button>
+          <button type="button" data-inv-filter="ARMADURA" class="px-3 py-1.5 rounded-lg font-bold app-secondary-btn flex items-center gap-1.5"><iconify-icon icon="game-icons:breastplate" class="icon-armor"></iconify-icon> <span>Armaduras</span></button>
+          <button type="button" data-inv-filter="ARMA" class="px-3 py-1.5 rounded-lg font-bold app-secondary-btn flex items-center gap-1.5"><iconify-icon icon="game-icons:gladius"></iconify-icon> <span>Armas</span></button>
+          <button type="button" data-inv-filter="ACESSORIO" class="px-3 py-1.5 rounded-lg font-bold app-secondary-btn flex items-center gap-1.5"><iconify-icon icon="game-icons:ring"></iconify-icon> <span>Acessórios</span></button>
+          <button type="button" data-inv-filter="CONSUMIVEL" class="px-3 py-1.5 rounded-lg font-bold app-secondary-btn flex items-center gap-1.5"><iconify-icon icon="game-icons:health-potion"></iconify-icon> <span>Consumíveis</span></button>
+          <button type="button" data-inv-filter="OUTRO" class="px-3 py-1.5 rounded-lg font-bold app-secondary-btn flex items-center gap-1.5"><iconify-icon icon="game-icons:knapsack"></iconify-icon> <span>Outros</span></button>
         </div>
 
         <div class="relative w-full sm:w-72">
-          <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs opacity-60">🔍</span>
+          <iconify-icon icon="game-icons:magnifying-glass" class="absolute left-3 top-1/2 -translate-y-1/2 text-xs opacity-60"></iconify-icon>
           <input
             id="inv-modal-search-input"
             type="text"
@@ -1875,7 +1878,7 @@
     <div class="modal-panel w-full max-w-md rounded-2xl overflow-hidden">
       <div class="px-5 py-4 border-b flex items-center justify-between app-modal-header">
         <div class="flex items-center gap-2.5">
-          <span id="recipient-modal-icon" class="text-xl">🎁</span>
+          <span id="recipient-modal-icon" class="text-xl flex items-center"><iconify-icon icon="game-icons:chest" class="icon-gold"></iconify-icon></span>
           <div>
             <h3 id="recipient-modal-title" class="font-serif-fantasy text-base font-black uppercase gold-title">
               CONCEDER ITEM A PERSONAGEM
@@ -1894,14 +1897,14 @@
 
         <div>
           <label for="recipient-char-select" class="block font-bold uppercase tracking-wider mb-1.5 gold-title">
-            👤 Escolha quem receberá o item:
+            <iconify-icon icon="game-icons:hooded-figure"></iconify-icon> <span>Escolha quem receberá o item:</span>
           </label>
           <select id="recipient-char-select" required class="w-full px-3 py-2.5 text-sm font-bold app-input"></select>
         </div>
 
         <div>
           <label for="recipient-item-qty" class="block font-bold uppercase tracking-wider mb-1.5 app-label">
-            🔢 Quantidade
+            <iconify-icon icon="game-icons:abacus"></iconify-icon> <span>Quantidade</span>
           </label>
           <input
             id="recipient-item-qty"
@@ -1920,7 +1923,7 @@
             Cancelar
           </button>
           <button type="submit" id="recipient-submit-btn" class="btn-gold px-5 py-2 font-serif-fantasy uppercase tracking-wider">
-            🎁 Confirmar
+            <iconify-icon icon="game-icons:chest"></iconify-icon> <span>Confirmar</span>
           </button>
         </div>
       </form>
@@ -1934,7 +1937,7 @@
     <div class="modal-panel w-full max-w-md rounded-2xl overflow-hidden">
       <div class="px-5 py-4 border-b flex items-center justify-between app-modal-header">
         <div class="flex items-center gap-2.5">
-          <span class="text-xl">🪙</span>
+          <iconify-icon icon="game-icons:two-coins" class="icon-gold text-xl"></iconify-icon>
           <div>
             <h3 class="font-serif-fantasy text-base font-black uppercase gold-title">
               SOLICITAR VENDA DE ITEM
@@ -1951,7 +1954,7 @@
 
         <div>
           <label for="sell-escrow-price-input" class="block font-bold uppercase tracking-wider mb-1.5 gold-title">
-            🪙 Valor Desejado para Venda:
+            <iconify-icon icon="game-icons:two-coins" class="icon-gold"></iconify-icon> <span>Valor Desejado para Venda:</span>
           </label>
           <input
             id="sell-escrow-price-input"
@@ -1970,7 +1973,7 @@
             Cancelar
           </button>
           <button type="submit" class="btn-gold px-5 py-2 font-serif-fantasy uppercase tracking-wider">
-            🪙 Enviar Solicitação de Venda
+            <iconify-icon icon="game-icons:two-coins" class="icon-gold"></iconify-icon> <span>Enviar Solicitação de Venda</span>
           </button>
         </div>
       </form>
@@ -1978,13 +1981,13 @@
   </div>
 
   <!-- ========================================================================= -->
-  <!-- MODAL 13: CONFIRMAÇÃO (RESETAR ♻️ / DEL 🗑️ / COMPRAS)                     -->
+  <!-- MODAL 13: CONFIRMAÇÃO (RESETAR / DEL / COMPRAS)                     -->
   <!-- ========================================================================= -->
   <div id="modal-confirm" class="modal-backdrop hidden fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-4">
     <div class="modal-panel w-full max-w-sm rounded-2xl overflow-hidden">
       <div class="p-6 text-center space-y-3">
         <div id="confirm-modal-icon" class="w-14 h-14 rounded-2xl mx-auto flex items-center justify-center text-3xl bg-amber-500/15 border border-amber-500/30">
-          ♻️
+          <iconify-icon icon="game-icons:sands-of-time" class="gold-title"></iconify-icon>
         </div>
         <h3 id="confirm-modal-title" class="font-serif-fantasy text-base font-black tracking-wider uppercase gold-title">CONFIRMAR AÇÃO</h3>
         <p id="confirm-modal-message" class="text-xs sm:text-sm app-muted leading-relaxed"></p>

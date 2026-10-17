@@ -21,11 +21,11 @@
       "nickname": "Dan Ray Mestre",
       "title": "Host Principal • IP: 26.200.214.89",
       "role": "MESTRE",
-      "avatar": "👑",
+      "avatar": "crown",
       "characterId": "char_1792247955297_6y44",
       "cursorColor": "#F59E0B",
-      "online": true,
-      "connectionsCount": 1,
+      "online": false,
+      "connectionsCount": 0,
       "permissions": {
         "preset": "MESTRE_TOTAL",
         "canEditRoom": true,
@@ -135,8 +135,8 @@
       "avatar": "🗡️",
       "characterId": "char_1792247955297_6y44",
       "cursorColor": "#F97316",
-      "online": true,
-      "connectionsCount": 1,
+      "online": false,
+      "connectionsCount": 0,
       "permissions": {
         "preset": "PERSONALIZADO",
         "canCreateCharacters": true,
@@ -1392,52 +1392,12 @@
       "createdAt": "17/10/2026 14:37:35"
     },
     {
-      "id": "audit_f5a342e5",
-      "actorName": "Dan Ray Mestre (MESTRE)",
-      "actionType": "MEMBER_NICKNAME_UPDATE",
-      "targetEntity": "IP: 26.175.113.177",
-      "summary": "Apelido definido como \"leitinhobr\".",
-      "createdAt": "17/10/2026 14:36:23"
-    },
-    {
-      "id": "audit_b043a2aa",
-      "actorName": "Dan Ray Mestre (MESTRE)",
-      "actionType": "MEMBER_NICKNAME_UPDATE",
-      "targetEntity": "IP: 26.175.113.177",
-      "summary": "Apelido definido como \"leitinhobr\".",
-      "createdAt": "17/10/2026 14:36:09"
-    },
-    {
-      "id": "audit_05583a60",
-      "actorName": "Dan Ray Mestre (MESTRE)",
-      "actionType": "MEMBER_NICKNAME_UPDATE",
-      "targetEntity": "IP: 26.175.113.177",
-      "summary": "Apelido definido como \"leitinhobr\".",
-      "createdAt": "17/10/2026 14:35:40"
-    },
-    {
       "id": "audit_023492f7",
       "actorName": "leitinhobr (JOGADOR)",
       "actionType": "MEMBER_NICKNAME_UPDATE",
       "targetEntity": "IP: 26.175.113.177",
       "summary": "Apelido definido como \"leitinhobr\".",
       "createdAt": "17/10/2026 14:34:19"
-    },
-    {
-      "id": "audit_8f9b62e3",
-      "actorName": "Dan Ray Mestre (MESTRE)",
-      "actionType": "ITEM_EDIT",
-      "targetEntity": "Item: Oculos",
-      "summary": "Item Oculos (OUTRO) salvo no catálogo e propagado aos inventários.",
-      "createdAt": "17/10/2026 14:33:44"
-    },
-    {
-      "id": "audit_00e7716b",
-      "actorName": "Dan Ray Mestre (MESTRE)",
-      "actionType": "ITEM_EDIT",
-      "targetEntity": "Item: Guloseima",
-      "summary": "Item Guloseima (CONSUMIVEL) salvo no catálogo e propagado aos inventários.",
-      "createdAt": "17/10/2026 14:33:28"
     },
     {
       "id": "audit_59f8b956",
