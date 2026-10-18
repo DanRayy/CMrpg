@@ -742,6 +742,149 @@ html[data-theme="light"] .room-hero-banner {
 }
 
 /* ==========================================================================
+   Smooth RGB Chroma Cursor Animations (Exclusivo do Mestre)
+   ========================================================================== */
+@keyframes rgb-smooth-fill {
+  0%   { fill: #ff2255; }
+  16%  { fill: #ff7700; }
+  33%  { fill: #ffcc00; }
+  50%  { fill: #00ee66; }
+  66%  { fill: #00b4d8; }
+  83%  { fill: #9d4edd; }
+  100% { fill: #ff2255; }
+}
+
+@keyframes rgb-smooth-color {
+  0% {
+    color: #ff2255;
+    border-color: #ff2255;
+    box-shadow: 0 0 10px rgba(255, 34, 85, 0.45);
+  }
+  16% {
+    color: #ff7700;
+    border-color: #ff7700;
+    box-shadow: 0 0 10px rgba(255, 119, 0, 0.45);
+  }
+  33% {
+    color: #ffcc00;
+    border-color: #ffcc00;
+    box-shadow: 0 0 10px rgba(255, 204, 0, 0.45);
+  }
+  50% {
+    color: #00ee66;
+    border-color: #00ee66;
+    box-shadow: 0 0 10px rgba(0, 238, 102, 0.45);
+  }
+  66% {
+    color: #00b4d8;
+    border-color: #00b4d8;
+    box-shadow: 0 0 10px rgba(0, 180, 216, 0.45);
+  }
+  83% {
+    color: #9d4edd;
+    border-color: #9d4edd;
+    box-shadow: 0 0 10px rgba(157, 78, 221, 0.45);
+  }
+  100% {
+    color: #ff2255;
+    border-color: #ff2255;
+    box-shadow: 0 0 10px rgba(255, 34, 85, 0.45);
+  }
+}
+
+@keyframes rgb-smooth-bg {
+  0%   { background-color: #ff2255; box-shadow: 0 0 8px #ff2255; }
+  16%  { background-color: #ff7700; box-shadow: 0 0 8px #ff7700; }
+  33%  { background-color: #ffcc00; box-shadow: 0 0 8px #ffcc00; }
+  50%  { background-color: #00ee66; box-shadow: 0 0 8px #00ee66; }
+  66%  { background-color: #00b4d8; box-shadow: 0 0 8px #00b4d8; }
+  83%  { background-color: #9d4edd; box-shadow: 0 0 8px #9d4edd; }
+  100% { background-color: #ff2255; box-shadow: 0 0 8px #ff2255; }
+}
+
+@keyframes rgb-smooth-text {
+  0%   { color: #ff2255; }
+  16%  { color: #ff7700; }
+  33%  { color: #ffcc00; }
+  50%  { color: #00ee66; }
+  66%  { color: #00b4d8; }
+  83%  { color: #9d4edd; }
+  100% { color: #ff2255; }
+}
+
+@keyframes rgb-smooth-glow {
+  0%   { filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.72)) drop-shadow(0 0 6px rgba(255, 34, 85, 0.6)); }
+  16%  { filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.72)) drop-shadow(0 0 6px rgba(255, 119, 0, 0.6)); }
+  33%  { filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.72)) drop-shadow(0 0 6px rgba(255, 204, 0, 0.6)); }
+  50%  { filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.72)) drop-shadow(0 0 6px rgba(0, 238, 102, 0.6)); }
+  66%  { filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.72)) drop-shadow(0 0 6px rgba(0, 180, 216, 0.6)); }
+  83%  { filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.72)) drop-shadow(0 0 6px rgba(157, 78, 221, 0.6)); }
+  100% { filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.72)) drop-shadow(0 0 6px rgba(255, 34, 85, 0.6)); }
+}
+
+.cursor-master-rgb .remote-cursor-svg {
+  animation: rgb-smooth-glow 6s linear infinite;
+}
+
+.cursor-master-rgb .remote-cursor-arrow-path {
+  animation: rgb-smooth-fill 6s linear infinite;
+  fill: #ff2255;
+}
+
+.cursor-master-rgb .remote-cursor-badge {
+  animation: rgb-smooth-color 6s linear infinite;
+  background-color: rgba(10, 8, 14, 0.94);
+  font-weight: 900;
+}
+
+.cursor-master-rgb .remote-cursor-badge-dot {
+  animation: rgb-smooth-bg 6s linear infinite;
+}
+
+.cursor-master-rgb .remote-cursor-badge-name {
+  animation: rgb-smooth-text 6s linear infinite;
+}
+
+.sidebar-cursor-pill.pill-master-rgb {
+  animation: rgb-smooth-color 6s linear infinite;
+  background-color: rgba(12, 10, 16, 0.92);
+  font-weight: 900;
+}
+
+.sidebar-cursor-pill.pill-master-rgb .sidebar-cursor-pill-dot {
+  animation: rgb-smooth-bg 6s linear infinite;
+}
+
+.rgb-smooth-bg-cycle {
+  animation: rgb-smooth-bg 6s linear infinite;
+}
+
+.rgb-avatar-box-shadow {
+  animation: rgb-smooth-color 6s linear infinite;
+}
+
+.rgb-text-animated {
+  animation: rgb-smooth-text 6s linear infinite;
+}
+
+.rgb-badge-animated {
+  animation: rgb-smooth-color 6s linear infinite, rgb-smooth-bg 6s linear infinite;
+  color: #ffffff !important;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+}
+
+.rgb-master-banner {
+  background: radial-gradient(circle at 10% 50%, rgba(255, 34, 85, 0.12), transparent 60%),
+              radial-gradient(circle at 90% 50%, rgba(0, 180, 216, 0.12), transparent 60%),
+              rgba(14, 11, 20, 0.9);
+  animation: rgb-smooth-color 6s linear infinite;
+}
+
+.cursor-subtle {
+  opacity: 0.25 !important;
+}
+
+/* ==========================================================================
    Iconify (Game-Icons) Medieval / Dark Fantasy Styling
    ========================================================================== */
 iconify-icon {
@@ -788,5 +931,54 @@ iconify-icon {
 [data-item-description] {
   white-space: pre-wrap !important;
   word-break: break-word !important;
+}
+
+/* ==========================================================================
+   Sistema de Batalha & Fila de Turnos
+   ========================================================================== */
+.battle-sidebar {
+  background-color: var(--bg-sidebar);
+  border-left: 1px solid var(--border-subtle);
+  width: 300px;
+}
+
+html[data-theme="light"] .battle-sidebar {
+  background-color: var(--bg-sidebar);
+  border-left: 1px solid var(--border-subtle);
+}
+
+.card-active-turn {
+  border-color: #f59e0b !important;
+  box-shadow: 0 0 25px rgba(245, 158, 11, 0.45), inset 0 0 15px rgba(245, 158, 11, 0.08) !important;
+  animation: pulse-turn-glow 2.4s ease-in-out infinite;
+}
+
+@keyframes pulse-turn-glow {
+  0%, 100% {
+    box-shadow: 0 0 18px rgba(245, 158, 11, 0.35), inset 0 0 10px rgba(245, 158, 11, 0.06);
+  }
+  50% {
+    box-shadow: 0 0 32px rgba(245, 158, 11, 0.65), inset 0 0 20px rgba(245, 158, 11, 0.15);
+  }
+}
+
+#battle-sidebar.sidebar-collapsed {
+  width: 0 !important;
+  min-width: 0 !important;
+  padding: 0 !important;
+  border-left: none !important;
+  opacity: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.battle-drag-target-over {
+  border-color: #f59e0b !important;
+  background-color: rgba(245, 158, 11, 0.12) !important;
+}
+
+.battle-item-dragging {
+  opacity: 0.45 !important;
+  transform: scale(0.97);
 }
 

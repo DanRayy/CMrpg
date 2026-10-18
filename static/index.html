@@ -453,6 +453,16 @@
 
             <button
               type="button"
+              id="btn-battle-toggle"
+              class="master-only-el px-3.5 py-2 text-xs font-serif-fantasy uppercase tracking-wider btn-gold flex items-center gap-1.5 shadow-md transition"
+              title="Iniciar ou Encerrar Batalha e Ordem de Turnos"
+            >
+              <iconify-icon id="btn-battle-toggle-icon" icon="game-icons:crossed-swords" class="text-base"></iconify-icon>
+              <span id="btn-battle-toggle-text">INICIAR BATALHA</span>
+            </button>
+
+            <button
+              type="button"
               id="btn-bulk-rewards"
               class="master-only-el px-3.5 py-2 text-xs font-serif-fantasy uppercase tracking-wider btn-gold-outline flex items-center gap-1.5"
             >
@@ -853,6 +863,115 @@
   </div>
 
   <!-- ========================================================================= -->
+  <!-- SIDEBAR DIREITA: FILA DE BATALHA (Full Height 100vh / Full Panel)         -->
+  <!-- ========================================================================= -->
+  <aside
+    id="battle-sidebar"
+    class="battle-sidebar hidden fixed lg:sticky top-0 right-0 z-40 h-screen w-[300px] shrink-0 flex flex-col justify-between transition-all duration-300"
+  >
+    <!-- Topo da Sidebar: Cabeçalho com Título, Badges de Rodada e Cargas, e Botão de Recolher -->
+    <div class="p-4 border-b app-divider-border space-y-3 shrink-0">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <iconify-icon icon="game-icons:crossed-swords" class="text-amber-400 text-lg"></iconify-icon>
+          <h3 class="font-serif-fantasy font-black text-sm tracking-widest uppercase gold-title">Fila de Batalha</h3>
+        </div>
+        <button
+          type="button"
+          id="btn-battle-sidebar-toggle-collapse"
+          class="w-7 h-7 rounded-lg flex items-center justify-center app-icon-btn text-xs hover:text-amber-400 transition"
+          title="Recolher Fila de Batalha"
+        >
+          <span>▶</span>
+        </button>
+      </div>
+
+      <!-- Badges: Rodada e Cargas -->
+      <div class="flex items-center justify-between gap-2 pt-0.5">
+        <span id="battle-round-badge" class="text-[11px] font-mono font-bold px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
+          Rodada 1
+        </span>
+
+        <!-- Badge de Cargas com Controles para Mestre -->
+        <div class="inline-flex items-center gap-1">
+          <span
+            id="battle-charges-badge"
+            class="text-[11px] font-mono font-bold px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 flex items-center gap-1"
+            title="Cargas de Combate (+1 automático a cada turno de jogador concluído)"
+          >
+            <iconify-icon icon="game-icons:battery-75" class="text-xs text-cyan-400"></iconify-icon>
+            <span>Cargas: <strong id="battle-charges-value" class="text-white font-black">0</strong></span>
+          </span>
+          <div class="master-only-el inline-flex items-center gap-0.5">
+            <button
+              type="button"
+              id="btn-battle-charge-sub"
+              class="w-5 h-5 rounded flex items-center justify-center app-icon-btn text-[11px] font-mono font-bold text-cyan-300 hover:text-cyan-100"
+              title="Diminuir Carga (-1)"
+            >-</button>
+            <button
+              type="button"
+              id="btn-battle-charge-add"
+              class="w-5 h-5 rounded flex items-center justify-center app-icon-btn text-[11px] font-mono font-bold text-cyan-300 hover:text-cyan-100"
+              title="Aumentar Carga (+1)"
+            >+</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Divisor Losango Dourado Sutil -->
+      <div class="gold-diamond-divider mt-2">
+        <span>◇</span>
+      </div>
+    </div>
+
+    <!-- Seção de Ação: Botão Avançar Turno e Dica de Quem Joga -->
+    <div class="px-4 pt-3 pb-2 shrink-0 space-y-1.5">
+      <button
+        type="button"
+        id="btn-battle-advance-turn"
+        class="w-full py-2.5 px-3 rounded-lg font-serif-fantasy text-xs tracking-wider uppercase font-black btn-gold flex items-center justify-center gap-2 shadow-lg hover:scale-[1.02] transition disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        <iconify-icon icon="game-icons:fast-forward-button" class="text-base"></iconify-icon>
+        <span>AVANÇAR TURNO</span>
+      </button>
+      <div id="battle-turn-hint" class="text-[10px] text-center app-muted italic px-1"></div>
+    </div>
+
+    <!-- Lista Vertical da Fila de Turnos (Scrollável) -->
+    <div class="px-4 py-2 flex-1 overflow-y-auto space-y-2 app-scroll">
+      <div id="battle-queue-list" class="space-y-2">
+        <!-- Renderizado dinamicamente -->
+      </div>
+    </div>
+
+    <!-- Rodapé da Sidebar: Ações do Mestre -->
+    <div class="p-3 border-t app-divider-border shrink-0 flex items-center gap-2">
+      <button
+        type="button"
+        id="btn-battle-edit-order"
+        class="master-only-el flex-1 py-1.5 px-2 text-[11px] font-serif-fantasy uppercase tracking-wider btn-gold-outline flex items-center justify-center gap-1"
+      >
+        <iconify-icon icon="game-icons:rearrange"></iconify-icon>
+        <span>Editar Ordem</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- Aba Lateral de Reabertura Rápida da Fila (Quando recolhida) -->
+  <button
+    type="button"
+    id="btn-battle-sidebar-dock-tab"
+    class="hidden fixed right-0 top-28 z-40 py-3.5 px-2 rounded-l-xl bg-[var(--bg-sidebar)] border border-r-0 border-amber-500/50 shadow-2xl flex flex-col items-center gap-2 hover:bg-amber-950/80 transition cursor-pointer group"
+    title="Expandir Fila de Batalha"
+  >
+    <iconify-icon icon="game-icons:crossed-swords" class="text-amber-400 text-lg group-hover:scale-110 transition"></iconify-icon>
+    <span class="text-[9px] font-mono font-bold text-amber-300 [writing-mode:vertical-rl] tracking-wider uppercase">Batalha</span>
+    <span id="battle-dock-tab-charges" class="text-[9px] font-mono font-bold text-cyan-300 bg-cyan-950/70 border border-cyan-500/30 px-1 py-0.5 rounded">C:0</span>
+    <span class="text-[10px] text-amber-400">◀</span>
+  </button>
+
+  <!-- ========================================================================= -->
   <!-- MODAL 1: CRIAR / EDITAR PERSONAGEM (Com Point Buy 57 pts & 7 Resistências)-->
   <!-- ========================================================================= -->
   <div id="modal-char-form" class="modal-backdrop hidden fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
@@ -974,11 +1093,11 @@
           <div id="char-form-elem-resistances-grid" class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2"></div>
         </div>
 
-        <!-- Limites Máximos das 7 Resistências de Status -->
+        <!-- Limites Máximos dos 7 Acúmulos de Status -->
         <div>
           <div class="flex items-center justify-between mb-2">
             <h4 class="font-serif-fantasy font-extrabold uppercase tracking-wider app-muted">
-              <iconify-icon icon="game-icons:round-bottom-flask"></iconify-icon> <span>Limites Máximos das 7 Barras de Status (Sangramento, Veneno, etc.)</span>
+              <iconify-icon icon="game-icons:round-bottom-flask"></iconify-icon> <span>Limites Máximos dos 7 Acúmulos de Status (Sangramento, Veneno, etc.)</span>
             </h4>
             <button type="button" id="btn-reset-res-defaults" class="text-[11px] font-bold gold-title hover:underline">
               Padrão (100)
@@ -1251,7 +1370,7 @@
   </div>
 
   <!-- ========================================================================= -->
-  <!-- MODAL 4: PAINEL DAS 7 RESISTÊNCIAS + SUB-MODAL 4.1                   -->
+  <!-- MODAL 4: PAINEL DOS 7 ACÚMULOS + SUB-MODAL 4.1                         -->
   <!-- ========================================================================= -->
   <div id="modal-resistances" class="modal-backdrop hidden fixed inset-0 z-40 flex items-center justify-center p-3 sm:p-4">
     <div class="modal-panel w-full max-w-lg rounded-2xl overflow-hidden flex flex-col max-h-[90vh]">
@@ -1259,7 +1378,7 @@
         <div class="flex items-center gap-2.5">
           <iconify-icon icon="game-icons:round-bottom-flask" class="text-xl gold-title"></iconify-icon>
           <div>
-            <h3 class="font-serif-fantasy text-base font-black tracking-wider uppercase gold-title">PAINEL DE RESISTÊNCIAS</h3>
+            <h3 class="font-serif-fantasy text-base font-black tracking-wider uppercase gold-title">PAINEL DE ACÚMULOS</h3>
             <p id="res-panel-char-name" class="text-xs font-bold app-muted"></p>
           </div>
         </div>
@@ -1267,7 +1386,7 @@
       </div>
 
       <div class="p-5 overflow-y-auto space-y-2.5 flex-1">
-        <p class="text-xs app-muted mb-3">Clique em qualquer resistência abaixo para ajustar seus pontos:</p>
+        <p class="text-xs app-muted mb-3">Clique em qualquer acúmulo abaixo para ajustar seus pontos:</p>
         <div id="resistances-list-container" class="space-y-2.5"></div>
       </div>
 
@@ -1285,7 +1404,7 @@
         <div class="flex items-center gap-2">
           <span id="single-res-icon" class="text-xl flex items-center"><iconify-icon icon="game-icons:ice-cube" style="color: #38bdf8;"></iconify-icon></span>
           <div>
-            <h3 id="single-res-title" class="font-serif-fantasy text-base font-black tracking-wider uppercase app-title">RESISTÊNCIA</h3>
+            <h3 id="single-res-title" class="font-serif-fantasy text-base font-black tracking-wider uppercase app-title">ACÚMULO</h3>
             <p id="single-res-subtitle" class="text-xs font-mono font-bold app-muted"></p>
           </div>
         </div>
@@ -1702,7 +1821,7 @@
 
         <div>
           <div class="flex items-center justify-between mb-1.5">
-            <label class="block font-bold uppercase gold-title"><iconify-icon icon="game-icons:sparkles"></iconify-icon> <span>Cor Permanente do Cursor (10 Cores)</span></label>
+            <label class="block font-bold uppercase gold-title"><iconify-icon icon="game-icons:sparkles"></iconify-icon> <span id="member-cursor-color-title">Cor Permanente do Cursor (10 Cores)</span></label>
             <span id="member-cursor-color-label" class="text-[10px] font-mono font-bold app-muted"></span>
           </div>
           <input type="hidden" id="member-cursor-color-input" value="" />
@@ -2146,10 +2265,10 @@
           </div>
         </div>
 
-        <!-- Limites Máximos das 7 Resistências de Status -->
+        <!-- Limites Máximos dos 7 Acúmulos de Status -->
         <div>
           <h4 class="font-serif-fantasy font-extrabold uppercase tracking-wider app-muted mb-2">
-            <iconify-icon icon="game-icons:round-bottom-flask"></iconify-icon> <span>Limites Máximos das 7 Resistências de Status</span>
+            <iconify-icon icon="game-icons:round-bottom-flask"></iconify-icon> <span>Limites Máximos dos 7 Acúmulos de Status</span>
           </h4>
           <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2" id="enemy-resistances-grid"></div>
         </div>
@@ -2264,6 +2383,94 @@
           <iconify-icon icon="game-icons:save"></iconify-icon>
           <span>Salvar Alterações</span>
         </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- MODAL 14: CONFIGURAÇÃO DA ORDEM DE BATALHA (2 COLUNAS DRAG & DROP)        -->
+  <!-- ========================================================================= -->
+  <div id="modal-battle-order" class="modal-backdrop hidden fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
+    <div class="modal-panel w-full max-w-4xl rounded-2xl overflow-hidden flex flex-col max-h-[90vh]">
+      <div class="px-6 py-4 border-b flex items-center justify-between app-modal-header">
+        <div class="flex items-center gap-3">
+          <iconify-icon icon="game-icons:crossed-swords" class="text-2xl gold-title"></iconify-icon>
+          <div>
+            <h3 id="battle-order-modal-title" class="font-serif-fantasy text-base sm:text-lg font-black tracking-wider uppercase gold-title">
+              ORDEM DE INICIATIVA DA BATALHA
+            </h3>
+            <p class="text-xs app-muted">Arraste ou use os botões para definir a ordem em que personagens e inimigos agirão.</p>
+          </div>
+        </div>
+        <button type="button" data-close-modal="modal-battle-order" class="w-8 h-8 rounded-lg flex items-center justify-center app-icon-btn">✕</button>
+      </div>
+
+      <div class="p-4 sm:p-6 overflow-y-auto flex-1 grid grid-cols-1 md:grid-cols-2 gap-5">
+        <!-- Coluna Esquerda: Disponíveis na Mesa -->
+        <div class="flex flex-col rounded-xl border app-divider-border bg-black/25 overflow-hidden">
+          <div class="p-3.5 border-b app-divider-border flex items-center justify-between bg-black/30">
+            <div class="flex items-center gap-2">
+              <span class="font-serif-fantasy font-extrabold text-xs uppercase tracking-wider text-amber-200">
+                Disponíveis na Mesa
+              </span>
+              <span id="battle-available-count" class="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-black/40 border app-divider-border app-muted">0</span>
+            </div>
+            <button
+              type="button"
+              id="btn-battle-add-all"
+              class="px-2.5 py-1 text-[11px] font-serif-fantasy uppercase tracking-wider btn-gold-outline flex items-center gap-1"
+            >
+              <span>+ Adicionar Todos</span>
+            </button>
+          </div>
+
+          <div id="battle-available-list" class="p-3 space-y-2 overflow-y-auto flex-1 min-h-[260px] max-h-[420px]">
+            <!-- Renderizado dinamicamente -->
+          </div>
+        </div>
+
+        <!-- Coluna Direita: Fila de Combate (Ordenada) -->
+        <div class="flex flex-col rounded-xl border border-amber-500/30 bg-black/25 overflow-hidden">
+          <div class="p-3.5 border-b border-amber-500/30 flex items-center justify-between bg-amber-500/10">
+            <div class="flex items-center gap-2">
+              <span class="font-serif-fantasy font-extrabold text-xs uppercase tracking-wider gold-title">
+                Fila de Batalha (1º ao Último)
+              </span>
+              <span id="battle-queue-count" class="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">0</span>
+            </div>
+            <button
+              type="button"
+              id="btn-battle-clear-queue"
+              class="px-2 py-1 text-[11px] font-serif-fantasy uppercase tracking-wider text-rose-300 hover:text-rose-100 hover:bg-rose-950/40 rounded transition"
+            >
+              Limpar Fila
+            </button>
+          </div>
+
+          <div
+            id="battle-modal-queue-list"
+            class="p-3 space-y-2 overflow-y-auto flex-1 min-h-[260px] max-h-[420px]"
+          >
+            <!-- Renderizado dinamicamente com Drag and Drop -->
+          </div>
+        </div>
+      </div>
+
+      <div class="px-6 py-4 border-t flex items-center justify-between gap-3 app-divider-border bg-black/30">
+        <span class="text-xs app-muted hidden sm:inline"><iconify-icon icon="game-icons:help" class="align-middle"></iconify-icon> Dica: Você pode reordenar a qualquer momento arrastando ou usando as setas.</span>
+        <div class="flex items-center gap-2 ml-auto">
+          <button type="button" data-close-modal="modal-battle-order" class="px-4 py-2.5 rounded-lg font-bold text-xs uppercase app-secondary-btn">
+            Cancelar
+          </button>
+          <button
+            type="button"
+            id="btn-confirm-battle-order"
+            class="btn-gold px-6 py-2.5 font-serif-fantasy font-black text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-lg"
+          >
+            <iconify-icon icon="game-icons:crossed-swords" class="text-base"></iconify-icon>
+            <span id="btn-confirm-battle-order-text">CONFIRMAR E INICIAR BATALHA</span>
+          </button>
+        </div>
       </div>
     </div>
   </div>

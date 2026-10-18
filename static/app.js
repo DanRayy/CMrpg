@@ -1119,24 +1119,31 @@
   function isValidPaletteColor(hex) {
     if (!hex) return false;
     const upper = String(hex).trim().toUpperCase();
+    if (upper === 'RGB_CHROMA') return true;
     return CURSOR_COLOR_PALETTE.some((c) => c.hex.toUpperCase() === upper);
   }
 
   function normalizePaletteColor(hex) {
     if (!hex) return null;
     const upper = String(hex).trim().toUpperCase();
+    if (upper === 'RGB_CHROMA') return 'RGB_CHROMA';
     const found = CURSOR_COLOR_PALETTE.find((c) => c.hex.toUpperCase() === upper);
     return found ? found.hex : null;
   }
 
   function getColorNameByHex(hex) {
     const norm = normalizePaletteColor(hex);
+    if (norm === 'RGB_CHROMA') return 'RGB Cromático (Transição Suave)';
     const found = CURSOR_COLOR_PALETTE.find((c) => c.hex === norm);
     return found ? found.name : 'Cor Personalizada';
   }
 
   function assignPermanentMemberCursorColor(memberKey, preferredHex = null, usedHexList = []) {
     const key = String(memberKey || 'player').trim();
+    if (key === 'host_master' || String(preferredHex || '').toUpperCase() === 'RGB_CHROMA') {
+      return 'RGB_CHROMA';
+    }
+
     const normPreferred = normalizePaletteColor(preferredHex);
     if (normPreferred) {
       saveStoredCursorColorForKey(key, normPreferred);
@@ -1149,18 +1156,17 @@
       return storedColor;
     }
 
-    let baseIdx = 0;
-    if (key === 'host_master') {
-      baseIdx = 3; // Amarelo Ouro (#F59E0B) por padrão para o Mestre
-    } else {
-      let h = 0;
-      for (let i = 0; i < key.length; i++) {
-        h = (h * 31 + key.charCodeAt(i)) >>> 0;
-      }
-      baseIdx = h % CURSOR_COLOR_PALETTE.length;
+    let h = 0;
+    for (let i = 0; i < key.length; i++) {
+      h = (h * 31 + key.charCodeAt(i)) >>> 0;
     }
+    const baseIdx = h % CURSOR_COLOR_PALETTE.length;
 
-    const usedSet = new Set((usedHexList || []).map((c) => String(c || '').toUpperCase()));
+    const usedSet = new Set(
+      (usedHexList || [])
+        .map((c) => String(c || '').toUpperCase())
+        .filter((c) => c !== 'RGB_CHROMA')
+    );
     for (let offset = 0; offset < CURSOR_COLOR_PALETTE.length; offset++) {
       const candidate = CURSOR_COLOR_PALETTE[(baseIdx + offset) % CURSOR_COLOR_PALETTE.length].hex;
       if (!usedSet.has(candidate.toUpperCase())) {
@@ -1178,7 +1184,12 @@
     const used = [];
     for (const m of state.members || []) {
       if (!m) continue;
-      const key = m.id || (m.ip ? `ip_${m.ip}` : 'host_master');
+      const isMasterRole = m.role === 'MESTRE' || m.id === 'host_master';
+      if (isMasterRole) {
+        m.cursorColor = 'RGB_CHROMA';
+        continue;
+      }
+      const key = m.id || (m.ip ? `ip_${m.ip}` : 'player');
       const assigned = assignPermanentMemberCursorColor(key, m.cursorColor, used);
       m.cursorColor = assigned;
       used.push(assigned);
@@ -1187,12 +1198,12 @@
 
   function getLocalPlayerCursorIdentity() {
     const activeMem = getActiveMember();
+    const isMaster = isEffectiveMaster();
     const memberKey = activeMem?.id || state.localMemberId || `ip_${state.localClientIp}`;
-    const color = assignPermanentMemberCursorColor(memberKey, activeMem?.cursorColor);
-    if (activeMem && !activeMem.cursorColor) {
+    const color = isMaster ? 'RGB_CHROMA' : assignPermanentMemberCursorColor(memberKey, activeMem?.cursorColor);
+    if (activeMem) {
       activeMem.cursorColor = color;
     }
-    const isMaster = isEffectiveMaster();
     const rawNick = (activeMem?.nickname || activeMem?.name || '').trim();
     const nickname = rawNick || (isMaster ? 'Mestre' : `Jogador (${state.localClientIp})`);
     return {
@@ -1200,6 +1211,7 @@
       memberId: memberKey,
       nickname,
       color,
+      isMaster,
     };
   }
 
@@ -1321,6 +1333,7 @@
           memberId: identity.memberId,
           nickname: identity.nickname,
           color: identity.color,
+          isMaster: identity.isMaster,
           activeTab: state.activeTab,
           ...coords,
         })
@@ -1356,24 +1369,29 @@
     const layer = document.getElementById('multiplayer-cursors-layer');
     if (!layer) return;
 
+    const isMaster = Boolean(cursor.isMaster || cursor.color === 'RGB_CHROMA');
     let el = cursor.el;
     if (!el || !layer.contains(el)) {
       el = document.createElement('div');
-      el.className = 'remote-cursor cursor-hidden';
+      el.className = `remote-cursor cursor-hidden ${isMaster ? 'cursor-master-rgb' : ''}`;
       el.setAttribute('data-cursor-id', cursor.cursorId);
       el.innerHTML = `
         <svg class="remote-cursor-svg" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path
             class="remote-cursor-arrow-path"
             d="M4.2 2.6L19.8 11.1C20.7 11.6 20.5 13.0 19.5 13.2L12.6 14.7L9.3 20.9C8.8 21.8 7.4 21.6 7.2 20.6L3.0 4.0C2.8 2.9 3.4 2.1 4.2 2.6Z"
-            fill="${escapeHtml(cursor.color)}"
+            fill="${isMaster ? '#ff2255' : escapeHtml(cursor.color)}"
             stroke="#FFFFFF"
             stroke-width="1.6"
             stroke-linejoin="round"
           />
         </svg>
         <div class="remote-cursor-badge">
-          <span class="remote-cursor-badge-dot"></span>
+          ${
+            isMaster
+              ? '<iconify-icon icon="game-icons:crown" class="text-amber-300"></iconify-icon>'
+              : '<span class="remote-cursor-badge-dot"></span>'
+          }
           <span class="remote-cursor-badge-name"></span>
         </div>
       `;
@@ -1381,9 +1399,29 @@
       cursor.el = el;
     }
 
-    el.style.setProperty('--cursor-color', cursor.color);
-    const arrowPath = el.querySelector('.remote-cursor-arrow-path');
-    if (arrowPath) arrowPath.setAttribute('fill', cursor.color);
+    if (isMaster) {
+      el.classList.add('cursor-master-rgb');
+      const badge = el.querySelector('.remote-cursor-badge');
+      if (badge && !badge.querySelector('iconify-icon[icon="game-icons:crown"]')) {
+        badge.innerHTML = `
+          <iconify-icon icon="game-icons:crown" class="text-amber-300"></iconify-icon>
+          <span class="remote-cursor-badge-name"></span>
+        `;
+      }
+    } else {
+      el.classList.remove('cursor-master-rgb');
+      el.style.setProperty('--cursor-color', cursor.color);
+      const arrowPath = el.querySelector('.remote-cursor-arrow-path');
+      if (arrowPath) arrowPath.setAttribute('fill', cursor.color);
+      const badge = el.querySelector('.remote-cursor-badge');
+      if (badge && !badge.querySelector('.remote-cursor-badge-dot')) {
+        badge.innerHTML = `
+          <span class="remote-cursor-badge-dot"></span>
+          <span class="remote-cursor-badge-name"></span>
+        `;
+      }
+    }
+
     const nameEl = el.querySelector('.remote-cursor-badge-name');
     if (nameEl && nameEl.textContent !== cursor.nickname) {
       nameEl.textContent = cursor.nickname;
@@ -1426,18 +1464,30 @@
         return;
       }
       container.innerHTML = list
-        .map(
-          (c) => `
-          <span
-            class="sidebar-cursor-pill"
-            style="--cursor-color: ${escapeHtml(c.color)}"
-            title="${escapeHtml(c.nickname)} está em ${TAB_TITLES[tabId] || tabId}"
-          >
-            <span class="sidebar-cursor-pill-dot"></span>
-            <span>${escapeHtml(c.nickname)}</span>
-          </span>
-        `
-        )
+        .map((c) => {
+          const isMaster = Boolean(c.isMaster || c.color === 'RGB_CHROMA');
+          if (isMaster) {
+            return `
+              <span
+                class="sidebar-cursor-pill pill-master-rgb"
+                title="${escapeHtml(c.nickname)} (Mestre) está em ${TAB_TITLES[tabId] || tabId}"
+              >
+                <iconify-icon icon="game-icons:crown" class="text-amber-300 text-[10px]"></iconify-icon>
+                <span>${escapeHtml(c.nickname)}</span>
+              </span>
+            `;
+          }
+          return `
+            <span
+              class="sidebar-cursor-pill"
+              style="--cursor-color: ${escapeHtml(c.color)}"
+              title="${escapeHtml(c.nickname)} está em ${TAB_TITLES[tabId] || tabId}"
+            >
+              <span class="sidebar-cursor-pill-dot"></span>
+              <span>${escapeHtml(c.nickname)}</span>
+            </span>
+          `;
+        })
         .join('');
     });
   }
@@ -1449,11 +1499,15 @@
         (m) => m.id === cursor.memberId || (cursor.ip && m.ip === cursor.ip)
       );
       if (mem) {
+        const isMaster = mem.role === 'MESTRE' || mem.id === 'host_master';
+        if (isMaster) {
+          cursor.isMaster = true;
+          cursor.color = 'RGB_CHROMA';
+        } else if (mem.cursorColor) {
+          cursor.color = normalizePaletteColor(mem.cursorColor) || cursor.color;
+        }
         if (mem.nickname && mem.nickname.trim()) {
           cursor.nickname = mem.nickname.trim();
-        }
-        if (mem.cursorColor) {
-          cursor.color = normalizePaletteColor(mem.cursorColor) || cursor.color;
         }
       }
       createOrUpdateRemoteCursorElement(cursor);
@@ -1468,14 +1522,22 @@
     const memberObj = (state.members || []).find(
       (m) => m.id === data.memberId || (data.ip && m.ip === data.ip)
     );
-    const resolvedColor =
-      normalizePaletteColor(memberObj?.cursorColor) ||
-      normalizePaletteColor(data.color) ||
-      assignPermanentMemberCursorColor(data.memberId || cursorId);
+    const isMaster = Boolean(
+      data.isMaster ||
+      data.isHost ||
+      data.memberId === 'host_master' ||
+      memberObj?.role === 'MESTRE' ||
+      memberObj?.id === 'host_master'
+    );
+    const resolvedColor = isMaster
+      ? 'RGB_CHROMA'
+      : (normalizePaletteColor(memberObj?.cursorColor) ||
+         normalizePaletteColor(data.color) ||
+         assignPermanentMemberCursorColor(data.memberId || cursorId));
     const resolvedNickname =
       (memberObj?.nickname && memberObj.nickname.trim()) ||
       String(data.nickname || '').trim() ||
-      (data.isHost ? 'Mestre' : `Jogador (${data.ip || ''})`);
+      (isMaster ? 'Mestre' : `Jogador (${data.ip || ''})`);
 
     let existing = state.remoteCursors.get(cursorId);
     if (!existing) {
@@ -1484,6 +1546,7 @@
         connId: data.connId || '',
         memberId: data.memberId || '',
         ip: data.ip || '',
+        isMaster,
         nickname: resolvedNickname,
         color: resolvedColor,
         activeTab: data.activeTab || 'overview',
@@ -1501,6 +1564,7 @@
       existing.connId = data.connId || existing.connId;
       existing.memberId = data.memberId || existing.memberId;
       existing.ip = data.ip || existing.ip;
+      existing.isMaster = isMaster;
       existing.nickname = resolvedNickname;
       existing.color = resolvedColor;
       existing.activeTab = data.activeTab || 'overview';
@@ -1559,6 +1623,9 @@
   function initMultiplayerCursorsTracking() {
     getOrAssignLocalCursorClientId();
     ensureMembersHavePermanentCursorColors();
+
+    const localFollower = document.getElementById('local-master-cursor');
+    if (localFollower) localFollower.remove();
 
     window.addEventListener(
       'mousemove',
@@ -1876,7 +1943,11 @@
                   : 'bg-emerald-950/50 border-emerald-500/40 text-emerald-200'
               } ${memberObj ? 'cursor-pointer hover:border-amber-300' : ''}"
             >
-              <span class="w-2.5 h-2.5 rounded-full shrink-0 border border-white/50" style="background-color: ${escapeHtml(cursorColor)}" title="Cor do Cursor: ${escapeHtml(getColorNameByHex(cursorColor))}"></span>
+              ${
+                conn.isHost || cursorColor === 'RGB_CHROMA'
+                  ? `<span class="w-3 h-3 rounded-full shrink-0 border border-white/60 rgb-smooth-bg-cycle inline-block" title="Cursor do Mestre: Transição RGB Suave"></span>`
+                  : `<span class="w-2.5 h-2.5 rounded-full shrink-0 border border-white/50" style="background-color: ${escapeHtml(cursorColor)}" title="Cor do Cursor: ${escapeHtml(getColorNameByHex(cursorColor))}"></span>`
+              }
               <span class="font-mono font-black tracking-wide">${escapeHtml(conn.ip)}</span>
               <span class="px-1.5 py-0.2 rounded text-[10px] font-extrabold ${
                 conn.isHost ? 'bg-amber-400 text-black' : 'bg-black/40 text-amber-300'
@@ -1949,14 +2020,22 @@
             <div class="flex items-center gap-3">
               <div class="w-9 h-9 rounded-full ${
                 isMasterRole
-                  ? 'bg-amber-500/20 border-amber-400/60'
+                  ? 'bg-amber-500/20 border-amber-400/60 rgb-avatar-box-shadow'
                   : 'bg-amber-500/10 border-amber-500/30'
-              } border flex items-center justify-center text-base shrink-0" style="box-shadow: 0 0 0 2px ${escapeHtml(memberCursorColor)}44;">
+              } border flex items-center justify-center text-base shrink-0" ${
+                isMasterRole
+                  ? ''
+                  : `style="box-shadow: 0 0 0 2px ${escapeHtml(memberCursorColor)}44;"`
+              }>
                 ${isMasterRole ? '<iconify-icon icon="game-icons:crown" class="gold-title"></iconify-icon>' : '<iconify-icon icon="game-icons:hooded-figure"></iconify-icon>'}
               </div>
               <div>
                 <div class="font-bold text-sm app-title flex flex-wrap items-center gap-2">
-                  <span class="w-2.5 h-2.5 rounded-full inline-block shrink-0 border border-white/50" style="background-color: ${escapeHtml(memberCursorColor)}" title="Cor do Cursor: ${escapeHtml(getColorNameByHex(memberCursorColor))}"></span>
+                  ${
+                    isMasterRole || memberCursorColor === 'RGB_CHROMA'
+                      ? `<span class="w-3 h-3 rounded-full inline-block shrink-0 border border-white/60 rgb-smooth-bg-cycle" title="Cursor do Mestre: Transição RGB Suave"></span>`
+                      : `<span class="w-2.5 h-2.5 rounded-full inline-block shrink-0 border border-white/50" style="background-color: ${escapeHtml(memberCursorColor)}" title="Cor do Cursor: ${escapeHtml(getColorNameByHex(memberCursorColor))}"></span>`
+                  }
                   <span>${escapeHtml(displayName)}</span>
                   ${isMe ? '<span class="px-1.5 py-0.2 rounded text-[9px] font-mono bg-amber-500/20 gold-title border border-amber-500/30">VOCÊ</span>' : ''}
                   ${
@@ -2038,6 +2117,640 @@
       .join('');
   }
 
+  // ===========================================================================
+  // SISTEMA DE BATALHA & FILA DE TURNOS (Combate Dinâmico & Sincronizado)
+  // ===========================================================================
+  let battleOrderWorkingQueue = [];
+
+  function getBattleState() {
+    if (!state.battle || typeof state.battle !== 'object') {
+      state.battle = {
+        isActive: false,
+        roundNumber: 1,
+        currentTurnIndex: 0,
+        charges: 0,
+        orderIds: [],
+        turnCounts: {},
+      };
+    }
+    if (!Array.isArray(state.battle.orderIds)) state.battle.orderIds = [];
+    if (!state.battle.turnCounts || typeof state.battle.turnCounts !== 'object') {
+      state.battle.turnCounts = {};
+    }
+    state.battle.roundNumber = Math.max(1, Number(state.battle.roundNumber || 1));
+    state.battle.currentTurnIndex = Math.max(0, Number(state.battle.currentTurnIndex || 0));
+    state.battle.charges = Math.max(0, Number(state.battle.charges || 0));
+    return state.battle;
+  }
+
+  function sanitizeBattleOrder() {
+    const battle = getBattleState();
+    if (!battle.isActive || battle.orderIds.length === 0) return false;
+    const validCharIds = new Set((state.characters || []).map((c) => c.id));
+    const originalLength = battle.orderIds.length;
+    const currentActingId = battle.orderIds[battle.currentTurnIndex % battle.orderIds.length];
+
+    battle.orderIds = battle.orderIds.filter((id) => validCharIds.has(id));
+    if (battle.orderIds.length === 0) {
+      battle.isActive = false;
+      battle.roundNumber = 1;
+      battle.currentTurnIndex = 0;
+      battle.charges = 0;
+      return true;
+    }
+    if (battle.orderIds.length !== originalLength) {
+      const newIdx = battle.orderIds.indexOf(currentActingId);
+      battle.currentTurnIndex = newIdx !== -1 ? newIdx : Math.min(battle.currentTurnIndex, battle.orderIds.length - 1);
+      return true;
+    }
+    return false;
+  }
+
+  function canCurrentMemberAdvanceTurn() {
+    const battle = getBattleState();
+    if (!battle.isActive || battle.orderIds.length === 0) return false;
+    if (isEffectiveMaster()) return true;
+
+    const actingId = battle.orderIds[battle.currentTurnIndex % battle.orderIds.length];
+    const actingChar = (state.characters || []).find((c) => c.id === actingId);
+    if (!actingChar) return false;
+    if (actingChar.isEnemy) return false;
+
+    return canEditCharacter(actingChar);
+  }
+
+  function getTurnPermissionText() {
+    const battle = getBattleState();
+    if (!battle.isActive || battle.orderIds.length === 0) return '';
+    const actingId = battle.orderIds[battle.currentTurnIndex % battle.orderIds.length];
+    const actingChar = (state.characters || []).find((c) => c.id === actingId);
+    if (!actingChar) return 'Aguardando combatente...';
+
+    const isMaster = isEffectiveMaster();
+    if (actingChar.isEnemy) {
+      return isMaster
+        ? `Turno de ${actingChar.name} (Inimigo) — Você tem controle de avanço.`
+        : `Turno de ${actingChar.name} (Inimigo) — Aguardando o Mestre avançar.`;
+    }
+
+    if (canEditCharacter(actingChar)) {
+      return `É o seu turno (${actingChar.name})! Clique em Avançar Turno para finalizar.`;
+    }
+
+    return `Turno de ${actingChar.name} — Aguardando o jogador ou Mestre avançar.`;
+  }
+
+  function advanceBattleTurn() {
+    const battle = getBattleState();
+    if (!battle.isActive || battle.orderIds.length === 0) return;
+
+    if (!canCurrentMemberAdvanceTurn()) {
+      showToast('Você não tem permissão para avançar o turno deste combatente!', 'warning');
+      return;
+    }
+
+    commitMutation((st, toasts) => {
+      const b = st.battle;
+      if (!b || !b.isActive || !Array.isArray(b.orderIds) || b.orderIds.length === 0) return false;
+      const len = b.orderIds.length;
+
+      // Combatente que está FINALIZANDO o turno agora
+      const currentActingIdx = Number(b.currentTurnIndex || 0) % len;
+      const finishingActingId = b.orderIds[currentActingIdx];
+      const finishingChar = (st.characters || []).find((c) => c.id === finishingActingId);
+
+      // Regra de Cargas: +1 APENAS quando a ficha de um JOGADOR passar o turno.
+      // Se for INIMIGO, o contador NÃO pode aumentar.
+      const isFinishingEnemy = Boolean(finishingChar && finishingChar.isEnemy);
+      if (finishingChar && !isFinishingEnemy) {
+        b.charges = Math.max(0, Number(b.charges || 0)) + 1;
+      }
+
+      // Avança para o próximo combatente
+      const nextIdx = Number(b.currentTurnIndex || 0) + 1;
+      if (nextIdx >= len) {
+        b.currentTurnIndex = 0;
+        b.roundNumber = Math.max(1, Number(b.roundNumber || 1)) + 1;
+      } else {
+        b.currentTurnIndex = nextIdx;
+      }
+
+      const newActingId = b.orderIds[b.currentTurnIndex];
+      if (!b.turnCounts) b.turnCounts = {};
+      b.turnCounts[newActingId] = Number(b.turnCounts[newActingId] || 0) + 1;
+
+      const charObj = (st.characters || []).find((c) => c.id === newActingId);
+      const charName = charObj ? charObj.name : 'Combatente';
+      toasts.push(`Rodada ${b.roundNumber} - Turno de ${charName}!`);
+      return true;
+    });
+  }
+
+  function adjustBattleCharges(delta) {
+    if (!isEffectiveMaster()) return;
+    commitMutation((st) => {
+      if (!st.battle || !st.battle.isActive) return false;
+      st.battle.charges = Math.max(0, Number(st.battle.charges || 0) + delta);
+      return true;
+    });
+  }
+
+  function updateBattleToggleButton() {
+    const btn = document.getElementById('btn-battle-toggle');
+    const icon = document.getElementById('btn-battle-toggle-icon');
+    const text = document.getElementById('btn-battle-toggle-text');
+    if (!btn || !text) return;
+
+    const battle = getBattleState();
+    if (battle.isActive) {
+      btn.className = 'master-only-el px-3.5 py-2 text-xs font-serif-fantasy uppercase tracking-wider bg-rose-950/80 hover:bg-rose-900 border border-rose-500/70 text-rose-200 font-extrabold flex items-center gap-1.5 shadow-md transition';
+      if (icon) icon.setAttribute('icon', 'game-icons:skull-crossed-bones');
+      text.textContent = 'ENCERRAR BATALHA';
+      btn.title = 'Encerrar o combate ativo e zerar contadores de turno e cargas';
+    } else {
+      btn.className = 'master-only-el px-3.5 py-2 text-xs font-serif-fantasy uppercase tracking-wider btn-gold flex items-center gap-1.5 shadow-md transition';
+      if (icon) icon.setAttribute('icon', 'game-icons:crossed-swords');
+      text.textContent = 'INICIAR BATALHA';
+      btn.title = 'Configurar ordem e iniciar combate';
+    }
+  }
+
+  function handleBattleToggleClick() {
+    if (!isEffectiveMaster()) return;
+    const battle = getBattleState();
+    if (battle.isActive) {
+      openConfirmModal({
+        icon: '<iconify-icon icon="game-icons:skull-crossed-bones" class="text-rose-400"></iconify-icon>',
+        title: 'ENCERRAR BATALHA?',
+        message: 'Deseja realmente encerrar o combate atual? A fila de batalha será fechada e os contadores de turnos e cargas serão zerados.',
+        confirmText: '<iconify-icon icon="game-icons:skull-crossed-bones"></iconify-icon> <span>Encerrar</span>',
+        onConfirm: () => {
+          commitMutation((st, toasts) => {
+            st.battle = {
+              isActive: false,
+              roundNumber: 1,
+              currentTurnIndex: 0,
+              charges: 0,
+              orderIds: [],
+              turnCounts: {},
+            };
+            toasts.push('Combate encerrado pelo Mestre.');
+            return true;
+          });
+        },
+      });
+    } else {
+      openBattleOrderModal();
+    }
+  }
+
+  function openBattleOrderModal() {
+    const battle = getBattleState();
+    const validIds = new Set((state.characters || []).map((c) => c.id));
+
+    if (battle.isActive && battle.orderIds.length > 0) {
+      battleOrderWorkingQueue = battle.orderIds.filter((id) => validIds.has(id));
+    } else {
+      battleOrderWorkingQueue = (state.characters || []).map((c) => c.id);
+    }
+
+    const titleEl = document.getElementById('battle-order-modal-title');
+    const confirmBtnText = document.getElementById('btn-confirm-battle-order-text');
+    if (titleEl) {
+      titleEl.textContent = battle.isActive ? 'ATUALIZAR ORDEM DE BATALHA' : 'ORDEM DE INICIATIVA DA BATALHA';
+    }
+    if (confirmBtnText) {
+      confirmBtnText.textContent = battle.isActive ? 'ATUALIZAR ORDEM' : 'CONFIRMAR E INICIAR BATALHA';
+    }
+
+    renderBattleOrderModalContent();
+    openModal('modal-battle-order');
+  }
+
+  function renderBattleOrderModalContent() {
+    const availableContainer = document.getElementById('battle-available-list');
+    const queueContainer = document.getElementById('battle-modal-queue-list');
+    const availableCountEl = document.getElementById('battle-available-count');
+    const queueCountEl = document.getElementById('battle-queue-count');
+    if (!availableContainer || !queueContainer) return;
+
+    const queuedSet = new Set(battleOrderWorkingQueue);
+    const availableChars = (state.characters || []).filter((c) => !queuedSet.has(c.id));
+
+    if (availableCountEl) availableCountEl.textContent = String(availableChars.length);
+    if (queueCountEl) queueCountEl.textContent = String(battleOrderWorkingQueue.length);
+
+    // Coluna Esquerda: Disponíveis
+    if (availableChars.length === 0) {
+      availableContainer.innerHTML = `
+        <div class="py-12 text-center text-xs app-muted italic flex flex-col items-center gap-2">
+          <iconify-icon icon="game-icons:check-mark" class="text-2xl text-emerald-400"></iconify-icon>
+          <span>Todos os combatentes da mesa estão na fila!</span>
+        </div>
+      `;
+    } else {
+      availableContainer.innerHTML = availableChars.map((c) => {
+        const isEnemy = Boolean(c.isEnemy);
+        return `
+          <div class="p-2.5 rounded-lg border app-divider-border bg-black/40 flex items-center justify-between gap-2.5 hover:border-amber-500/30 transition">
+            <div class="flex items-center gap-2.5 min-w-0">
+              <span class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border ${
+                isEnemy ? 'bg-rose-950/40 border-rose-500/40 text-rose-300' : 'bg-amber-500/10 border-amber-500/30 text-amber-300'
+              }">
+                <iconify-icon icon="${isEnemy ? 'game-icons:monster-grasp' : 'game-icons:hooded-figure'}" class="text-lg"></iconify-icon>
+              </span>
+              <div class="min-w-0">
+                <div class="font-serif-fantasy font-black text-xs truncate app-title">${escapeHtml(c.name)}</div>
+                <div class="flex items-center gap-1.5 text-[10px] font-mono app-muted">
+                  <span>${isEnemy ? 'Inimigo' : 'Jogador'}</span>
+                  <span>•</span>
+                  <span>NV. ${c.level || 1}</span>
+                  <span>•</span>
+                  <span>HP ${c.hp}/${c.maxHp}</span>
+                </div>
+              </div>
+            </div>
+            <button
+              type="button"
+              data-battle-add-id="${escapeHtml(c.id)}"
+              class="px-2.5 py-1 text-xs font-serif-fantasy font-black btn-gold rounded flex items-center gap-1 shrink-0 hover:scale-105 transition"
+              title="Adicionar à fila de batalha"
+            >
+              <span>+</span>
+            </button>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Coluna Direita: Fila Ordenada
+    if (battleOrderWorkingQueue.length === 0) {
+      queueContainer.innerHTML = `
+        <div class="py-12 text-center text-xs app-muted italic flex flex-col items-center gap-2">
+          <iconify-icon icon="game-icons:crossed-swords" class="text-2xl text-amber-400/50"></iconify-icon>
+          <span>Fila vazia. Adicione participantes da coluna ao lado.</span>
+        </div>
+      `;
+    } else {
+      queueContainer.innerHTML = battleOrderWorkingQueue.map((id, index) => {
+        const c = (state.characters || []).find((char) => char.id === id);
+        if (!c) return '';
+        const isEnemy = Boolean(c.isEnemy);
+        return `
+          <div
+            class="battle-queue-draggable-item p-2.5 rounded-lg border border-amber-500/25 bg-black/40 flex items-center justify-between gap-2.5 cursor-move hover:border-amber-400/60 transition"
+            draggable="true"
+            data-drag-order-id="${escapeHtml(c.id)}"
+            data-drag-order-index="${index}"
+          >
+            <div class="flex items-center gap-2.5 min-w-0 flex-1">
+              <span class="text-xs font-mono opacity-50 shrink-0">⠿</span>
+              <span class="px-1.5 py-0.5 rounded text-[10px] font-mono font-black ${
+                index === 0 ? 'bg-amber-500/20 text-amber-300 border border-amber-400/50' : 'bg-black/40 app-muted border app-divider-border'
+              } shrink-0">
+                ${index + 1}º
+              </span>
+              <span class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border ${
+                isEnemy ? 'bg-rose-950/40 border-rose-500/40 text-rose-300' : 'bg-amber-500/10 border-amber-500/30 text-amber-300'
+              }">
+                <iconify-icon icon="${isEnemy ? 'game-icons:monster-grasp' : 'game-icons:hooded-figure'}" class="text-lg"></iconify-icon>
+              </span>
+              <div class="min-w-0 flex-1">
+                <div class="font-serif-fantasy font-black text-xs truncate app-title">${escapeHtml(c.name)}</div>
+                <div class="text-[10px] font-mono app-muted truncate">${isEnemy ? 'Inimigo' : 'Jogador'} • NV. ${c.level || 1}</div>
+              </div>
+            </div>
+
+            <!-- Controles Subir/Descer/Remover -->
+            <div class="flex items-center gap-1 shrink-0">
+              <button
+                type="button"
+                data-battle-move-up="${index}"
+                ${index === 0 ? 'disabled' : ''}
+                class="w-7 h-7 rounded flex items-center justify-center app-icon-btn text-xs disabled:opacity-20 disabled:cursor-not-allowed hover:text-amber-400"
+                title="Mover para cima"
+              >
+                ▲
+              </button>
+              <button
+                type="button"
+                data-battle-move-down="${index}"
+                ${index === battleOrderWorkingQueue.length - 1 ? 'disabled' : ''}
+                class="w-7 h-7 rounded flex items-center justify-center app-icon-btn text-xs disabled:opacity-20 disabled:cursor-not-allowed hover:text-amber-400"
+                title="Mover para baixo"
+              >
+                ▼
+              </button>
+              <button
+                type="button"
+                data-battle-remove-id="${escapeHtml(c.id)}"
+                class="w-7 h-7 rounded flex items-center justify-center app-icon-btn text-xs text-rose-400 hover:bg-rose-950/60"
+                title="Remover da fila"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    attachBattleOrderModalListeners();
+  }
+
+  function attachBattleOrderModalListeners() {
+    const availableContainer = document.getElementById('battle-available-list');
+    const queueContainer = document.getElementById('battle-modal-queue-list');
+    if (!availableContainer || !queueContainer) return;
+
+    availableContainer.querySelectorAll('[data-battle-add-id]').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const id = btn.getAttribute('data-battle-add-id');
+        if (id && !battleOrderWorkingQueue.includes(id)) {
+          battleOrderWorkingQueue.push(id);
+          renderBattleOrderModalContent();
+        }
+      });
+    });
+
+    queueContainer.querySelectorAll('[data-battle-move-up]').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const idx = Number(btn.getAttribute('data-battle-move-up'));
+        if (idx > 0 && idx < battleOrderWorkingQueue.length) {
+          const temp = battleOrderWorkingQueue[idx];
+          battleOrderWorkingQueue[idx] = battleOrderWorkingQueue[idx - 1];
+          battleOrderWorkingQueue[idx - 1] = temp;
+          renderBattleOrderModalContent();
+        }
+      });
+    });
+
+    queueContainer.querySelectorAll('[data-battle-move-down]').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const idx = Number(btn.getAttribute('data-battle-move-down'));
+        if (idx >= 0 && idx < battleOrderWorkingQueue.length - 1) {
+          const temp = battleOrderWorkingQueue[idx];
+          battleOrderWorkingQueue[idx] = battleOrderWorkingQueue[idx + 1];
+          battleOrderWorkingQueue[idx + 1] = temp;
+          renderBattleOrderModalContent();
+        }
+      });
+    });
+
+    queueContainer.querySelectorAll('[data-battle-remove-id]').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const id = btn.getAttribute('data-battle-remove-id');
+        battleOrderWorkingQueue = battleOrderWorkingQueue.filter((x) => x !== id);
+        renderBattleOrderModalContent();
+      });
+    });
+
+    let draggedId = null;
+    queueContainer.querySelectorAll('.battle-queue-draggable-item').forEach((item) => {
+      item.addEventListener('dragstart', (e) => {
+        draggedId = item.getAttribute('data-drag-order-id');
+        item.classList.add('battle-item-dragging');
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', draggedId);
+      });
+
+      item.addEventListener('dragend', () => {
+        draggedId = null;
+        item.classList.remove('battle-item-dragging');
+        queueContainer.querySelectorAll('.battle-queue-draggable-item').forEach((el) => {
+          el.classList.remove('battle-drag-target-over');
+        });
+      });
+
+      item.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        item.classList.add('battle-drag-target-over');
+      });
+
+      item.addEventListener('dragleave', () => {
+        item.classList.remove('battle-drag-target-over');
+      });
+
+      item.addEventListener('drop', (e) => {
+        e.preventDefault();
+        item.classList.remove('battle-drag-target-over');
+        const targetId = item.getAttribute('data-drag-order-id');
+        if (!draggedId || draggedId === targetId) return;
+
+        const fromIdx = battleOrderWorkingQueue.indexOf(draggedId);
+        const toIdx = battleOrderWorkingQueue.indexOf(targetId);
+        if (fromIdx !== -1 && toIdx !== -1) {
+          battleOrderWorkingQueue.splice(fromIdx, 1);
+          battleOrderWorkingQueue.splice(toIdx, 0, draggedId);
+          renderBattleOrderModalContent();
+        }
+      });
+    });
+  }
+
+  function handleConfirmBattleOrder() {
+    if (battleOrderWorkingQueue.length === 0) {
+      showToast('Adicione pelo menos 1 participante à fila de combate!', 'warning');
+      return;
+    }
+
+    commitMutation((st, toasts) => {
+      const wasActive = Boolean(st.battle?.isActive);
+      if (!st.battle) st.battle = {};
+      st.battle.orderIds = [...battleOrderWorkingQueue];
+
+      if (!wasActive) {
+        st.battle.isActive = true;
+        st.battle.roundNumber = 1;
+        st.battle.currentTurnIndex = 0;
+        st.battle.charges = 0;
+        st.battle.turnCounts = {};
+        const firstId = st.battle.orderIds[0];
+        st.battle.turnCounts[firstId] = 1;
+
+        state.battleSidebarCollapsed = false;
+
+        const firstChar = (st.characters || []).find((c) => c.id === firstId);
+        const firstName = firstChar ? firstChar.name : '1º Combatente';
+        toasts.push(`Combate iniciado! Turno de ${firstName}!`);
+      } else {
+        st.battle.currentTurnIndex = Math.min(
+          Math.max(0, Number(st.battle.currentTurnIndex || 0)),
+          st.battle.orderIds.length - 1
+        );
+        toasts.push('Ordem da batalha atualizada!');
+      }
+      return true;
+    });
+
+    closeModal('modal-battle-order');
+  }
+
+  function renderBattleSidebar() {
+    const sidebar = document.getElementById('battle-sidebar');
+    const dockTab = document.getElementById('btn-battle-sidebar-dock-tab');
+    if (!sidebar) return;
+
+    sanitizeBattleOrder();
+    const battle = getBattleState();
+
+    if (!battle.isActive || battle.orderIds.length === 0) {
+      sidebar.classList.add('hidden');
+      if (dockTab) dockTab.classList.add('hidden');
+      return;
+    }
+
+    const isCollapsed = Boolean(state.battleSidebarCollapsed);
+
+    if (isCollapsed) {
+      sidebar.classList.add('sidebar-collapsed');
+      sidebar.classList.add('hidden');
+      if (dockTab) dockTab.classList.remove('hidden');
+    } else {
+      sidebar.classList.remove('sidebar-collapsed');
+      sidebar.classList.remove('hidden');
+      if (dockTab) dockTab.classList.add('hidden');
+    }
+
+    const roundBadge = document.getElementById('battle-round-badge');
+    if (roundBadge) roundBadge.textContent = `Rodada ${battle.roundNumber || 1}`;
+
+    const chargesVal = document.getElementById('battle-charges-value');
+    if (chargesVal) chargesVal.textContent = String(battle.charges || 0);
+
+    const dockCharges = document.getElementById('battle-dock-tab-charges');
+    if (dockCharges) dockCharges.textContent = `C:${battle.charges || 0}`;
+
+    const actingIndex = battle.currentTurnIndex % battle.orderIds.length;
+    const actingId = battle.orderIds[actingIndex];
+    const actingChar = (state.characters || []).find((c) => c.id === actingId);
+
+    const canAdvance = canCurrentMemberAdvanceTurn();
+    const hintText = getTurnPermissionText();
+
+    const advanceBtn = document.getElementById('btn-battle-advance-turn');
+    const hintEl = document.getElementById('battle-turn-hint');
+
+    if (advanceBtn) {
+      advanceBtn.disabled = !canAdvance;
+      advanceBtn.title = canAdvance ? 'Avançar para o próximo combatente' : hintText;
+    }
+    if (hintEl) hintEl.textContent = hintText;
+
+    const queueListEl = document.getElementById('battle-queue-list');
+    if (queueListEl) {
+      const isMaster = isEffectiveMaster();
+      queueListEl.innerHTML = battle.orderIds.map((id, index) => {
+        const c = (state.characters || []).find((char) => char.id === id);
+        if (!c) return '';
+        const isCurrent = index === actingIndex;
+        const isEnemy = Boolean(c.isEnemy);
+        const count = battle.turnCounts?.[id] || 0;
+
+        return `
+          <div
+            class="p-2 rounded-lg border transition flex items-center justify-between gap-2 ${
+              isCurrent
+                ? 'bg-amber-500/20 border-amber-400 shadow-md card-active-turn'
+                : 'bg-black/30 border-app-divider-border hover:border-amber-500/30'
+            }"
+            data-sidebar-order-id="${escapeHtml(c.id)}"
+          >
+            <div class="flex items-center gap-2 min-w-0 flex-1">
+              <span class="px-1.5 py-0.5 rounded text-[10px] font-mono font-black ${
+                isCurrent ? 'bg-amber-400 text-black' : 'bg-black/40 app-muted border app-divider-border'
+              } shrink-0">
+                ${index + 1}º
+              </span>
+              <span class="w-7 h-7 rounded-md flex items-center justify-center shrink-0 border ${
+                isEnemy ? 'bg-rose-950/40 border-rose-500/40 text-rose-300' : 'bg-amber-500/10 border-amber-500/30 text-amber-300'
+              }">
+                <iconify-icon icon="${isEnemy ? 'game-icons:monster-grasp' : 'game-icons:hooded-figure'}" class="text-base"></iconify-icon>
+              </span>
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-1.5 min-w-0">
+                  <span class="font-serif-fantasy font-black text-xs truncate ${isCurrent ? 'text-amber-200' : 'app-title'}">
+                    ${escapeHtml(c.name)}
+                  </span>
+                  ${
+                    isCurrent
+                      ? '<span class="px-1 py-0.2 rounded text-[8px] font-black bg-amber-400 text-black shrink-0 animate-pulse">VEZ</span>'
+                      : ''
+                  }
+                </div>
+                <div class="flex items-center gap-1.5 text-[9px] font-mono app-muted truncate">
+                  <span>${isEnemy ? 'Inimigo' : 'Jogador'}</span>
+                  <span>•</span>
+                  <span>Turnos: ${count}</span>
+                </div>
+              </div>
+            </div>
+
+            ${
+              isMaster
+                ? `<div class="flex items-center gap-0.5 shrink-0">
+                    <button
+                      type="button"
+                      data-sidebar-move-up="${index}"
+                      ${index === 0 ? 'disabled' : ''}
+                      class="w-6 h-6 rounded flex items-center justify-center app-icon-btn text-[10px] disabled:opacity-20 disabled:cursor-not-allowed hover:text-amber-400"
+                      title="Subir na fila"
+                    >▲</button>
+                    <button
+                      type="button"
+                      data-sidebar-move-down="${index}"
+                      ${index === battle.orderIds.length - 1 ? 'disabled' : ''}
+                      class="w-6 h-6 rounded flex items-center justify-center app-icon-btn text-[10px] disabled:opacity-20 disabled:cursor-not-allowed hover:text-amber-400"
+                      title="Descer na fila"
+                    >▼</button>
+                  </div>`
+                : ''
+            }
+          </div>
+        `;
+      }).join('');
+
+      if (isMaster) {
+        queueListEl.querySelectorAll('[data-sidebar-move-up]').forEach((btn) => {
+          btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const idx = Number(btn.getAttribute('data-sidebar-move-up'));
+            if (idx > 0 && idx < battle.orderIds.length) {
+              commitMutation((st) => {
+                if (!st.battle?.orderIds) return false;
+                const temp = st.battle.orderIds[idx];
+                st.battle.orderIds[idx] = st.battle.orderIds[idx - 1];
+                st.battle.orderIds[idx - 1] = temp;
+                return true;
+              });
+            }
+          });
+        });
+
+        queueListEl.querySelectorAll('[data-sidebar-move-down]').forEach((btn) => {
+          btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const idx = Number(btn.getAttribute('data-sidebar-move-down'));
+            if (idx >= 0 && idx < battle.orderIds.length - 1) {
+              commitMutation((st) => {
+                if (!st.battle?.orderIds) return false;
+                const temp = st.battle.orderIds[idx];
+                st.battle.orderIds[idx] = st.battle.orderIds[idx + 1];
+                st.battle.orderIds[idx + 1] = temp;
+                return true;
+              });
+            }
+          });
+        });
+      }
+    }
+  }
+
   // ---------------------------------------------------------------------------
   // ABA 2: PERSONAGENS & FICHAS (Cards + Barras + 6 Action Pills + Drag & Drop)
   // ---------------------------------------------------------------------------
@@ -2059,6 +2772,8 @@
       grid.classList.add('hidden');
       emptyState.classList.remove('hidden');
       emptyState.classList.add('flex');
+      renderBattleSidebar();
+      updateBattleToggleButton();
       return;
     }
 
@@ -2079,6 +2794,15 @@
         const armorPct = isMasked ? 0 : calcPercentage(char.armor, char.maxArmor);
         const manaPct = isMasked ? 0 : calcPercentage(char.mana, char.maxMana);
         const xpPct = calcPercentage(char.xp, char.xpNext || 80);
+
+        const battle = getBattleState();
+        const isBattleActive = Boolean(battle.isActive);
+        const orderIds = Array.isArray(battle.orderIds) ? battle.orderIds : [];
+        const actingCharId = isBattleActive && orderIds.length > 0
+          ? orderIds[battle.currentTurnIndex % orderIds.length]
+          : null;
+        const isCurrentTurn = isBattleActive && actingCharId === char.id;
+        const turnCount = isBattleActive ? Number(battle.turnCounts?.[char.id] || 0) : 0;
 
         const hpOverflow = !isMasked && char.hp > char.maxHp;
         const armorOverflow = !isMasked && char.armor > char.maxArmor;
@@ -2148,6 +2872,16 @@
                   ? `<button type="button" data-action="open-revive" data-char-id="${escapeHtml(char.id)}" class="px-2.5 py-1 rounded text-[11px] font-extrabold btn-gold flex items-center gap-1"><iconify-icon icon="game-icons:sparkles"></iconify-icon> <span>Reviver</span></button>`
                   : ''
               }
+            </div>`
+          : '';
+
+        const activeTurnBannerHtml = isCurrentTurn
+          ? `<div class="p-2.5 rounded-lg bg-amber-500/20 border border-amber-400/60 flex items-center justify-between text-amber-300 font-serif-fantasy text-xs font-black uppercase tracking-wider shadow-md animate-pulse">
+              <span class="flex items-center gap-2">
+                <iconify-icon icon="game-icons:crossed-swords" class="text-base text-amber-400"></iconify-icon>
+                <span>TURNO ATUAL</span>
+              </span>
+              <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-400/20 border border-amber-400/40 text-amber-200">AGINDO AGORA</span>
             </div>`
           : '';
 
@@ -2261,7 +2995,7 @@
                 type="button"
                 data-action="open-resistances"
                 data-char-id="${escapeHtml(char.id)}"
-                title="Painel das 7 Resistências"
+                title="Painel de Acúmulos"
                 class="relative w-9 h-9 rounded-lg flex items-center justify-center text-base app-icon-btn shrink-0 transition"
               >
                 <iconify-icon icon="game-icons:round-bottom-flask"></iconify-icon>
@@ -2312,7 +3046,7 @@
               type="button"
               data-action="open-resistances"
               data-char-id="${escapeHtml(char.id)}"
-              title="Painel das 7 Resistências"
+              title="Painel de Acúmulos"
               class="relative w-9 h-9 rounded-lg flex items-center justify-center text-base app-icon-btn shrink-0 transition"
             >
               <iconify-icon icon="game-icons:round-bottom-flask"></iconify-icon>
@@ -2439,6 +3173,8 @@
         return `
         <article
           class="char-card p-4 sm:p-5 flex flex-col justify-between gap-3.5 relative ${
+            isCurrentTurn ? 'card-active-turn' : ''
+          } ${
             char.isDead
               ? 'border-red-500/50 opacity-90'
               : (isEnemy ? 'border-rose-950/40 hover:border-amber-500/40' : '')
@@ -2469,6 +3205,13 @@
                 <span class="px-2 py-0.5 rounded text-[10px] font-mono font-extrabold bg-amber-500/15 gold-title border border-amber-500/30 shrink-0">
                   ${isMasked ? 'NV. ?' : `NV. ${char.level || 1}`}
                 </span>
+                ${
+                  isBattleActive
+                    ? `<span class="px-2 py-0.5 rounded text-[10px] font-mono font-extrabold bg-blue-500/20 text-blue-300 border border-blue-500/40 shrink-0 flex items-center gap-1" title="Quantidade de turnos executados nesta batalha">
+                        <iconify-icon icon="game-icons:sands-of-time"></iconify-icon> Turnos: ${turnCount}
+                      </span>`
+                    : ''
+                }
               </div>
 
               ${metaBarHtml}
@@ -2481,6 +3224,7 @@
             </div>
           </div>
 
+          ${activeTurnBannerHtml}
           ${deadBannerHtml}
           ${pendingBannerHtml}
 
@@ -2551,6 +3295,9 @@
       `;
       })
       .join('');
+
+    renderBattleSidebar();
+    updateBattleToggleButton();
   }
   // ---------------------------------------------------------------------------
   // ABA 3: CATÁLOGO DE ITENS
@@ -3304,6 +4051,7 @@
     renderBestiaryTab();
     renderQuestsTab();
     renderAdminTab();
+    renderBattleSidebar();
     refreshOpenModalsIfAny();
     refreshAllRemoteCursorsVisibility();
   }
@@ -4113,7 +4861,7 @@
       icon: '<iconify-icon icon="game-icons:sands-of-time"></iconify-icon>',
       title: `RESETAR ${char.name.toUpperCase()}?`,
       message:
-        'Todos os atributos (Vida, Armadura, Mana, limites máximos, Defesa e Regen%) voltarão ao estado inicial configurado e todas as 7 resistências serão zeradas.',
+        'Todos os atributos (Vida, Armadura, Mana, limites máximos, Defesa e Regen%) voltarão ao estado inicial configurado e todos os 7 acúmulos serão zerados.',
       confirmText: '<iconify-icon icon="game-icons:sands-of-time"></iconify-icon> <span>Resetar</span>',
       onConfirm: () => {
         commitMutation(
@@ -4176,6 +4924,16 @@
             const idx = st.characters.findIndex((c) => c.id === charId);
             if (idx === -1) return false;
             st.characters.splice(idx, 1);
+            if (st.battle && Array.isArray(st.battle.orderIds)) {
+              st.battle.orderIds = st.battle.orderIds.filter((id) => id !== charId);
+              if (st.battle.orderIds.length === 0) {
+                st.battle.isActive = false;
+                st.battle.roundNumber = 1;
+                st.battle.currentTurnIndex = 0;
+              } else if (st.battle.currentTurnIndex >= st.battle.orderIds.length) {
+                st.battle.currentTurnIndex = Math.max(0, st.battle.orderIds.length - 1);
+              }
+            }
             return true;
           },
           {
@@ -4284,7 +5042,7 @@
       entry.current = nextVal;
 
       if (maxVal > 0 && nextVal > oldVal && nextVal === maxVal) {
-        toasts.push(`${target.name} MAX ${resName}!`);
+        toasts.push(`${target.name} MAX ACÚMULO: ${resName.toUpperCase()}!`);
       }
       return true;
     });
@@ -5467,6 +6225,16 @@
             const idx = (st.characters || []).findIndex((x) => x.id === charId);
             if (idx === -1) return false;
             const removed = st.characters.splice(idx, 1)[0];
+            if (st.battle && Array.isArray(st.battle.orderIds)) {
+              st.battle.orderIds = st.battle.orderIds.filter((id) => id !== charId);
+              if (st.battle.orderIds.length === 0) {
+                st.battle.isActive = false;
+                st.battle.roundNumber = 1;
+                st.battle.currentTurnIndex = 0;
+              } else if (st.battle.currentTurnIndex >= st.battle.orderIds.length) {
+                st.battle.currentTurnIndex = Math.max(0, st.battle.orderIds.length - 1);
+              }
+            }
             toasts.push(`Inimigo "${removed.name}" foi removido da mesa.`);
             return true;
           },
@@ -5596,17 +6364,52 @@
       renderOverviewTab();
     });
 
-    const renderMemberCursorColorSwatches = (selectedHex) => {
+    const renderMemberCursorColorSwatches = (selectedHex, isMasterRole = false) => {
       const picker = document.getElementById('member-cursor-color-picker');
       const colorInp = document.getElementById('member-cursor-color-input');
       const colorLbl = document.getElementById('member-cursor-color-label');
+      const titleLbl = document.getElementById('member-cursor-color-title');
+
+      if (isMasterRole) {
+        if (titleLbl) titleLbl.textContent = 'Cursor do Mestre (Exclusivo)';
+        if (colorInp) colorInp.value = 'RGB_CHROMA';
+        if (colorLbl) {
+          colorLbl.textContent = 'Transição RGB Suave Dinâmica';
+          colorLbl.className = 'text-[10px] font-mono font-black rgb-text-animated';
+          colorLbl.style.color = '';
+        }
+        if (!picker) return;
+        picker.className = 'w-full p-0 rounded-xl overflow-hidden';
+        picker.innerHTML = `
+          <div class="w-full rgb-master-banner flex items-center justify-between p-3.5 rounded-xl border">
+            <div class="flex items-center gap-3">
+              <span class="w-9 h-9 rounded-lg flex items-center justify-center bg-black/50 text-amber-300 text-xl border border-amber-400/40 shrink-0">
+                <iconify-icon icon="game-icons:crown"></iconify-icon>
+              </span>
+              <div>
+                <div class="font-serif-fantasy font-black text-xs uppercase tracking-wider rgb-text-animated">Cursor do Mestre: RGB Cromático</div>
+                <div class="text-[10px] app-muted mt-0.5">Sem cor fixa. Transição dinâmica e suave em tempo real por todo o espectro de cores RGB.</div>
+              </div>
+            </div>
+            <span class="px-2.5 py-1 rounded-full text-[10px] font-black uppercase rgb-badge-animated flex items-center gap-1.5 shrink-0">
+              <iconify-icon icon="game-icons:sparkles"></iconify-icon>
+              <span>RGB Ativo</span>
+            </span>
+          </div>
+        `;
+        return;
+      }
+
+      if (titleLbl) titleLbl.textContent = 'Cor Permanente do Cursor (10 Cores)';
       const normHex = normalizePaletteColor(selectedHex) || CURSOR_COLOR_PALETTE[0].hex;
       if (colorInp) colorInp.value = normHex;
       if (colorLbl) {
+        colorLbl.className = 'text-[10px] font-mono font-bold app-muted';
         colorLbl.textContent = `${getColorNameByHex(normHex)} (${normHex})`;
         colorLbl.style.color = normHex;
       }
       if (!picker) return;
+      picker.className = 'grid grid-cols-5 sm:grid-cols-10 gap-2 p-2.5 rounded-xl bg-black/25 border app-divider-border';
 
       picker.innerHTML = CURSOR_COLOR_PALETTE.map((c) => {
         const isSelected = c.hex.toUpperCase() === normHex.toUpperCase();
@@ -5627,7 +6430,7 @@
     document.getElementById('member-cursor-color-picker')?.addEventListener('click', (e) => {
       const btn = e.target.closest('[data-pick-cursor-color]');
       if (!btn) return;
-      renderMemberCursorColorSwatches(btn.getAttribute('data-pick-cursor-color'));
+      renderMemberCursorColorSwatches(btn.getAttribute('data-pick-cursor-color'), false);
     });
 
     // Abrir modal de Membro / Apelido por IP
@@ -5651,9 +6454,9 @@
           : 'IP do jogador na rede local / Radmin VPN.';
       }
 
-      const assignedColor = assignPermanentMemberCursorColor(m.id, m.cursorColor);
+      const assignedColor = isMasterRole ? 'RGB_CHROMA' : assignPermanentMemberCursorColor(m.id, m.cursorColor);
       m.cursorColor = assignedColor;
-      renderMemberCursorColorSwatches(assignedColor);
+      renderMemberCursorColorSwatches(assignedColor, isMasterRole);
 
       const charSel = document.getElementById('member-char-select');
       charSel.innerHTML =
@@ -5768,12 +6571,16 @@
             ? `IP: ${m.ip}`
             : `Jogador Conectado (${m.ip})`;
           m.characterId = cid;
-          m.cursorColor = assignPermanentMemberCursorColor(m.id, chosenColorRaw || m.cursorColor);
+          m.cursorColor = isMasterRole
+            ? 'RGB_CHROMA'
+            : assignPermanentMemberCursorColor(m.id, chosenColorRaw || m.cursorColor);
           if (isEffectiveMaster() && !isMasterRole) {
             m.permissions = perms;
           }
           toasts.push(
-            `Apelido "${m.name}" e cor ${getColorNameByHex(m.cursorColor)} salvos para o IP ${m.ip}!`
+            isMasterRole
+              ? `Dados do Mestre salvos com Cursor RGB Cromático Dinâmico!`
+              : `Apelido "${m.name}" e cor ${getColorNameByHex(m.cursorColor)} salvos para o IP ${m.ip}!`
           );
           return true;
         },
@@ -6891,6 +7698,56 @@
     // Botão "TRAZER INIMIGO" na aba Personagens
     document.getElementById('btn-spawn-enemy')?.addEventListener('click', () => {
       openSpawnEnemyModal();
+    });
+
+    // Controle de Batalha & Fila de Turnos
+    document.getElementById('btn-battle-toggle')?.addEventListener('click', () => {
+      handleBattleToggleClick();
+    });
+
+    document.getElementById('btn-battle-advance-turn')?.addEventListener('click', () => {
+      advanceBattleTurn();
+    });
+
+    document.getElementById('btn-battle-sidebar-toggle-collapse')?.addEventListener('click', () => {
+      state.battleSidebarCollapsed = true;
+      renderBattleSidebar();
+    });
+
+    document.getElementById('btn-battle-sidebar-dock-tab')?.addEventListener('click', () => {
+      state.battleSidebarCollapsed = false;
+      renderBattleSidebar();
+    });
+
+    document.getElementById('btn-battle-charge-sub')?.addEventListener('click', () => {
+      adjustBattleCharges(-1);
+    });
+
+    document.getElementById('btn-battle-charge-add')?.addEventListener('click', () => {
+      adjustBattleCharges(1);
+    });
+
+    document.getElementById('btn-battle-edit-order')?.addEventListener('click', () => {
+      openBattleOrderModal();
+    });
+
+    document.getElementById('btn-battle-add-all')?.addEventListener('click', () => {
+      const queuedSet = new Set(battleOrderWorkingQueue);
+      (state.characters || []).forEach((c) => {
+        if (!queuedSet.has(c.id)) {
+          battleOrderWorkingQueue.push(c.id);
+        }
+      });
+      renderBattleOrderModalContent();
+    });
+
+    document.getElementById('btn-battle-clear-queue')?.addEventListener('click', () => {
+      battleOrderWorkingQueue = [];
+      renderBattleOrderModalContent();
+    });
+
+    document.getElementById('btn-confirm-battle-order')?.addEventListener('click', () => {
+      handleConfirmBattleOrder();
     });
 
     // Pesquisa no modal de Trazer Inimigo

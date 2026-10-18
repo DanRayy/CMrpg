@@ -511,21 +511,21 @@ def assign_permanent_cursor_color(
     existing_color: Optional[str] = None,
     used_colors: Optional[List[str]] = None,
 ) -> str:
-    """Atribui e mantém permanentemente uma das 10 cores da paleta para cada jogador/membro."""
+    """Atribui e mantém permanentemente uma cor para o cursor. O Mestre usa RGB Chroma contínuo; jogadores usam 1 das 10 cores da paleta."""
+    key_str = str(member_key or "player").strip()
+    if key_str == "host_master" or str(existing_color or "").strip().upper() == "RGB_CHROMA":
+        return "RGB_CHROMA"
+
     palette_upper = {c.upper(): c for c in CURSOR_COLOR_PALETTE}
     if existing_color and str(existing_color).strip().upper() in palette_upper:
         return palette_upper[str(existing_color).strip().upper()]
 
-    key_str = str(member_key or "player").strip()
-    if key_str == "host_master":
-        base_idx = 3  # Amarelo Ouro (#F59E0B) por padrão para o Host/Mestre
-    else:
-        h = 0
-        for ch in key_str:
-            h = (h * 31 + ord(ch)) & 0xFFFFFFFF
-        base_idx = h % len(CURSOR_COLOR_PALETTE)
+    h = 0
+    for ch in key_str:
+        h = (h * 31 + ord(ch)) & 0xFFFFFFFF
+    base_idx = h % len(CURSOR_COLOR_PALETTE)
 
-    used_set = {str(c).strip().upper() for c in (used_colors or []) if c}
+    used_set = {str(c).strip().upper() for c in (used_colors or []) if c and str(c).strip().upper() != "RGB_CHROMA"}
     for offset in range(len(CURSOR_COLOR_PALETTE)):
         candidate = CURSOR_COLOR_PALETTE[(base_idx + offset) % len(CURSOR_COLOR_PALETTE)]
         if candidate.upper() not in used_set:
@@ -544,7 +544,7 @@ def build_host_master_member(existing: Optional[Dict[str, Any]] = None) -> Dict[
         char_id = existing.get("characterId")
         existing_color = existing.get("cursorColor")
     display_name = nickname if nickname else f"Host ({host_ip})"
-    cursor_color = assign_permanent_cursor_color("host_master", existing_color)
+    cursor_color = "RGB_CHROMA"
     return {
         "id": "host_master",
         "ip": host_ip,
@@ -660,6 +660,7 @@ def build_default_campaign_state() -> Dict[str, Any]:
             "totalTurnsCount": 0,
             "masterTurnsCount": 0,
             "currentTurnIndex": 0,
+            "charges": 0,
             "groupCharges": 0,
             "participantsOrder": [
                 {
@@ -1026,7 +1027,8 @@ def detect_max_resistance_toasts(
             new_cur = int(n_entry.get("current", 0))
             new_max = int(n_entry.get("max", 100))
             if new_max > 0 and new_cur > old_cur and new_cur == new_max:
-                msg = f"{char_name} MAX {res_name}!"
+                res_display = res_name.upper()
+                msg = f"{char_name} MAX ACÚMULO: {res_display}!"
                 if msg not in toasts:
                     toasts.append(msg)
     return toasts
@@ -1503,12 +1505,25 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                     None,
                 )
 
+                is_master = bool(
+                    is_host
+                    or member_id == "host_master"
+                    or (member_obj and str(member_obj.get("role") or "").upper() == "MESTRE")
+                    or bool(data.get("isMaster"))
+                )
+
                 client_color = str(data.get("color") or "").strip()
-                if member_obj is not None:
+                if is_master:
+                    resolved_color = "RGB_CHROMA"
+                elif member_obj is not None:
                     resolved_color = assign_permanent_cursor_color(
                         member_id,
                         member_obj.get("cursorColor") or client_color,
                     )
+                else:
+                    resolved_color = assign_permanent_cursor_color(member_id, client_color)
+
+                if member_obj is not None:
                     member_obj["cursorColor"] = resolved_color
                     resolved_nick = (
                         str(member_obj.get("nickname") or "").strip()
@@ -1516,9 +1531,8 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                         or str(member_obj.get("name") or "").strip()
                     )
                 else:
-                    resolved_color = assign_permanent_cursor_color(member_id, client_color)
                     resolved_nick = str(data.get("nickname") or "").strip() or (
-                        "Mestre" if is_host else f"Jogador ({canonical_ip})"
+                        "Mestre" if is_master else f"Jogador ({canonical_ip})"
                     )
 
                 cursor_packet = {
@@ -1528,6 +1542,7 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                     "memberId": member_id,
                     "ip": canonical_ip,
                     "isHost": is_host,
+                    "isMaster": is_master,
                     "nickname": resolved_nick,
                     "color": resolved_color,
                     "activeTab": str(data.get("activeTab") or "overview"),
@@ -1566,6 +1581,38 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
             elif msg_type == "update_state":
                 record_history = bool(data.get("record_history", True))
                 client_toasts = data.get("toasts") if isinstance(data.get("toasts"), list) else []
+
+                incoming_battle = data.get("battle")
+                if isinstance(incoming_battle, dict) and incoming_battle.get("isActive"):
+                    old_battle = state_manager.state.get("battle") or {}
+                    if (
+                        old_battle.get("isActive")
+                        and incoming_battle.get("currentTurnIndex") != old_battle.get("currentTurnIndex")
+                    ):
+                        old_idx = int(old_battle.get("currentTurnIndex", 0))
+                        old_order = old_battle.get("orderIds") or []
+                        acting_id = old_order[old_idx % len(old_order)] if old_order else None
+                        acting_char = next(
+                            (c for c in state_manager.state.get("characters") or [] if c.get("id") == acting_id),
+                            None,
+                        )
+                        if not is_host:
+                            is_turn_allowed = False
+                            if acting_char and not acting_char.get("isEnemy"):
+                                if (
+                                    acting_char.get("ownerIp") == canonical_ip
+                                    or acting_char.get("ownerMemberId") == member_id
+                                    or (member_obj and member_obj.get("characterId") == acting_id)
+                                ):
+                                    is_turn_allowed = True
+                            if not is_turn_allowed:
+                                incoming_battle["currentTurnIndex"] = old_idx
+                                incoming_battle["roundNumber"] = old_battle.get("roundNumber", 1)
+                                incoming_battle["charges"] = old_battle.get("charges", 0)
+
+                        if acting_char and acting_char.get("isEnemy"):
+                            incoming_battle["charges"] = old_battle.get("charges", 0)
+
                 payload = await state_manager.update_full_state(
                     data=data,
                     record_history=record_history,
