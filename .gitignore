@@ -21,3 +21,6 @@ Thumbs.db
 # Logs e variáveis de ambiente
 *.log
 .env
+
+# Estado da aplicacao
+/state.json
