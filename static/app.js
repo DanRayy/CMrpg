@@ -149,6 +149,9 @@
     itemsCatalog: [],
     npcs: [],
     escrowSales: [],
+    bestiary: [],
+    bestiarySearchQuery: '',
+    bestiaryPage: 1,
     battle: {
       isActive: false,
       roundNumber: 1,
@@ -678,6 +681,7 @@
           itemsCatalog: state.itemsCatalog,
           npcs: state.npcs,
           escrowSales: state.escrowSales,
+          bestiary: state.bestiary,
           battle: state.battle,
           quests: state.quests,
           auditLog: state.auditLog,
@@ -953,13 +957,14 @@
       itemsCatalog: state.itemsCatalog,
       npcs: state.npcs,
       escrowSales: state.escrowSales,
+      bestiary: state.bestiary,
       battle: state.battle,
       quests: state.quests,
     });
   }
 
   function restoreCoreState(snap) {
-    for (const k of ['room', 'members', 'characters', 'itemsCatalog', 'npcs', 'escrowSales', 'battle', 'quests']) {
+    for (const k of ['room', 'members', 'characters', 'itemsCatalog', 'npcs', 'escrowSales', 'bestiary', 'battle', 'quests']) {
       if (snap[k] !== undefined) state[k] = deepClone(snap[k]);
     }
     state.characters.forEach(recalculateCharacterDerived);
@@ -1020,6 +1025,7 @@
           itemsCatalog: state.itemsCatalog,
           npcs: state.npcs,
           escrowSales: state.escrowSales,
+          bestiary: state.bestiary,
           battle: state.battle,
           quests: state.quests,
           auditEntry,
@@ -1679,6 +1685,7 @@
             }
             if (Array.isArray(data.npcs)) state.npcs = data.npcs;
             if (Array.isArray(data.escrowSales)) state.escrowSales = data.escrowSales;
+            if (Array.isArray(data.bestiary)) state.bestiary = data.bestiary;
             if (data.battle) state.battle = data.battle;
             if (Array.isArray(data.quests)) state.quests = data.quests;
             if (Array.isArray(data.auditLog)) state.auditLog = data.auditLog;
@@ -1726,7 +1733,7 @@
     characters: 'PERSONAGENS & FICHAS',
     catalog: 'CATÁLOGO DE ITENS',
     shop: 'LOJA & MERCADORES',
-    combat: 'COMBATE & TURNOS',
+    bestiary: 'BESTIÁRIO',
     quests: 'MISSÕES',
     admin: 'ADMINISTRAÇÃO',
   };
@@ -1801,6 +1808,8 @@
     setTxt('badge-items-count', String(visibleItems.length));
     setTxt('badge-npcs-count', String(state.npcs.length));
     setTxt('badge-quests-count', String(state.quests.length));
+    const visibleBestiary = isEffectiveMaster() ? (state.bestiary || []) : (state.bestiary || []).filter((b) => b.reveladoParaJogadores);
+    setTxt('badge-bestiary-count', String(visibleBestiary.length));
 
     const combatDot = document.getElementById('combat-nav-dot');
     if (combatDot) {
@@ -2054,38 +2063,47 @@
     emptyState.classList.remove('flex');
     grid.classList.remove('hidden');
 
+    const isMaster = isEffectiveMaster();
+
     grid.innerHTML = filtered
       .map((char) => {
-        const hpPct = calcPercentage(char.hp, char.maxHp);
-        const armorPct = calcPercentage(char.armor, char.maxArmor);
-        const manaPct = calcPercentage(char.mana, char.maxMana);
+        const isEnemy = Boolean(char.isEnemy);
+        const bestiaryRef = isEnemy ? (state.bestiary || []).find((b) => b.id === char.bestiaryId) : null;
+        const isRevealed = !isEnemy || (bestiaryRef ? Boolean(bestiaryRef.reveladoParaJogadores) : Boolean(char.reveladoParaJogadores));
+        const isMasked = isEnemy && !isMaster && !isRevealed;
+
+        const hpPct = isMasked ? 0 : calcPercentage(char.hp, char.maxHp);
+        const armorPct = isMasked ? 0 : calcPercentage(char.armor, char.maxArmor);
+        const manaPct = isMasked ? 0 : calcPercentage(char.mana, char.maxMana);
         const xpPct = calcPercentage(char.xp, char.xpNext || 80);
 
-        const hpOverflow = char.hp > char.maxHp;
-        const armorOverflow = char.armor > char.maxArmor;
-        const manaOverflow = char.mana > char.maxMana;
+        const hpOverflow = !isMasked && char.hp > char.maxHp;
+        const armorOverflow = !isMasked && char.armor > char.maxArmor;
+        const manaOverflow = !isMasked && char.mana > char.maxMana;
 
         let activeResCount = 0;
         let maxedResCount = 0;
         const activeResBadges = [];
-        for (const r of RESISTANCE_TYPES) {
-          const entry = char.resistances?.[r.name] || { current: 0, max: 100 };
-          if (entry.current > 0) {
-            activeResCount++;
-            const isMax = entry.max > 0 && entry.current >= entry.max;
-            if (isMax) maxedResCount++;
-            activeResBadges.push({
-              name: r.name,
-              icon: r.icon,
-              current: entry.current,
-              max: entry.max,
-              isMax,
-            });
+        if (!isMasked) {
+          for (const r of RESISTANCE_TYPES) {
+            const entry = char.resistances?.[r.name] || { current: 0, max: 100 };
+            if (entry.current > 0) {
+              activeResCount++;
+              const isMax = entry.max > 0 && entry.current >= entry.max;
+              if (isMax) maxedResCount++;
+              activeResBadges.push({
+                name: r.name,
+                icon: r.icon,
+                current: entry.current,
+                max: entry.max,
+                isMax,
+              });
+            }
           }
         }
 
         const resChipsHtml =
-          activeResBadges.length > 0
+          !isMasked && activeResBadges.length > 0
             ? `<div class="flex flex-wrap gap-1.5 pt-1">
                 ${activeResBadges
                   .map(
@@ -2104,7 +2122,7 @@
             : '';
 
         const pendingBannerHtml =
-          Number(char.pendingAttributePoints || 0) > 0
+          !isEnemy && Number(char.pendingAttributePoints || 0) > 0
             ? `<button
                 type="button"
                 data-action="open-sheet"
@@ -2120,10 +2138,10 @@
           ? `<div class="p-2.5 rounded-lg bg-red-950/80 border border-red-500/50 flex items-center justify-between">
               <span class="text-xs font-extrabold text-red-300 flex items-center gap-1.5">
                 <iconify-icon icon="game-icons:crowned-skull"></iconify-icon>
-                <span>PERSONAGEM MORTO (0 HP)</span>
+                <span>${isEnemy ? 'INIMIGO DERROTADO / MORTO' : 'PERSONAGEM MORTO (0 HP)'}</span>
               </span>
               ${
-                isEffectiveMaster()
+                isMaster
                   ? `<button type="button" data-action="open-revive" data-char-id="${escapeHtml(char.id)}" class="px-2.5 py-1 rounded text-[11px] font-extrabold btn-gold flex items-center gap-1"><iconify-icon icon="game-icons:sparkles"></iconify-icon> <span>Reviver</span></button>`
                   : ''
               }
@@ -2132,8 +2150,8 @@
 
         const weight = char.derived?.totalWeight ?? 0;
         const maxWeight = Number.isFinite(Number(char.maxWeight)) ? Number(char.maxWeight) : 27;
-        const isOverweight = weight > maxWeight;
-        const canEdit = canEditCharacter(char);
+        const isOverweight = !isEnemy && weight > maxWeight;
+        const canEdit = !isEnemy && canEditCharacter(char);
         const ownerMem =
           (state.members || []).find(
             (m) => m.id === char.ownerMemberId || (char.ownerIp && m.ip === char.ownerIp) || m.characterId === char.id
@@ -2142,93 +2160,108 @@
           ? ownerMem.nickname?.trim() || ownerMem.name || ownerMem.ip
           : char.ownerIp || 'Mestre';
 
-        return `
-        <article
-          class="char-card p-4 sm:p-5 flex flex-col justify-between gap-3.5 relative ${char.isDead ? 'border-red-500/50 opacity-90' : ''}"
-          data-char-id="${escapeHtml(char.id)}"
-        >
-          <!-- Topo: Nome Arrastável + Nível/XP + Botões Flutuantes (Histórico, Inventário, Consumíveis, Editar) -->
-          <div class="flex items-start justify-between gap-2">
-            <div class="min-w-0 flex-1">
-              <div class="flex items-center gap-2">
-                <div
-                  class="char-drag-handle inline-flex items-center gap-2 px-2 py-0.5 -ml-2 rounded-lg hover:bg-amber-500/10 transition group max-w-full"
-                  data-drag-char-id="${escapeHtml(char.id)}"
-                  title="Clique e segure no nome para arrastar e reordenar"
-                >
-                  <span class="text-xs opacity-40 group-hover:opacity-90 shrink-0">⠿</span>
-                  <h2 class="font-serif-fantasy text-lg sm:text-xl font-black tracking-wide truncate app-title">
-                    ${escapeHtml(char.name)}
-                  </h2>
-                </div>
-                <span class="px-2 py-0.5 rounded text-[10px] font-mono font-extrabold bg-amber-500/15 gold-title border border-amber-500/30 shrink-0">
-                  NV. ${char.level || 1}
-                </span>
+        // Sub-bar / Metadados sob o nome
+        let metaBarHtml = '';
+        if (isEnemy) {
+          if (isMasked) {
+            metaBarHtml = `
+              <div class="flex items-center gap-2 mt-1 text-[10px] font-mono text-neutral-500 italic">
+                <iconify-icon icon="game-icons:blindfold"></iconify-icon>
+                <span>Informações Ocultas pelo Mestre</span>
               </div>
-
-              <!-- Barra compacta de XP + Dono/IP -->
-              <div class="flex flex-wrap items-center gap-2 mt-1">
-                <div class="stat-bar-track h-1.5 w-20 rounded-full">
-                  <div class="stat-bar-fill stat-bar-xp" style="width: ${xpPct}%"></div>
-                </div>
-                <span class="text-[10px] font-mono app-muted">XP ${char.xp || 0}/${char.xpNext || 80}</span>
-                <span class="text-[10px] font-mono app-muted" title="Membro/IP vinculado a este personagem">• <iconify-icon icon="game-icons:hooded-figure"></iconify-icon> ${escapeHtml(ownerLabel)}</span>
-                ${
-                  char.skillPoints > 0
-                    ? `<span class="text-[10px] font-mono font-bold text-purple-400">• +${char.skillPoints} Hab</span>`
-                    : ''
-                }
+            `;
+          } else {
+            metaBarHtml = `
+              <div class="flex items-center gap-2 mt-1 text-[10px] font-mono text-amber-200/80">
+                <iconify-icon icon="game-icons:monster-grasp" class="text-rose-400"></iconify-icon>
+                <span>Criatura Hostil • Modelo: ${escapeHtml(bestiaryRef ? bestiaryRef.name : char.name)}</span>
               </div>
-
-              <!-- Indicadores Táticos: PA, Defesa, Regen, Ataque, Carga -->
-              <div class="flex flex-wrap items-center gap-1.5 mt-2">
-                <span class="px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-amber-500/10 text-amber-300 border border-amber-500/25">
-                  <iconify-icon icon="game-icons:lightning-branches"></iconify-icon> PA: ${char.pa}/${char.maxPa}
-                </span>
-                <span class="px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/25">
-                  <iconify-icon icon="game-icons:dragon-shield"></iconify-icon> DEF: ${char.defense}
-                </span>
-                <span class="px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-violet-500/10 text-violet-400 border border-violet-500/25">
-                  <iconify-icon icon="game-icons:fairy-wand" class="icon-mana"></iconify-icon> REGEN: ${char.regen}%
-                </span>
-                <span class="px-2 py-0.5 rounded text-[11px] font-mono font-bold ${
-                  isOverweight
-                    ? 'bg-rose-500/20 text-rose-300 border border-rose-500/50 animate-pulse'
-                    : 'bg-black/25 app-muted border app-divider-border'
-                }">
-                  <iconify-icon icon="game-icons:weight"></iconify-icon> ${weight}/${maxWeight}kg
-                </span>
+            `;
+          }
+        } else {
+          metaBarHtml = `
+            <div class="flex flex-wrap items-center gap-2 mt-1">
+              <div class="stat-bar-track h-1.5 w-20 rounded-full">
+                <div class="stat-bar-fill stat-bar-xp" style="width: ${xpPct}%"></div>
               </div>
+              <span class="text-[10px] font-mono app-muted">XP ${char.xp || 0}/${char.xpNext || 80}</span>
+              <span class="text-[10px] font-mono app-muted" title="Membro/IP vinculado a este personagem">• <iconify-icon icon="game-icons:hooded-figure"></iconify-icon> ${escapeHtml(ownerLabel)}</span>
+              ${
+                char.skillPoints > 0
+                  ? `<span class="text-[10px] font-mono font-bold text-purple-400">• +${char.skillPoints} Hab</span>`
+                  : ''
+              }
             </div>
+          `;
+        }
 
-            <!-- Botões Flutuantes no Canto Superior Direito -->
-            <div class="flex items-center gap-1.5 shrink-0">
+        // Indicadores Táticos (PA, DEF, REGEN)
+        let tacticalHtml = '';
+        if (isMasked) {
+          tacticalHtml = `
+            <div class="flex flex-wrap items-center gap-1.5 mt-2">
+              <span class="px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-black/40 text-neutral-400 border app-divider-border">
+                <iconify-icon icon="game-icons:lightning-branches"></iconify-icon> PA: ?
+              </span>
+              <span class="px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-black/40 text-neutral-400 border app-divider-border">
+                <iconify-icon icon="game-icons:dragon-shield"></iconify-icon> DEF: ?
+              </span>
+              <span class="px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-black/40 text-neutral-400 border app-divider-border">
+                <iconify-icon icon="game-icons:fairy-wand" class="icon-mana"></iconify-icon> REGEN: ?
+              </span>
+            </div>
+          `;
+        } else {
+          tacticalHtml = `
+            <div class="flex flex-wrap items-center gap-1.5 mt-2">
+              <span class="px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-amber-500/10 text-amber-300 border border-amber-500/25">
+                <iconify-icon icon="game-icons:lightning-branches"></iconify-icon> PA: ${char.pa}/${char.maxPa}
+              </span>
+              <span class="px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/25">
+                <iconify-icon icon="game-icons:dragon-shield"></iconify-icon> DEF: ${char.defense}
+              </span>
+              <span class="px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-violet-500/10 text-violet-400 border border-violet-500/25">
+                <iconify-icon icon="game-icons:fairy-wand" class="icon-mana"></iconify-icon> REGEN: ${char.regen}%
+              </span>
+              ${
+                !isEnemy
+                  ? `<span class="px-2 py-0.5 rounded text-[11px] font-mono font-bold ${
+                      isOverweight
+                        ? 'bg-rose-500/20 text-rose-300 border border-rose-500/50 animate-pulse'
+                        : 'bg-black/25 app-muted border app-divider-border'
+                    }">
+                      <iconify-icon icon="game-icons:weight"></iconify-icon> ${weight}/${maxWeight}kg
+                    </span>`
+                  : ''
+              }
+            </div>
+          `;
+        }
+
+        // Botões de Topo no Card
+        let topButtonsHtml = '';
+        if (isEnemy) {
+          if (isMasked) {
+            topButtonsHtml = `
               <button
                 type="button"
-                data-action="open-sheet"
-                data-char-id="${escapeHtml(char.id)}"
-                title="${canEdit ? 'Abrir Ficha Completa, 5 Atributos e Habilidades' : 'Visualizar Ficha do Personagem'}"
-                class="w-9 h-9 rounded-lg flex items-center justify-center text-base app-icon-btn transition"
+                title="Ficha e habilidades ocultas pelo Mestre"
+                class="w-9 h-9 rounded-lg flex items-center justify-center text-base app-icon-btn opacity-40 cursor-not-allowed shrink-0"
               >
-                <iconify-icon icon="game-icons:tied-scroll"></iconify-icon>
+                <iconify-icon icon="game-icons:blindfold"></iconify-icon>
               </button>
-              <button
-                type="button"
-                data-action="open-inventory"
-                data-char-id="${escapeHtml(char.id)}"
-                title="${canEdit ? 'Abrir Inventário 3x(Infinito) com Filtros e Pesquisa' : 'Visualizar Inventário'}"
-                class="w-9 h-9 rounded-lg flex items-center justify-center text-base app-icon-btn transition"
-              >
-                <iconify-icon icon="game-icons:knapsack"></iconify-icon>
-              </button>
+            `;
+          } else {
+            // Botão pequeno redundante de Habilidades Gerais removido do topo (acesso via banner principal no card / modal)
+            topButtonsHtml = `
               <button
                 type="button"
                 data-action="open-resistances"
                 data-char-id="${escapeHtml(char.id)}"
                 title="Painel das 7 Resistências"
-                class="relative w-9 h-9 rounded-lg flex items-center justify-center text-base app-icon-btn transition"
+                class="relative w-9 h-9 rounded-lg flex items-center justify-center text-base app-icon-btn shrink-0 transition"
               >
-                <iconify-icon icon="game-icons:alembic"></iconify-icon>
+                <iconify-icon icon="game-icons:round-bottom-flask"></iconify-icon>
                 ${
                   activeResCount > 0
                     ? `<span class="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-mono font-black flex items-center justify-center text-white ${
@@ -2238,18 +2271,210 @@
                 }
               </button>
               ${
-                canEdit
+                isMaster
                   ? `<button
                       type="button"
-                      data-action="open-edit"
+                      data-action="dismiss-enemy"
                       data-char-id="${escapeHtml(char.id)}"
-                      title="Editar Personagem"
-                      class="w-9 h-9 rounded-lg flex items-center justify-center text-base app-icon-btn transition"
+                      title="Remover da Mesa (Despachar)"
+                      class="w-9 h-9 rounded-lg flex items-center justify-center text-base app-icon-btn text-rose-400 hover:bg-rose-950/60 shrink-0 transition"
                     >
-                      <iconify-icon icon="game-icons:quill-ink"></iconify-icon>
+                      <iconify-icon icon="game-icons:portal"></iconify-icon>
                     </button>`
                   : ''
               }
+            `;
+          }
+        } else {
+          topButtonsHtml = `
+            <button
+              type="button"
+              data-action="open-sheet"
+              data-char-id="${escapeHtml(char.id)}"
+              title="${canEdit ? 'Abrir Ficha Completa, 5 Atributos e Habilidades' : 'Visualizar Ficha do Personagem'}"
+              class="w-9 h-9 rounded-lg flex items-center justify-center text-base app-icon-btn shrink-0 transition"
+            >
+              <iconify-icon icon="game-icons:tied-scroll"></iconify-icon>
+            </button>
+            <button
+              type="button"
+              data-action="open-inventory"
+              data-char-id="${escapeHtml(char.id)}"
+              title="${canEdit ? 'Abrir Inventário 3x(Infinito) com Filtros e Pesquisa' : 'Visualizar Inventário'}"
+              class="w-9 h-9 rounded-lg flex items-center justify-center text-base app-icon-btn shrink-0 transition"
+            >
+              <iconify-icon icon="game-icons:knapsack"></iconify-icon>
+            </button>
+            <button
+              type="button"
+              data-action="open-resistances"
+              data-char-id="${escapeHtml(char.id)}"
+              title="Painel das 7 Resistências"
+              class="relative w-9 h-9 rounded-lg flex items-center justify-center text-base app-icon-btn shrink-0 transition"
+            >
+              <iconify-icon icon="game-icons:round-bottom-flask"></iconify-icon>
+              ${
+                activeResCount > 0
+                  ? `<span class="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-mono font-black flex items-center justify-center text-white ${
+                      maxedResCount > 0 ? 'bg-rose-600 animate-bounce' : 'bg-amber-600'
+                    }">${activeResCount}</span>`
+                  : ''
+              }
+            </button>
+            ${
+              canEdit
+                ? `<button
+                    type="button"
+                    data-action="open-edit"
+                    data-char-id="${escapeHtml(char.id)}"
+                    title="Editar Personagem"
+                    class="w-9 h-9 rounded-lg flex items-center justify-center text-base app-icon-btn shrink-0 transition"
+                  >
+                    <iconify-icon icon="game-icons:quill-ink"></iconify-icon>
+                  </button>`
+                : ''
+            }
+          `;
+        }
+
+        // Habilidades Gerais Banner para Inimigos Revelados
+        let generalSkillsBannerHtml = '';
+        if (isEnemy && !isMasked) {
+          generalSkillsBannerHtml = `
+            <button
+              type="button"
+              data-action="open-general-skills"
+              data-char-id="${escapeHtml(char.id)}"
+              class="w-full py-1.5 px-3 rounded-lg font-serif-fantasy font-extrabold text-xs uppercase tracking-wider bg-purple-950/40 hover:bg-purple-900/60 border border-purple-500/40 text-purple-200 flex items-center justify-center gap-1.5 transition"
+            >
+              <iconify-icon icon="game-icons:scroll-unfurled"></iconify-icon>
+              <span>HABILIDADES GERAIS</span>
+            </button>
+          `;
+        }
+
+        // Action Pills ou Mensagem de Bloqueio
+        let bottomActionsHtml = '';
+        if (isMasked) {
+          bottomActionsHtml = `
+            <div class="p-2.5 rounded-lg bg-black/30 border app-divider-border text-center text-xs font-mono text-amber-300/70 italic flex items-center justify-center gap-1.5">
+              <iconify-icon icon="game-icons:blindfold"></iconify-icon>
+              <span>Atributos e Ficha Ocultos pelo Mestre</span>
+            </div>
+          `;
+        } else if (isEnemy && !isMaster) {
+          bottomActionsHtml = `
+            <div class="p-2 rounded-lg bg-black/20 border app-divider-border text-center text-xs font-mono text-emerald-300/80 flex items-center justify-center gap-1.5">
+              <iconify-icon icon="game-icons:eyeball" style="color: #4ade80;"></iconify-icon>
+              <span>Criatura Revelada (Controle do Mestre)</span>
+            </div>
+          `;
+        } else {
+          bottomActionsHtml = `
+            <div class="grid grid-cols-3 gap-2 pt-2 border-t app-divider-border">
+              <button
+                type="button"
+                data-action="pill-damage"
+                data-char-id="${escapeHtml(char.id)}"
+                class="action-pill action-pill-damage py-2 px-2 rounded-lg font-extrabold text-[11px] tracking-wide flex items-center justify-center gap-1"
+              >
+                <span>DANO</span>
+                <iconify-icon icon="game-icons:broadsword" class="icon-dmg"></iconify-icon>
+              </button>
+              <button
+                type="button"
+                data-action="pill-attr"
+                data-attr="hp"
+                data-char-id="${escapeHtml(char.id)}"
+                class="action-pill py-2 px-2 rounded-lg font-extrabold text-[11px] tracking-wide flex items-center justify-center gap-1"
+              >
+                <span>VIDA</span>
+                <iconify-icon icon="game-icons:heart-bottle" class="icon-hp"></iconify-icon>
+              </button>
+              <button
+                type="button"
+                data-action="pill-attr"
+                data-attr="armor"
+                data-char-id="${escapeHtml(char.id)}"
+                class="action-pill py-2 px-2 rounded-lg font-extrabold text-[11px] tracking-wide flex items-center justify-center gap-1"
+              >
+                <span>ARMADURA</span>
+                <iconify-icon icon="game-icons:breastplate" class="icon-armor"></iconify-icon>
+              </button>
+              <button
+                type="button"
+                data-action="pill-attr"
+                data-attr="mana"
+                data-char-id="${escapeHtml(char.id)}"
+                class="action-pill py-2 px-2 rounded-lg font-extrabold text-[11px] tracking-wide flex items-center justify-center gap-1"
+              >
+                <span>MANA</span>
+                <iconify-icon icon="game-icons:crystal-bars" class="icon-mana"></iconify-icon>
+              </button>
+              <button
+                type="button"
+                data-action="pill-regen"
+                data-char-id="${escapeHtml(char.id)}"
+                class="action-pill action-pill-regen py-2 px-2 rounded-lg font-extrabold text-[11px] tracking-wide flex items-center justify-center gap-1"
+              >
+                <span>REGEN</span>
+                <iconify-icon icon="game-icons:fairy-wand" class="icon-mana"></iconify-icon>
+              </button>
+              <button
+                type="button"
+                data-action="pill-reset"
+                data-char-id="${escapeHtml(char.id)}"
+                class="action-pill py-2 px-2 rounded-lg font-extrabold text-[11px] tracking-wide flex items-center justify-center gap-1"
+              >
+                <span>RESETAR</span>
+                <iconify-icon icon="game-icons:sands-of-time"></iconify-icon>
+              </button>
+            </div>
+          `;
+        }
+
+        return `
+        <article
+          class="char-card p-4 sm:p-5 flex flex-col justify-between gap-3.5 relative ${
+            char.isDead
+              ? 'border-red-500/50 opacity-90'
+              : (isEnemy ? 'border-rose-950/40 hover:border-amber-500/40' : '')
+          }"
+          data-char-id="${escapeHtml(char.id)}"
+        >
+          <!-- Topo: Nome Arrastável + Nível/XP + Botões de Ação -->
+          <div class="char-card-header flex items-start justify-between gap-3 min-w-0">
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center flex-wrap gap-2 min-w-0">
+                <div
+                  class="char-drag-handle inline-flex items-center gap-1.5 px-2 py-0.5 -ml-2 rounded-lg hover:bg-amber-500/10 transition group min-w-0 max-w-full"
+                  data-drag-char-id="${escapeHtml(char.id)}"
+                  title="Clique e segure no nome para arrastar e reordenar"
+                >
+                  <span class="text-xs opacity-40 group-hover:opacity-90 shrink-0">⠿</span>
+                  <h2 class="font-serif-fantasy text-lg sm:text-xl font-black tracking-wide truncate app-title">
+                    ${escapeHtml(char.name)}
+                  </h2>
+                </div>
+                ${
+                  isEnemy
+                    ? `<span class="px-2 py-0.5 rounded text-[10px] font-mono font-extrabold bg-rose-500/20 text-rose-300 border border-rose-500/40 shrink-0 flex items-center gap-1">
+                        <iconify-icon icon="game-icons:monster-grasp"></iconify-icon> INIMIGO
+                      </span>`
+                    : ''
+                }
+                <span class="px-2 py-0.5 rounded text-[10px] font-mono font-extrabold bg-amber-500/15 gold-title border border-amber-500/30 shrink-0">
+                  ${isMasked ? 'NV. ?' : `NV. ${char.level || 1}`}
+                </span>
+              </div>
+
+              ${metaBarHtml}
+              ${tacticalHtml}
+            </div>
+
+            <!-- Botões de Ação no Canto Superior Direito -->
+            <div class="char-top-actions shrink-0 pt-0.5">
+              ${topButtonsHtml}
             </div>
           </div>
 
@@ -2267,7 +2492,7 @@
                   ${hpOverflow ? '<span class="px-1.5 py-0.2 rounded text-[9px] bg-amber-500/20 text-amber-300 border border-amber-400/40">OVERFLOW</span>' : ''}
                 </span>
                 <span class="font-mono font-extrabold text-sm ${hpOverflow ? 'text-amber-400' : 'app-title'}">
-                  ${char.hp} <span class="opacity-50">/ ${char.maxHp}</span>
+                  ${isMasked ? '? <span class="opacity-50">/ ?</span>' : `${char.hp} <span class="opacity-50">/ ${char.maxHp}</span>`}
                 </span>
               </div>
               <div class="stat-bar-track h-3 rounded-full ${hpOverflow ? 'stat-overflow-glow' : ''}">
@@ -2282,14 +2507,14 @@
                   <iconify-icon icon="game-icons:breastplate" class="icon-armor"></iconify-icon>
                   <span>Armadura</span>
                   ${
-                    char.armorDegradation > 0
-                      ? `<span class="px-1.5 py-0.2 rounded text-[9px] bg-rose-500/20 text-rose-300 border border-rose-500/40" title="Armadura Máxima degradada por sobrecarga até o fim da batalha">-${char.armorDegradation} DEGRAD.</span>`
+                    !isMasked && char.armorDegradation > 0
+                      ? `<span class="px-1.5 py-0.2 rounded text-[9px] bg-rose-500/20 text-rose-300 border border-rose-500/40">-${char.armorDegradation} DEGRAD.</span>`
                       : ''
                   }
                   ${armorOverflow ? '<span class="px-1.5 py-0.2 rounded text-[9px] bg-amber-500/20 text-amber-300 border border-amber-400/40">OVERFLOW</span>' : ''}
                 </span>
                 <span class="font-mono font-extrabold text-sm ${armorOverflow ? 'text-amber-400' : 'app-title'}">
-                  ${char.armor} <span class="opacity-50">/ ${char.maxArmor}</span>
+                  ${isMasked ? '? <span class="opacity-50">/ ?</span>' : `${char.armor} <span class="opacity-50">/ ${char.maxArmor}</span>`}
                 </span>
               </div>
               <div class="stat-bar-track h-3 rounded-full ${armorOverflow ? 'stat-overflow-glow' : ''}">
@@ -2306,7 +2531,7 @@
                   ${manaOverflow ? '<span class="px-1.5 py-0.2 rounded text-[9px] bg-amber-500/20 text-amber-300 border border-amber-400/40">OVERFLOW</span>' : ''}
                 </span>
                 <span class="font-mono font-extrabold text-sm ${manaOverflow ? 'text-amber-400' : 'app-title'}">
-                  ${char.mana} <span class="opacity-50">/ ${char.maxMana}</span>
+                  ${isMasked ? '? <span class="opacity-50">/ ?</span>' : `${char.mana} <span class="opacity-50">/ ${char.maxMana}</span>`}
                 </span>
               </div>
               <div class="stat-bar-track h-3 rounded-full ${manaOverflow ? 'stat-overflow-glow' : ''}">
@@ -2317,72 +2542,13 @@
             ${resChipsHtml}
           </div>
 
-          <!-- 6 Botões Rápidos (Action Pills) -->
-          <div class="grid grid-cols-3 gap-2 pt-2 border-t app-divider-border">
-            <button
-              type="button"
-              data-action="pill-damage"
-              data-char-id="${escapeHtml(char.id)}"
-              class="action-pill action-pill-damage py-2 px-2 rounded-lg font-extrabold text-[11px] tracking-wide flex items-center justify-center gap-1"
-            >
-              <span>DANO</span>
-              <iconify-icon icon="game-icons:broadsword" class="icon-dmg"></iconify-icon>
-            </button>
-            <button
-              type="button"
-              data-action="pill-attr"
-              data-attr="hp"
-              data-char-id="${escapeHtml(char.id)}"
-              class="action-pill py-2 px-2 rounded-lg font-extrabold text-[11px] tracking-wide flex items-center justify-center gap-1"
-            >
-              <span>VIDA</span>
-              <iconify-icon icon="game-icons:heart-bottle" class="icon-hp"></iconify-icon>
-            </button>
-            <button
-              type="button"
-              data-action="pill-attr"
-              data-attr="armor"
-              data-char-id="${escapeHtml(char.id)}"
-              class="action-pill py-2 px-2 rounded-lg font-extrabold text-[11px] tracking-wide flex items-center justify-center gap-1"
-            >
-              <span>ARMADURA</span>
-              <iconify-icon icon="game-icons:breastplate" class="icon-armor"></iconify-icon>
-            </button>
-            <button
-              type="button"
-              data-action="pill-attr"
-              data-attr="mana"
-              data-char-id="${escapeHtml(char.id)}"
-              class="action-pill py-2 px-2 rounded-lg font-extrabold text-[11px] tracking-wide flex items-center justify-center gap-1"
-            >
-              <span>MANA</span>
-              <iconify-icon icon="game-icons:crystal-bars" class="icon-mana"></iconify-icon>
-            </button>
-            <button
-              type="button"
-              data-action="pill-regen"
-              data-char-id="${escapeHtml(char.id)}"
-              class="action-pill action-pill-regen py-2 px-2 rounded-lg font-extrabold text-[11px] tracking-wide flex items-center justify-center gap-1"
-            >
-              <span>REGEN</span>
-              <iconify-icon icon="game-icons:fairy-wand" class="icon-mana"></iconify-icon>
-            </button>
-            <button
-              type="button"
-              data-action="pill-reset"
-              data-char-id="${escapeHtml(char.id)}"
-              class="action-pill py-2 px-2 rounded-lg font-extrabold text-[11px] tracking-wide flex items-center justify-center gap-1"
-            >
-              <span>RESETAR</span>
-              <iconify-icon icon="game-icons:sands-of-time"></iconify-icon>
-            </button>
-          </div>
+          ${generalSkillsBannerHtml}
+          ${bottomActionsHtml}
         </article>
       `;
       })
       .join('');
   }
-
   // ---------------------------------------------------------------------------
   // ABA 3: CATÁLOGO DE ITENS
   // ---------------------------------------------------------------------------
@@ -2448,7 +2614,7 @@
               </span>
             </div>
 
-            <p class="text-xs app-muted leading-relaxed">${escapeHtml(it.descricao || 'Sem descrição.')}</p>
+            <p class="text-xs app-muted leading-relaxed item-description">${escapeHtml(it.descricao || 'Sem descrição.')}</p>
 
             ${effectsHtml}
 
@@ -2625,7 +2791,7 @@
                 }
               </div>
             </div>
-            <p class="text-xs app-muted mt-2">${escapeHtml(item.descricao || '')}</p>
+            <p class="text-xs app-muted mt-2 item-description">${escapeHtml(item.descricao || '')}</p>
           </div>
 
           <div class="space-y-2 pt-2 border-t app-divider-border">
@@ -2707,117 +2873,203 @@
   }
 
   // ---------------------------------------------------------------------------
-  // ABA 5: COMBATE & TURNOS
+  // ABA 5: BESTIÁRIO DE CRIATURAS & INIMIGOS
   // ---------------------------------------------------------------------------
-  function renderCombatTab() {
-    const b = state.battle || {};
-    const statusPill = document.getElementById('battle-status-pill');
-    const toggleBtn = document.getElementById('btn-toggle-battle');
+  function renderBestiaryTab() {
+    const isMaster = isEffectiveMaster();
+    const visibleEnemies = isMaster
+      ? (state.bestiary || [])
+      : (state.bestiary || []).filter((b) => b.reveladoParaJogadores);
 
-    if (statusPill) {
-      if (b.isActive) {
-        statusPill.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-red-600 text-white animate-pulse';
-        statusPill.innerHTML = '<iconify-icon icon="game-icons:ifrit" style="color: #f97316;"></iconify-icon> <span>EM BATALHA</span>';
-      } else {
-        statusPill.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-slate-800 text-slate-300 border border-slate-600';
-        statusPill.textContent = 'FORA DE COMBATE';
+    const q = (state.bestiarySearchQuery || '').trim().toLowerCase();
+    const filtered = visibleEnemies.filter((e) => (e.name || '').toLowerCase().includes(q));
+
+    const countPill = document.getElementById('bestiary-count-pill');
+    if (countPill) countPill.textContent = `${filtered.length} MONSTRO(S)`;
+
+    const grid = document.getElementById('bestiary-grid');
+    const empty = document.getElementById('empty-bestiary-state');
+    const emptyMsg = document.getElementById('empty-bestiary-message');
+    const pageInfo = document.getElementById('bestiary-page-info');
+    const btnPrev = document.getElementById('btn-bestiary-prev');
+    const btnNext = document.getElementById('btn-bestiary-next');
+
+    const PAGE_SIZE = 6;
+    const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+    if (state.bestiaryPage > totalPages) state.bestiaryPage = totalPages;
+    if (state.bestiaryPage < 1) state.bestiaryPage = 1;
+
+    if (pageInfo) pageInfo.textContent = `Página ${state.bestiaryPage} de ${totalPages}`;
+    if (btnPrev) btnPrev.disabled = state.bestiaryPage <= 1;
+    if (btnNext) btnNext.disabled = state.bestiaryPage >= totalPages;
+
+    if (filtered.length === 0) {
+      if (grid) {
+        grid.innerHTML = '';
+        grid.classList.add('hidden');
       }
+      if (empty) {
+        empty.classList.remove('hidden');
+        empty.classList.add('flex');
+      }
+      if (emptyMsg) {
+        emptyMsg.textContent = q
+          ? `Nenhuma criatura corresponde à busca "${q}".`
+          : (isMaster
+            ? 'Nenhum inimigo cadastrado ainda no Bestiário. Clique em "CRIAR INIMIGO" para começar.'
+            : 'Nenhum inimigo revelado pelo Mestre até o momento.');
+      }
+      return;
     }
 
-    if (toggleBtn) {
-      toggleBtn.innerHTML = b.isActive ? '<iconify-icon icon="game-icons:white-flag"></iconify-icon> <span>Encerrar Combate (Restaurar Armaduras)</span>' : '<iconify-icon icon="game-icons:crossed-swords"></iconify-icon> <span>Iniciar Combate</span>';
-      toggleBtn.className = b.isActive
-        ? 'master-only-el px-4 py-2.5 rounded-lg font-serif-fantasy font-extrabold text-xs uppercase tracking-wider bg-amber-700 hover:bg-amber-600 text-white border border-amber-400/50 shadow-lg transition'
-        : 'master-only-el px-4 py-2.5 rounded-lg font-serif-fantasy font-extrabold text-xs uppercase tracking-wider bg-red-700 hover:bg-red-600 text-white border border-red-400/50 shadow-lg transition';
-      if (!isEffectiveMaster()) toggleBtn.classList.add('hidden');
+    if (empty) {
+      empty.classList.add('hidden');
+      empty.classList.remove('flex');
     }
+    if (grid) grid.classList.remove('hidden');
 
-    const setTxt = (id, v) => {
-      const el = document.getElementById(id);
-      if (el) el.textContent = String(v);
-    };
-    setTxt('battle-round-num', b.roundNumber || 1);
-    setTxt('battle-total-turns', b.totalTurnsCount || 0);
-    setTxt('battle-master-turns', b.masterTurnsCount || 0);
-    setTxt('battle-group-charges', b.groupCharges || 0);
+    const paged = filtered.slice((state.bestiaryPage - 1) * PAGE_SIZE, state.bestiaryPage * PAGE_SIZE);
 
-    const listEl = document.getElementById('initiative-list-container');
-    if (!listEl) return;
+    if (grid) {
+      grid.innerHTML = paged
+        .map((e) => {
+          const isRevealed = Boolean(e.reveladoParaJogadores);
 
-    const order = b.participantsOrder || [];
-    const charsById = {};
-    for (const c of state.characters) charsById[c.id] = c;
+          const resChips = RESISTANCE_TYPES.map((r) => {
+            const resVal = e.resistances?.[r.name]?.max ?? 100;
+            return `
+              <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-500/10 text-amber-200 border border-amber-500/20" title="${r.label}">
+                ${r.icon} <span>${r.name}: ${resVal}</span>
+              </span>
+            `;
+          }).join('');
 
-    listEl.innerHTML = order
-      .map((p, idx) => {
-        const isCurrentTurn = b.isActive && idx === (b.currentTurnIndex || 0);
-        const charObj = !p.isMaster ? charsById[p.id] : null;
-        const isDead = charObj ? charObj.isDead : Boolean(p.isDead);
-
-        return `
-        <div class="p-3.5 rounded-xl border transition flex flex-wrap items-center justify-between gap-3 ${
-          isCurrentTurn
-            ? 'bg-amber-500/15 border-amber-400 shadow-lg'
-            : 'bg-black/25 app-divider-border'
-        } ${isDead ? 'opacity-60 border-red-500/40' : ''}">
-          <div class="flex items-center gap-3">
-            <span class="w-7 h-7 rounded-lg font-mono font-black text-xs flex items-center justify-center ${
-              isCurrentTurn ? 'bg-amber-400 text-black' : 'bg-black/40 app-muted'
-            }">
-              #${idx + 1}
-            </span>
-            <div>
-              <div class="flex items-center gap-2">
-                <span class="font-serif-fantasy font-bold text-sm app-title">
-                  ${p.isMaster ? '<iconify-icon icon="game-icons:crown"></iconify-icon> ' : '<iconify-icon icon="game-icons:crossed-swords"></iconify-icon> '}${escapeHtml(charObj ? charObj.name : p.name)}
-                </span>
-                ${
-                  isCurrentTurn
-                    ? '<span class="px-2 py-0.5 rounded text-[10px] font-black bg-amber-400 text-black uppercase">▶ VEZ ATIVA</span>'
-                    : ''
-                }
-                ${isDead ? '<span class="px-2 py-0.5 rounded text-[10px] font-black bg-red-600 text-white flex items-center gap-1"><iconify-icon icon="game-icons:crowned-skull"></iconify-icon> MORTO</span>' : ''}
+          return `
+          <article class="char-card p-4 sm:p-5 flex flex-col justify-between gap-3.5 relative border border-rose-950/40 hover:border-amber-500/40 transition">
+            <!-- Topo: Ícone + Nome + Nível + Visibilidade -->
+            <div class="flex items-start justify-between gap-2">
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-2">
+                  <span class="w-8 h-8 rounded-lg bg-rose-950/60 border border-rose-500/40 flex items-center justify-center text-rose-400 text-lg shrink-0">
+                    <iconify-icon icon="game-icons:monster-grasp"></iconify-icon>
+                  </span>
+                  <div class="min-w-0">
+                    <h3 class="font-serif-fantasy text-base sm:text-lg font-black tracking-wide truncate gold-title" title="${escapeHtml(e.name)}">
+                      ${escapeHtml(e.name)}
+                    </h3>
+                    <span class="px-2 py-0.2 rounded text-[10px] font-mono font-extrabold bg-amber-500/15 gold-title border border-amber-500/30">
+                      NV. ${e.level || 1}
+                    </span>
+                  </div>
+                </div>
               </div>
-              <div class="text-[11px] font-mono app-muted mt-0.5">
-                Iniciativa: <strong>${p.initiativeRoll ?? '-'}</strong> • Turnos Jogados: <strong>${p.turnsTaken || 0}</strong>
+
+              <!-- Switch / Indicador de Liberação -->
+              <div class="shrink-0">
                 ${
-                  charObj
-                    ? ` • <iconify-icon icon="game-icons:heart-bottle" class="icon-hp"></iconify-icon> ${charObj.hp}/${charObj.maxHp} • <iconify-icon icon="game-icons:breastplate" class="icon-armor"></iconify-icon> ${charObj.armor}/${charObj.maxArmor} • <iconify-icon icon="game-icons:lightning-branches"></iconify-icon> PA ${charObj.pa}/${charObj.maxPa}`
-                    : ''
+                  isMaster
+                    ? `<button
+                        type="button"
+                        data-toggle-reveal="${escapeHtml(e.id)}"
+                        class="px-2.5 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1.5 transition ${
+                          isRevealed
+                            ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 hover:bg-emerald-500/30'
+                            : 'bg-black/50 text-neutral-400 border border-neutral-700 hover:border-amber-500/40'
+                        }"
+                        title="${isRevealed ? 'Liberado para jogadores (Clique para Ocultar)' : 'Oculto para jogadores (Clique para Liberar)'}"
+                      >
+                        <iconify-icon icon="${isRevealed ? 'game-icons:eyeball' : 'game-icons:blindfold'}" style="color: ${isRevealed ? '#4ade80' : '#94a3b8'};"></iconify-icon>
+                        <span>${isRevealed ? 'Liberado' : 'Oculto'}</span>
+                      </button>`
+                    : `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
+                        <iconify-icon icon="game-icons:eyeball" style="color: #4ade80;"></iconify-icon> <span>Conhecido</span>
+                      </span>`
                 }
               </div>
             </div>
-          </div>
 
-          <div class="flex items-center gap-1.5">
+            <!-- Recursos Vitais do Inimigo -->
+            <div class="space-y-1.5 p-2.5 rounded-xl bg-black/30 border app-divider-border text-xs font-mono">
+              <div class="grid grid-cols-3 gap-2">
+                <div class="flex items-center gap-1 text-rose-400">
+                  <iconify-icon icon="game-icons:heart-bottle" class="icon-hp"></iconify-icon>
+                  <span class="font-extrabold">${e.maxHp} HP</span>
+                </div>
+                <div class="flex items-center gap-1 text-sky-400">
+                  <iconify-icon icon="game-icons:breastplate" class="icon-armor"></iconify-icon>
+                  <span class="font-extrabold">${e.maxArmor} ARM</span>
+                </div>
+                <div class="flex items-center gap-1 text-indigo-400">
+                  <iconify-icon icon="game-icons:crystal-bars" class="icon-mana"></iconify-icon>
+                  <span class="font-extrabold">${e.maxMana} MP</span>
+                </div>
+              </div>
+              <div class="flex items-center justify-between pt-1 border-t app-divider-border text-[11px]">
+                <span class="text-emerald-400 flex items-center gap-1">
+                  <iconify-icon icon="game-icons:dragon-shield"></iconify-icon> DEF: <strong>${e.defense || 0}</strong>
+                </span>
+                <span class="text-violet-400 flex items-center gap-1">
+                  <iconify-icon icon="game-icons:fairy-wand" class="icon-mana"></iconify-icon> REGEN: <strong>${e.regen || 10}%</strong>
+                </span>
+                <span class="text-amber-300 flex items-center gap-1">
+                  <iconify-icon icon="game-icons:gladius" class="icon-dmg"></iconify-icon> ATQ: <strong>${e.attack || 0}</strong>
+                </span>
+              </div>
+            </div>
+
+            <!-- 7 Resistências de Status -->
+            <div class="flex flex-wrap gap-1">
+              ${resChips}
+            </div>
+
+            <!-- Botão HABILIDADES GERAIS -->
+            <button
+              type="button"
+              data-open-general-skills="${escapeHtml(e.id)}"
+              data-target-type="bestiary"
+              class="w-full py-2 px-3 rounded-lg font-serif-fantasy font-extrabold text-xs uppercase tracking-wider bg-purple-950/40 hover:bg-purple-900/60 border border-purple-500/40 text-purple-200 flex items-center justify-center gap-1.5 transition"
+            >
+              <iconify-icon icon="game-icons:scroll-unfurled"></iconify-icon>
+              <span>HABILIDADES GERAIS</span>
+            </button>
+
+            <!-- Ações do Mestre -->
             ${
-              charObj && !isDead
-                ? `<button type="button" data-spend-pa="${escapeHtml(charObj.id)}" class="px-2.5 py-1 rounded text-[11px] font-bold bg-amber-500/15 gold-title border border-amber-500/30" title="Gastar 1 Ponto de Ação (PA)">-1 PA</button>`
+              isMaster
+                ? `<div class="flex items-center gap-2 pt-2 border-t app-divider-border">
+                    <button
+                      type="button"
+                      data-spawn-enemy="${escapeHtml(e.id)}"
+                      class="btn-gold flex-1 py-1.5 px-3 text-xs font-serif-fantasy font-extrabold uppercase tracking-wider flex items-center justify-center gap-1.5"
+                      title="Trazer este inimigo para a mesa de combate"
+                    >
+                      <iconify-icon icon="game-icons:portal"></iconify-icon>
+                      <span>Trazer p/ Mesa</span>
+                    </button>
+                    <button
+                      type="button"
+                      data-edit-enemy="${escapeHtml(e.id)}"
+                      class="app-secondary-btn py-1.5 px-2.5 text-xs font-bold rounded-lg flex items-center justify-center"
+                      title="Editar Ficha do Inimigo"
+                    >
+                      <iconify-icon icon="game-icons:quill-ink"></iconify-icon>
+                    </button>
+                    <button
+                      type="button"
+                      data-delete-enemy="${escapeHtml(e.id)}"
+                      class="py-1.5 px-2.5 text-xs font-bold rounded-lg flex items-center justify-center text-rose-400 border border-rose-500/30 hover:bg-rose-950/50 transition"
+                      title="Excluir do Bestiário"
+                    >
+                      <iconify-icon icon="game-icons:crowned-skull"></iconify-icon>
+                    </button>
+                  </div>`
                 : ''
             }
-            ${
-              charObj
-                ? `<button type="button" data-action="pill-damage" data-char-id="${escapeHtml(charObj.id)}" class="px-2.5 py-1 rounded text-[11px] font-bold action-pill-damage flex items-center gap-1"><iconify-icon icon="game-icons:broadsword" class="icon-dmg"></iconify-icon> <span>Dano</span></button>`
-                : ''
-            }
-            ${
-              charObj && isDead && isEffectiveMaster()
-                ? `<button type="button" data-action="open-revive" data-char-id="${escapeHtml(charObj.id)}" class="px-2.5 py-1 rounded text-[11px] font-bold btn-gold flex items-center gap-1"><iconify-icon icon="game-icons:sparkles"></iconify-icon> <span>Reviver</span></button>`
-                : ''
-            }
-            ${
-              isEffectiveMaster()
-                ? `
-              <button type="button" data-move-init="${idx}" data-dir="-1" class="w-7 h-7 rounded app-icon-btn text-xs" title="Subir na iniciativa">↑</button>
-              <button type="button" data-move-init="${idx}" data-dir="1" class="w-7 h-7 rounded app-icon-btn text-xs" title="Descer na iniciativa">↓</button>
-            `
-                : ''
-            }
-          </div>
-        </div>
-      `;
-      })
-      .join('');
+          </article>
+          `;
+        })
+        .join('');
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -2968,7 +3220,7 @@
     renderCharactersTab();
     renderCatalogTab();
     renderShopTab();
-    renderCombatTab();
+    renderBestiaryTab();
     renderQuestsTab();
     renderAdminTab();
     refreshOpenModalsIfAny();
@@ -4457,7 +4709,7 @@
 
               ${
                 tpl.descricao
-                  ? `<p class="text-[11px] app-muted line-clamp-2">${escapeHtml(tpl.descricao)}</p>`
+                  ? `<p class="text-[11px] app-muted item-description">${escapeHtml(tpl.descricao)}</p>`
                   : ''
               }
 
@@ -4839,84 +5091,369 @@
   }
 
   // ===========================================================================
-  // Rotina de Combate & Avanço de Turno (05-combate-e-turnos.md)
+  // Gerenciamento do Bestiário, Invocação e Habilidades Gerais
   // ===========================================================================
-  function advanceBattleTurn() {
+  function openEnemyForm(enemyId = null) {
+    const isEdit = Boolean(enemyId);
+    const enemy = isEdit ? (state.bestiary || []).find((b) => b.id === enemyId) : null;
+
+    document.getElementById('enemy-form-id').value = enemyId || '';
+    document.getElementById('enemy-form-title').textContent = isEdit
+      ? 'EDITAR INIMIGO (BESTIÁRIO)'
+      : 'CRIAR INIMIGO (BESTIÁRIO)';
+
+    document.getElementById('enemy-name-input').value = enemy ? enemy.name : '';
+    document.getElementById('enemy-level-input').value = enemy ? (enemy.level || 1) : 1;
+    document.getElementById('enemy-revealed-input').checked = enemy ? Boolean(enemy.reveladoParaJogadores) : false;
+
+    document.getElementById('enemy-max-hp').value = enemy ? enemy.maxHp : 100;
+    document.getElementById('enemy-max-armor').value = enemy ? enemy.maxArmor : 10;
+    document.getElementById('enemy-max-mana').value = enemy ? enemy.maxMana : 50;
+    document.getElementById('enemy-regen').value = enemy ? enemy.regen : 10;
+    document.getElementById('enemy-defense').value = enemy ? enemy.defense : 0;
+    document.getElementById('enemy-attack').value = enemy ? (enemy.attack || 0) : 0;
+    document.getElementById('enemy-arcana').value = enemy ? (enemy.arcana || 0) : 0;
+    document.getElementById('enemy-santidade').value = enemy ? (enemy.santidade || 0) : 0;
+
+    const attrs = enemy ? (enemy.attributes || {}) : { FORCA: 10, DESTREZA: 10, INTELIGENCIA: 10, SABEDORIA: 10, LABIA: 10 };
+    document.getElementById('enemy-attr-forca').value = attrs.FORCA ?? 10;
+    document.getElementById('enemy-attr-destreza').value = attrs.DESTREZA ?? 10;
+    document.getElementById('enemy-attr-inteligencia').value = attrs.INTELIGENCIA ?? 10;
+    document.getElementById('enemy-attr-sabedoria').value = attrs.SABEDORIA ?? 10;
+    document.getElementById('enemy-attr-labia').value = attrs.LABIA ?? 10;
+
+    const resGrid = document.getElementById('enemy-resistances-grid');
+    if (resGrid) {
+      resGrid.innerHTML = RESISTANCE_TYPES.map((r) => {
+        const curMax = enemy?.resistances?.[r.name]?.max ?? 100;
+        return `
+          <div>
+            <label class="block font-bold mb-1 truncate text-[11px]" title="${escapeHtml(r.label)}">
+              ${r.icon} <span>${escapeHtml(r.name)}</span>
+            </label>
+            <input
+              type="number"
+              min="0"
+              step="1"
+              data-enemy-res="${escapeHtml(r.name)}"
+              value="${curMax}"
+              class="w-full px-2 py-1.5 font-mono font-bold app-input text-xs"
+            />
+          </div>
+        `;
+      }).join('');
+    }
+
+    document.getElementById('enemy-general-skills').value = enemy ? (enemy.generalSkills || '') : '';
+    openModal('modal-enemy-form');
+  }
+
+  function toggleEnemyReveal(enemyId) {
     commitMutation(
       (st, toasts) => {
-        const b = st.battle;
-        if (!b.participantsOrder || b.participantsOrder.length === 0) return false;
-
-        if (!b.isActive) {
-          b.isActive = true;
-          b.roundNumber = 1;
-          b.totalTurnsCount = 0;
-          b.masterTurnsCount = 0;
-          b.currentTurnIndex = 0;
-        }
-
-        const currentParticipant = b.participantsOrder[b.currentTurnIndex || 0];
-        if (currentParticipant) {
-          currentParticipant.turnsTaken = (currentParticipant.turnsTaken || 0) + 1;
-          b.totalTurnsCount = (b.totalTurnsCount || 0) + 1;
-          if (currentParticipant.isMaster) {
-            b.masterTurnsCount = (b.masterTurnsCount || 0) + 1;
-          } else {
-            // Decrementa duração de consumíveis ativos ao fim do turno do personagem (Seção 8)
-            const charDone = st.characters.find((c) => c.id === currentParticipant.id);
-            if (charDone && Array.isArray(charDone.activeBuffs)) {
-              charDone.activeBuffs.forEach((bf) => {
-                bf.remainingTurns = Math.max(0, Number(bf.remainingTurns || 0) - 1);
-              });
-              charDone.activeBuffs = charDone.activeBuffs.filter((bf) => bf.remainingTurns > 0);
-            }
+        const e = (st.bestiary || []).find((b) => b.id === enemyId);
+        if (!e) return false;
+        e.reveladoParaJogadores = !e.reveladoParaJogadores;
+        // Sincroniza visibilidade nas instâncias ativas na mesa de fichas
+        (st.characters || []).forEach((c) => {
+          if (c.bestiaryId === enemyId) {
+            c.reveladoParaJogadores = e.reveladoParaJogadores;
           }
-        }
-
-        // Avança cursor
-        let nextIdx = ((b.currentTurnIndex || 0) + 1) % b.participantsOrder.length;
-        if (nextIdx === 0) {
-          b.roundNumber = (b.roundNumber || 1) + 1;
-        }
-        b.currentTurnIndex = nextIdx;
-
-        // Rotina automática de início de turno do próximo participante (Seção 2.1)
-        const nextP = b.participantsOrder[nextIdx];
-        if (nextP && !nextP.isMaster) {
-          const nextChar = st.characters.find((c) => c.id === nextP.id);
-          if (nextChar && !nextChar.isDead && nextChar.hp > 0) {
-            recalculateCharacterDerived(nextChar);
-            // 1. Recarrega PA para o máximo (3 PA ou máximo ativo)
-            nextChar.pa = nextChar.maxPa;
-            // 2. Regenera Mana (padrão 20% da Mana Máxima, respeitando teto) + Regenerar Vida/Armadura de itens
-            const manaRec = applyRounding(nextChar.maxMana * ((nextChar.regen || 20) / 100));
-            if (nextChar.mana < nextChar.maxMana) {
-              nextChar.mana = Math.min(nextChar.maxMana, nextChar.mana + manaRec);
-            }
-            const regenVida = Number(nextChar.derived?.effectiveRegenVida || 0);
-            if (regenVida > 0 && nextChar.hp < nextChar.maxHp) {
-              nextChar.hp = Math.min(nextChar.maxHp, nextChar.hp + regenVida);
-            }
-            const regenArmadura = Number(nextChar.derived?.effectiveRegenArmadura || 0);
-            if (regenArmadura > 0 && nextChar.armor < nextChar.maxArmor) {
-              nextChar.armor = Math.min(nextChar.maxArmor, nextChar.armor + regenArmadura);
-            }
-            // 3. Incrementa +1 Carga no Pool Compartilhado do Grupo
-            b.groupCharges = (b.groupCharges || 0) + 1;
-            toasts.push(`Turno de ${nextChar.name}: PA recarregado, +${manaRec} Mana e +1 Carga do Grupo!`);
-          }
-        }
+        });
+        toasts.push(
+          e.reveladoParaJogadores
+            ? `Inimigo "${e.name}" foi liberado para visualização dos jogadores!`
+            : `Inimigo "${e.name}" foi ocultado dos jogadores.`
+        );
         return true;
       },
       {
-        actionType: 'TURN_ADVANCE',
-        targetEntity: 'Combate',
-        summary: 'Turno avançado na ordem de iniciativa.',
+        actionType: 'BESTIARY_VISIBILITY',
+        targetEntity: 'Bestiário',
+        summary: 'Visibilidade de criatura alternada.',
       }
     );
+    renderBestiaryTab();
+    renderCharactersTab();
   }
 
-  // ===========================================================================
+  function deleteEnemy(enemyId) {
+    const enemy = (state.bestiary || []).find((b) => b.id === enemyId);
+    if (!enemy) return;
+
+    openConfirmModal({
+      icon: '<iconify-icon icon="game-icons:crowned-skull"></iconify-icon>',
+      title: `EXCLUIR ${enemy.name.toUpperCase()}?`,
+      message: `Tem certeza que deseja apagar "${enemy.name}" permanentemente do Bestiário?`,
+      confirmText: '<iconify-icon icon="game-icons:crowned-skull"></iconify-icon> <span>Excluir Inimigo</span>',
+      onConfirm: () => {
+        commitMutation(
+          (st, toasts) => {
+            const idx = (st.bestiary || []).findIndex((b) => b.id === enemyId);
+            if (idx === -1) return false;
+            const removed = st.bestiary.splice(idx, 1)[0];
+            toasts.push(`Inimigo "${removed.name}" foi excluído do Bestiário.`);
+            return true;
+          },
+          {
+            actionType: 'BESTIARY_DELETE',
+            targetEntity: enemy.name,
+            summary: `Inimigo ${enemy.name} excluído do Bestiário.`,
+          }
+        );
+        renderBestiaryTab();
+      },
+    });
+  }
+
+  function renderSpawnEnemyList() {
+    const container = document.getElementById('spawn-enemy-list');
+    if (!container) return;
+
+    const q = (document.getElementById('spawn-enemy-search')?.value || '').trim().toLowerCase();
+    const enemies = (state.bestiary || []).filter((e) => (e.name || '').toLowerCase().includes(q));
+
+    if (enemies.length === 0) {
+      container.innerHTML = `
+        <div class="text-center p-8 fantasy-card border-dashed app-muted text-xs space-y-2">
+          <iconify-icon icon="game-icons:monster-grasp" class="text-3xl opacity-40"></iconify-icon>
+          <p>Nenhum inimigo encontrado no Bestiário.</p>
+          <button type="button" id="btn-goto-bestiary-create" class="btn-gold px-3 py-1.5 text-xs font-serif-fantasy uppercase">Ir ao Bestiário / Criar</button>
+        </div>
+      `;
+      document.getElementById('btn-goto-bestiary-create')?.addEventListener('click', () => {
+        closeModal('modal-spawn-enemy');
+        switchTab('bestiary');
+        openEnemyForm();
+      });
+      return;
+    }
+
+    container.innerHTML = enemies
+      .map(
+        (e) => `
+        <div class="p-3 rounded-xl bg-black/40 border app-divider-border flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-lg bg-rose-950/60 border border-rose-500/40 flex items-center justify-center text-rose-400 text-lg shrink-0">
+              <iconify-icon icon="game-icons:monster-grasp"></iconify-icon>
+            </div>
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="font-serif-fantasy font-black gold-title text-sm">${escapeHtml(e.name)}</span>
+                <span class="px-1.5 py-0.2 rounded text-[10px] font-mono font-bold bg-amber-500/15 gold-title border border-amber-500/30">NV. ${e.level || 1}</span>
+                ${
+                  e.reveladoParaJogadores
+                    ? '<span class="px-1.5 py-0.2 rounded text-[9px] font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">Liberado</span>'
+                    : '<span class="px-1.5 py-0.2 rounded text-[9px] font-bold bg-black/50 text-neutral-400 border border-neutral-700">Oculto</span>'
+                }
+              </div>
+              <div class="text-[11px] font-mono app-muted mt-0.5">
+                ${e.maxHp} HP • ${e.maxArmor} ARM • ${e.maxMana} MP • DEF ${e.defense || 0} • REGEN ${e.regen || 10}%
+              </div>
+            </div>
+          </div>
+          <button
+            type="button"
+            data-spawn-from-modal="${escapeHtml(e.id)}"
+            class="btn-gold px-3 py-1.5 text-xs font-serif-fantasy font-extrabold uppercase flex items-center gap-1.5"
+          >
+            <iconify-icon icon="game-icons:portal"></iconify-icon>
+            <span>Trazer p/ Mesa</span>
+          </button>
+        </div>
+      `
+      )
+      .join('');
+  }
+
+  function openSpawnEnemyModal() {
+    const searchInput = document.getElementById('spawn-enemy-search');
+    if (searchInput) searchInput.value = '';
+    renderSpawnEnemyList();
+    openModal('modal-spawn-enemy');
+  }
+
+  function spawnEnemyInstance(bestiaryEnemy) {
+    const baseName = (bestiaryEnemy.name || 'Inimigo').trim();
+    const escapedBase = baseName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const nameRegex = new RegExp(`^${escapedBase}(?: \\((\\d+)\\))?$`, 'i');
+
+    commitMutation(
+      (st, toasts) => {
+        const existingMatches = (st.characters || []).filter(
+          (c) => c.bestiaryId === bestiaryEnemy.id || nameRegex.test(c.name)
+        );
+
+        let newName = '';
+        if (existingMatches.length === 0) {
+          newName = `${baseName} (1)`;
+        } else {
+          if (
+            existingMatches.length === 1 &&
+            existingMatches[0].name.trim().toLowerCase() === baseName.toLowerCase()
+          ) {
+            existingMatches[0].name = `${baseName} (1)`;
+          }
+          let maxNum = 0;
+          for (const em of existingMatches) {
+            const m = em.name.match(nameRegex);
+            if (m) {
+              const num = m[1] ? parseInt(m[1], 10) : 1;
+              if (num > maxNum) maxNum = num;
+            }
+          }
+          newName = `${baseName} (${maxNum + 1})`;
+        }
+
+        const newInst = {
+          id: `char_enemy_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+          name: newName,
+          isEnemy: true,
+          bestiaryId: bestiaryEnemy.id,
+          reveladoParaJogadores: Boolean(bestiaryEnemy.reveladoParaJogadores),
+          level: Number(bestiaryEnemy.level || 1),
+          avatar: 'monster-grasp',
+          ownerMemberId: 'host_master',
+          ownerIp: state.localClientIp || '',
+          age: '',
+          height: '',
+          history: '',
+          maxWeight: 999,
+          baseMaxHp: Number(bestiaryEnemy.maxHp || 100),
+          maxHp: Number(bestiaryEnemy.maxHp || 100),
+          hp: Number(bestiaryEnemy.maxHp || 100),
+          baseMaxArmor: Number(bestiaryEnemy.maxArmor || 0),
+          maxArmor: Number(bestiaryEnemy.maxArmor || 0),
+          armor: Number(bestiaryEnemy.maxArmor || 0),
+          baseMaxMana: Number(bestiaryEnemy.maxMana || 50),
+          maxMana: Number(bestiaryEnemy.maxMana || 50),
+          mana: Number(bestiaryEnemy.maxMana || 50),
+          baseMaxPa: 3,
+          maxPa: 3,
+          pa: 3,
+          baseRegen: Number(bestiaryEnemy.regen || 10),
+          regen: Number(bestiaryEnemy.regen || 10),
+          baseDefense: Number(bestiaryEnemy.defense || 0),
+          defense: Number(bestiaryEnemy.defense || 0),
+          attack: Number(bestiaryEnemy.attack || 0),
+          arcana: Number(bestiaryEnemy.arcana || 0),
+          santidade: Number(bestiaryEnemy.santidade || 0),
+          generalSkills: String(bestiaryEnemy.generalSkills || ''),
+          attributes: JSON.parse(JSON.stringify(bestiaryEnemy.attributes || { FORCA: 10, DESTREZA: 10, INTELIGENCIA: 10, SABEDORIA: 10, LABIA: 10 })),
+          elementalResistances: JSON.parse(JSON.stringify(bestiaryEnemy.elementalResistances || {})),
+          resistances: JSON.parse(JSON.stringify(bestiaryEnemy.resistances || {
+            congelamento: { current: 0, max: 100 },
+            choque: { current: 0, max: 100 },
+            sangramento: { current: 0, max: 100 },
+            chamas: { current: 0, max: 100 },
+            veneno: { current: 0, max: 100 },
+            atordoamento: { current: 0, max: 100 },
+            cegueira: { current: 0, max: 100 },
+          })),
+          inventory: [],
+          isDead: false,
+          armorDegradation: 0,
+        };
+
+        st.characters.push(newInst);
+        toasts.push(`Inimigo "${newName}" trazido para a mesa de combate!`);
+        return true;
+      },
+      {
+        actionType: 'ENEMY_SPAWNED',
+        targetEntity: baseName,
+        summary: `Inimigo ${baseName} instanciado na mesa de combate.`,
+      }
+    );
+
+    closeModal('modal-spawn-enemy');
+    switchTab('characters');
+    renderCharactersTab();
+  }
+
+  function dismissEnemyInstance(charId) {
+    const c = state.characters.find((x) => x.id === charId);
+    if (!c || !c.isEnemy) return;
+
+    openConfirmModal({
+      icon: '<iconify-icon icon="game-icons:portal"></iconify-icon>',
+      title: `DESPACHAR ${c.name.toUpperCase()}?`,
+      message: `Tem certeza que deseja remover "${c.name}" da mesa de combate? A ficha será retirada da mesa sem excluir o modelo original salvo no Bestiário.`,
+      confirmText: '<iconify-icon icon="game-icons:portal"></iconify-icon> <span>Despachar da Mesa</span>',
+      onConfirm: () => {
+        commitMutation(
+          (st, toasts) => {
+            const idx = (st.characters || []).findIndex((x) => x.id === charId);
+            if (idx === -1) return false;
+            const removed = st.characters.splice(idx, 1)[0];
+            toasts.push(`Inimigo "${removed.name}" foi removido da mesa.`);
+            return true;
+          },
+          {
+            actionType: 'ENEMY_DISMISSED',
+            targetEntity: c.name,
+            summary: `Inimigo ${c.name} removido da mesa de combate.`,
+          }
+        );
+        renderCharactersTab();
+      },
+    });
+  }
+
+  function openGeneralSkillsModal(targetId, targetType = 'bestiary') {
+    const target =
+      targetType === 'bestiary'
+        ? (state.bestiary || []).find((b) => b.id === targetId)
+        : state.characters.find((c) => c.id === targetId);
+
+    if (!target) return;
+
+    const isMaster = isEffectiveMaster();
+    const isEnemy = targetType === 'bestiary' || Boolean(target.isEnemy);
+    const bestiaryRef =
+      targetType === 'bestiary'
+        ? target
+        : (state.bestiary || []).find((b) => b.id === target.bestiaryId);
+    const isRevealed = bestiaryRef
+      ? Boolean(bestiaryRef.reveladoParaJogadores)
+      : Boolean(target.reveladoParaJogadores);
+
+    if (!isMaster && !isRevealed) {
+      showToast('As habilidades desta criatura estão ocultas pelo Mestre.', 'warning');
+      return;
+    }
+
+    document.getElementById('general-skills-target-id').value = targetId;
+    document.getElementById('general-skills-target-type').value = targetType;
+    document.getElementById('general-skills-modal-title').textContent = `${target.name.toUpperCase()} • HABILIDADES GERAIS`;
+    document.getElementById('general-skills-modal-subtitle').textContent = `Nível ${target.level || 1} • ${
+      targetType === 'bestiary' ? 'Bestiário Modelo' : 'Instância de Combate'
+    }`;
+
+    const skillsText = target.generalSkills || 'Nenhuma habilidade cadastrada para esta criatura.';
+    const readView = document.getElementById('general-skills-readonly-view');
+    const editView = document.getElementById('general-skills-edit-view');
+    const saveBtn = document.getElementById('btn-save-general-skills');
+    const textarea = document.getElementById('general-skills-textarea');
+
+    if (isMaster) {
+      if (editView) editView.classList.remove('hidden');
+      if (readView) readView.classList.add('hidden');
+      if (saveBtn) saveBtn.classList.remove('hidden');
+      if (textarea) textarea.value = target.generalSkills || '';
+    } else {
+      if (editView) editView.classList.add('hidden');
+      if (readView) {
+        readView.classList.remove('hidden');
+        readView.textContent = skillsText;
+      }
+      if (saveBtn) saveBtn.classList.add('hidden');
+    }
+
+    openModal('modal-general-skills');
+  }
+
+    // ===========================================================================
   // Registro de Todos os Eventos de UI
   // ===========================================================================
   function bindEvents() {
@@ -5586,6 +6123,8 @@
       else if (action === 'pill-attr') openAttributeModal(charId, btn.getAttribute('data-attr'));
       else if (action === 'pill-regen') triggerInstantManaRegen(charId);
       else if (action === 'pill-reset') requestResetCharacter(charId);
+      else if (action === 'open-general-skills') openGeneralSkillsModal(charId, 'instance');
+      else if (action === 'dismiss-enemy') dismissEnemyInstance(charId);
     };
 
     const grid = document.getElementById('characters-grid');
@@ -5714,7 +6253,7 @@
       const id = document.getElementById('cat-item-id').value.trim();
       const nome = document.getElementById('cat-item-name').value.trim() || 'Item';
       const tipo = document.getElementById('cat-item-type').value;
-      const descricao = document.getElementById('cat-item-desc').value.trim();
+      const descricao = document.getElementById('cat-item-desc').value ?? '';
       const peso = Math.max(0, Number(document.getElementById('cat-item-weight').value || 0));
       const preco = Math.max(0, Math.round(Number(document.getElementById('cat-item-price').value || 0)));
       const durationTurns = null;
@@ -6184,149 +6723,251 @@
     });
 
     // -------------------------------------------------------------------------
-    // Eventos de Combate & Turnos
+    // Eventos do Bestiário & Invocação de Inimigos
     // -------------------------------------------------------------------------
-    document.getElementById('btn-toggle-battle')?.addEventListener('click', () => {
-      commitMutation(
-        (st, toasts) => {
-          const b = st.battle;
-          b.isActive = !b.isActive;
-          if (b.isActive) {
-            b.roundNumber = 1;
-            b.totalTurnsCount = 0;
-            b.masterTurnsCount = 0;
-            b.currentTurnIndex = 0;
-            // Sincroniza personagens na iniciativa se vazia
-            if (!b.participantsOrder || b.participantsOrder.length === 0) {
-              b.participantsOrder = st.characters.map((c) => ({
-                id: c.id,
-                name: c.name,
-                isMaster: false,
-                isDead: c.isDead,
-                turnsTaken: 0,
-                initiativeRoll: 10,
-              }));
-              b.participantsOrder.push({
-                id: 'MESTRE',
-                name: 'Mestre da Mesa',
-                isMaster: true,
-                isDead: false,
-                turnsTaken: 0,
-                initiativeRoll: 15,
-              });
-            }
-            toasts.push('Modo de Combate iniciado!');
-          } else {
-            // Restaura integralmente a Armadura Máxima degradada por sobrecarga durante a batalha (Seção 6.3)
-            st.characters.forEach((c) => {
-              c.armorDegradation = 0;
-              c.activeBuffs = [];
-            });
-            toasts.push('Combate encerrado! Degradações de armadura foram restauradas.');
-          }
-          return true;
-        },
-        {
-          actionType: 'BATTLE_TOGGLE',
-          targetEntity: 'Estado de Batalha',
-          summary: state.battle?.isActive ? 'Combate encerrado.' : 'Combate iniciado.',
-        }
-      );
+    document.getElementById('btn-create-enemy')?.addEventListener('click', () => openEnemyForm());
+
+    document.getElementById('bestiary-search-input')?.addEventListener('input', (e) => {
+      state.bestiarySearchQuery = e.target.value;
+      state.bestiaryPage = 1;
+      const clearBtn = document.getElementById('bestiary-clear-search-btn');
+      if (clearBtn) {
+        if (state.bestiarySearchQuery) clearBtn.classList.remove('hidden');
+        else clearBtn.classList.add('hidden');
+      }
+      renderBestiaryTab();
     });
 
-    document.getElementById('btn-end-turn')?.addEventListener('click', advanceBattleTurn);
-    document.getElementById('btn-force-turn')?.addEventListener('click', advanceBattleTurn);
-
-    document.getElementById('btn-charge-inc')?.addEventListener('click', () => {
-      commitMutation((st) => {
-        st.battle.groupCharges = (st.battle.groupCharges || 0) + 1;
-        return true;
-      });
-    });
-    document.getElementById('btn-charge-dec')?.addEventListener('click', () => {
-      commitMutation((st) => {
-        st.battle.groupCharges = Math.max(0, (st.battle.groupCharges || 0) - 1);
-        return true;
-      });
+    document.getElementById('bestiary-clear-search-btn')?.addEventListener('click', () => {
+      const input = document.getElementById('bestiary-search-input');
+      if (input) input.value = '';
+      state.bestiarySearchQuery = '';
+      state.bestiaryPage = 1;
+      document.getElementById('bestiary-clear-search-btn')?.classList.add('hidden');
+      renderBestiaryTab();
     });
 
-    document.getElementById('btn-sync-initiative-chars')?.addEventListener('click', () => {
-      commitMutation((st) => {
-        const existingIds = new Set((st.battle.participantsOrder || []).map((p) => p.id));
-        for (const c of st.characters) {
-          if (!existingIds.has(c.id)) {
-            st.battle.participantsOrder.push({
-              id: c.id,
-              name: c.name,
-              isMaster: false,
-              isDead: c.isDead,
-              turnsTaken: 0,
-              initiativeRoll: 10,
-            });
-          }
-        }
-        if (!existingIds.has('MESTRE')) {
-          st.battle.participantsOrder.push({
-            id: 'MESTRE',
-            name: 'Mestre da Mesa',
-            isMaster: true,
-            isDead: false,
-            turnsTaken: 0,
-            initiativeRoll: 15,
-          });
-        }
-        return true;
-      });
+    document.getElementById('btn-bestiary-prev')?.addEventListener('click', () => {
+      if (state.bestiaryPage > 1) {
+        state.bestiaryPage--;
+        renderBestiaryTab();
+      }
     });
 
-    document.getElementById('btn-roll-all-initiative')?.addEventListener('click', () => {
-      commitMutation(
-        (st, toasts) => {
-          (st.battle.participantsOrder || []).forEach((p) => {
-            p.initiativeRoll = Math.floor(Math.random() * 20) + 1;
-          });
-          st.battle.participantsOrder.sort((a, b) => (b.initiativeRoll || 0) - (a.initiativeRoll || 0));
-          st.battle.currentTurnIndex = 0;
-          toasts.push('Iniciativa 1d20 rolada e ordenada para todos os participantes!');
-          return true;
-        },
-        {
-          actionType: 'INITIATIVE_ROLL',
-          targetEntity: 'Fila de Iniciativa',
-          summary: 'Iniciativa 1d20 rolada e reordenada.',
-        }
-      );
+    document.getElementById('btn-bestiary-next')?.addEventListener('click', () => {
+      const isMaster = isEffectiveMaster();
+      const visible = isMaster
+        ? (state.bestiary || [])
+        : (state.bestiary || []).filter((b) => b.reveladoParaJogadores);
+      const q = (state.bestiarySearchQuery || '').trim().toLowerCase();
+      const filtered = visible.filter((e) => (e.name || '').toLowerCase().includes(q));
+      const totalPages = Math.max(1, Math.ceil(filtered.length / 6));
+      if (state.bestiaryPage < totalPages) {
+        state.bestiaryPage++;
+        renderBestiaryTab();
+      }
     });
 
-    document.getElementById('initiative-list-container')?.addEventListener('click', (e) => {
-      handleCharActionClick(e);
-
-      const paBtn = e.target.closest('[data-spend-pa]');
-      if (paBtn) {
-        const cid = paBtn.getAttribute('data-spend-pa');
-        commitMutation((st) => {
-          const c = st.characters.find((x) => x.id === cid);
-          if (!c) return false;
-          c.pa = Math.max(0, (c.pa || 0) - 1);
-          return true;
-        });
+    document.getElementById('bestiary-grid')?.addEventListener('click', (e) => {
+      const toggleBtn = e.target.closest('[data-toggle-reveal]');
+      if (toggleBtn) {
+        const id = toggleBtn.getAttribute('data-toggle-reveal');
+        toggleEnemyReveal(id);
         return;
       }
 
-      const moveBtn = e.target.closest('[data-move-init]');
-      if (moveBtn) {
-        const idx = Number(moveBtn.getAttribute('data-move-init'));
-        const dir = Number(moveBtn.getAttribute('data-dir'));
-        commitMutation((st) => {
-          const arr = st.battle.participantsOrder || [];
-          const targetIdx = idx + dir;
-          if (targetIdx < 0 || targetIdx >= arr.length) return false;
-          const tmp = arr[idx];
-          arr[idx] = arr[targetIdx];
-          arr[targetIdx] = tmp;
-          return true;
-        });
+      const spawnBtn = e.target.closest('[data-spawn-enemy]');
+      if (spawnBtn) {
+        const id = spawnBtn.getAttribute('data-spawn-enemy');
+        const enemy = (state.bestiary || []).find((b) => b.id === id);
+        if (enemy) spawnEnemyInstance(enemy);
+        return;
       }
+
+      const editBtn = e.target.closest('[data-edit-enemy]');
+      if (editBtn) {
+        const id = editBtn.getAttribute('data-edit-enemy');
+        openEnemyForm(id);
+        return;
+      }
+
+      const delBtn = e.target.closest('[data-delete-enemy]');
+      if (delBtn) {
+        const id = delBtn.getAttribute('data-delete-enemy');
+        deleteEnemy(id);
+        return;
+      }
+
+      const skillsBtn = e.target.closest('[data-open-general-skills]');
+      if (skillsBtn) {
+        const id = skillsBtn.getAttribute('data-open-general-skills');
+        const targetType = skillsBtn.getAttribute('data-target-type') || 'bestiary';
+        openGeneralSkillsModal(id, targetType);
+        return;
+      }
+    });
+
+    // Botão "TRAZER INIMIGO" na aba Personagens
+    document.getElementById('btn-spawn-enemy')?.addEventListener('click', () => {
+      openSpawnEnemyModal();
+    });
+
+    // Pesquisa no modal de Trazer Inimigo
+    document.getElementById('spawn-enemy-search')?.addEventListener('input', () => {
+      renderSpawnEnemyList();
+    });
+
+    document.getElementById('spawn-enemy-list')?.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-spawn-from-modal]');
+      if (btn) {
+        const id = btn.getAttribute('data-spawn-from-modal');
+        const enemy = (state.bestiary || []).find((b) => b.id === id);
+        if (enemy) spawnEnemyInstance(enemy);
+      }
+    });
+
+    // Submissão do Formulário de Inimigo (Criar / Editar)
+    document.getElementById('form-enemy')?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const enemyId = document.getElementById('enemy-form-id').value;
+      const isEdit = Boolean(enemyId);
+
+      const name = document.getElementById('enemy-name-input').value.trim();
+      if (!name) {
+        showToast('Informe o nome do inimigo!', 'warning');
+        return;
+      }
+
+      const level = Math.max(1, parseInt(document.getElementById('enemy-level-input').value, 10) || 1);
+      const reveladoParaJogadores = document.getElementById('enemy-revealed-input').checked;
+
+      const maxHp = Math.max(1, parseInt(document.getElementById('enemy-max-hp').value, 10) || 100);
+      const maxArmor = Math.max(0, parseInt(document.getElementById('enemy-max-armor').value, 10) || 0);
+      const maxMana = Math.max(0, parseInt(document.getElementById('enemy-max-mana').value, 10) || 0);
+      const regen = parseFloat(document.getElementById('enemy-regen').value) || 0;
+      const defense = parseInt(document.getElementById('enemy-defense').value, 10) || 0;
+      const attack = parseInt(document.getElementById('enemy-attack').value, 10) || 0;
+      const arcana = parseInt(document.getElementById('enemy-arcana').value, 10) || 0;
+      const santidade = parseInt(document.getElementById('enemy-santidade').value, 10) || 0;
+
+      const attributes = {
+        FORCA: Math.max(1, parseInt(document.getElementById('enemy-attr-forca').value, 10) || 10),
+        DESTREZA: Math.max(1, parseInt(document.getElementById('enemy-attr-destreza').value, 10) || 10),
+        INTELIGENCIA: Math.max(1, parseInt(document.getElementById('enemy-attr-inteligencia').value, 10) || 10),
+        SABEDORIA: Math.max(1, parseInt(document.getElementById('enemy-attr-sabedoria').value, 10) || 10),
+        LABIA: Math.max(1, parseInt(document.getElementById('enemy-attr-labia').value, 10) || 10),
+      };
+
+      const resistances = {};
+      document.querySelectorAll('#enemy-resistances-grid [data-enemy-res]').forEach((input) => {
+        const rName = input.getAttribute('data-enemy-res');
+        const rMax = Math.max(0, parseInt(input.value, 10) || 100);
+        resistances[rName] = { current: 0, max: rMax };
+      });
+
+      const generalSkills = document.getElementById('enemy-general-skills').value.trim();
+
+      commitMutation(
+        (st, toasts) => {
+          if (!st.bestiary) st.bestiary = [];
+
+          if (isEdit) {
+            const idx = st.bestiary.findIndex((b) => b.id === enemyId);
+            if (idx === -1) return false;
+            st.bestiary[idx] = {
+              ...st.bestiary[idx],
+              name,
+              level,
+              reveladoParaJogadores,
+              maxHp,
+              maxArmor,
+              maxMana,
+              regen,
+              defense,
+              attack,
+              arcana,
+              santidade,
+              attributes,
+              resistances,
+              generalSkills,
+            };
+            // Sincroniza reveladoParaJogadores e generalSkills para instâncias ativas na mesa
+            (st.characters || []).forEach((c) => {
+              if (c.bestiaryId === enemyId) {
+                c.reveladoParaJogadores = reveladoParaJogadores;
+                c.generalSkills = generalSkills;
+              }
+            });
+            toasts.push(`Inimigo "${name}" atualizado no Bestiário.`);
+          } else {
+            const newEnemy = {
+              id: `bestiary_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+              name,
+              level,
+              reveladoParaJogadores,
+              maxHp,
+              maxArmor,
+              maxMana,
+              regen,
+              defense,
+              attack,
+              arcana,
+              santidade,
+              attributes,
+              resistances,
+              generalSkills,
+            };
+            st.bestiary.push(newEnemy);
+            toasts.push(`Inimigo "${name}" cadastrado no Bestiário!`);
+          }
+          return true;
+        },
+        {
+          actionType: isEdit ? 'BESTIARY_EDIT' : 'BESTIARY_CREATE',
+          targetEntity: name,
+          summary: `Inimigo ${name} ${isEdit ? 'atualizado' : 'criado'} no Bestiário.`,
+        }
+      );
+
+      closeModal('modal-enemy-form');
+      renderBestiaryTab();
+    });
+
+    // Salvar Habilidades Gerais no Modal
+    document.getElementById('btn-save-general-skills')?.addEventListener('click', () => {
+      const targetId = document.getElementById('general-skills-target-id').value;
+      const targetType = document.getElementById('general-skills-target-type').value;
+      const newText = (document.getElementById('general-skills-textarea').value || '').trim();
+
+      commitMutation(
+        (st, toasts) => {
+          if (targetType === 'bestiary') {
+            const e = (st.bestiary || []).find((b) => b.id === targetId);
+            if (!e) return false;
+            e.generalSkills = newText;
+            toasts.push(`Habilidades Gerais de "${e.name}" atualizadas.`);
+            (st.characters || []).forEach((c) => {
+              if (c.bestiaryId === targetId) c.generalSkills = newText;
+            });
+            return true;
+          } else {
+            const c = (st.characters || []).find((x) => x.id === targetId);
+            if (!c) return false;
+            c.generalSkills = newText;
+            toasts.push(`Habilidades Gerais de "${c.name}" atualizadas.`);
+            return true;
+          }
+        },
+        {
+          actionType: 'SKILLS_UPDATE',
+          targetEntity: 'Habilidades Gerais',
+          summary: 'Habilidades Gerais de criatura atualizadas.',
+        }
+      );
+
+      closeModal('modal-general-skills');
+      renderBestiaryTab();
+      renderCharactersTab();
     });
 
     // Rolador de Dados

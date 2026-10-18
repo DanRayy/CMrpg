@@ -105,14 +105,14 @@
           </span>
         </button>
 
-        <button type="button" data-nav-tab="combat" class="sidebar-nav-item sidebar-nav-combat mt-2">
+        <button type="button" data-nav-tab="bestiary" class="sidebar-nav-item mt-2">
           <span class="flex items-center gap-2.5">
-            <iconify-icon icon="game-icons:crossed-swords" class="text-base"></iconify-icon>
-            <span>Combate &amp; Turnos</span>
+            <iconify-icon icon="game-icons:monster-grasp" class="text-base"></iconify-icon>
+            <span>Bestiário</span>
           </span>
           <span class="flex items-center gap-1.5">
-            <span data-nav-cursors="combat" class="sidebar-cursors-dots"></span>
-            <span id="combat-nav-dot" class="w-2.5 h-2.5 rounded-full bg-red-500/60"></span>
+            <span data-nav-cursors="bestiary" class="sidebar-cursors-dots"></span>
+            <span id="badge-bestiary-count" class="sidebar-badge">0</span>
           </span>
         </button>
 
@@ -443,6 +443,16 @@
           <div class="flex flex-wrap items-center gap-2">
             <button
               type="button"
+              id="btn-spawn-enemy"
+              class="master-only-el px-3.5 py-2 text-xs font-serif-fantasy uppercase tracking-wider bg-rose-950/60 hover:bg-rose-900/80 border border-rose-500/50 text-rose-300 font-extrabold flex items-center gap-1.5 shadow-md transition"
+              title="Trazer instâncias de inimigos do Bestiário para a mesa de combate"
+            >
+              <iconify-icon icon="game-icons:monster-grasp" class="text-base"></iconify-icon>
+              <span>TRAZER INIMIGO</span>
+            </button>
+
+            <button
+              type="button"
               id="btn-bulk-rewards"
               class="master-only-el px-3.5 py-2 text-xs font-serif-fantasy uppercase tracking-wider btn-gold-outline flex items-center gap-1.5"
             >
@@ -573,142 +583,92 @@
       </section>
 
       <!-- ===================================================================== -->
-      <!-- ABA 5: COMBATE & TURNOS                                               -->
+      <!-- ABA 5: BESTIÁRIO                                                      -->
       <!-- ===================================================================== -->
-      <section id="tab-combat" class="tab-section hidden space-y-5">
-        <!-- Painel de Controle de Batalha -->
-        <div class="fantasy-card p-5 border-red-500/30 flex flex-wrap items-center justify-between gap-4">
+      <section id="tab-bestiary" class="tab-section hidden space-y-5">
+        <!-- Barra de Ferramentas do Bestiário -->
+        <div class="fantasy-card p-4 flex flex-wrap items-center justify-between gap-3">
           <div class="flex items-center gap-3.5">
-            <div class="w-12 h-12 rounded-xl bg-red-950/70 border border-red-500/40 flex items-center justify-center text-2xl text-red-400">
-              <iconify-icon icon="game-icons:crossed-swords"></iconify-icon>
+            <div class="w-10 h-10 rounded-lg bg-rose-950/50 border border-rose-500/40 flex items-center justify-center text-xl text-rose-400 shrink-0">
+              <iconify-icon icon="game-icons:monster-grasp"></iconify-icon>
             </div>
             <div>
               <div class="flex items-center gap-2.5">
-                <h2 class="font-serif-fantasy text-lg sm:text-xl font-black uppercase tracking-wider app-title">
-                  Cockpit Tático de Combate &amp; Turnos
+                <h2 class="font-serif-fantasy text-lg font-black uppercase tracking-wider gold-title">
+                  Bestiário de Criaturas &amp; Inimigos
                 </h2>
-                <span id="battle-status-pill" class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-slate-800 text-slate-300 border border-slate-600">
-                  FORA DE COMBATE
+                <span id="bestiary-count-pill" class="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                  0 MONSTRO(S)
                 </span>
               </div>
-              <p class="text-xs app-muted mt-0.5">
-                Início de turno do jogador ativo recarrega 3 PA, regenera +20% de Mana e concede +1 Carga ao Grupo.
+              <p class="text-xs app-muted">
+                Catálogo de inimigos e chefes da campanha. Controle atributos, habilidades e liberação visual para os jogadores.
               </p>
             </div>
           </div>
 
-          <div class="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              id="btn-toggle-battle"
-              class="master-only-el px-4 py-2.5 rounded-lg font-serif-fantasy font-extrabold text-xs uppercase tracking-wider bg-red-700 hover:bg-red-600 text-white border border-red-400/50 shadow-lg transition"
-            >
-              <iconify-icon icon="game-icons:crossed-swords"></iconify-icon> <span>Iniciar Combate</span>
-            </button>
+          <div class="flex flex-wrap items-center gap-2.5 flex-1 justify-end min-w-[280px]">
+            <div class="relative w-full sm:w-64">
+              <iconify-icon icon="game-icons:magnifying-glass" class="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs opacity-60"></iconify-icon>
+              <input
+                id="bestiary-search-input"
+                type="text"
+                placeholder="BUSCAR INIMIGO..."
+                autocomplete="off"
+                class="w-full pl-9 pr-8 py-2 text-xs sm:text-sm font-semibold tracking-wide app-input"
+              />
+              <button
+                id="bestiary-clear-search-btn"
+                type="button"
+                title="Limpar busca"
+                class="hidden absolute right-2.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded items-center justify-center text-xs app-muted hover:opacity-100"
+              >
+                ✕
+              </button>
+            </div>
 
             <button
+              id="btn-create-enemy"
               type="button"
-              id="btn-end-turn"
-              class="px-4 py-2.5 rounded-lg font-serif-fantasy font-extrabold text-xs uppercase tracking-wider btn-gold"
+              class="master-only-el btn-gold px-4 py-2 text-xs font-serif-fantasy uppercase tracking-wider flex items-center gap-1.5 shrink-0"
             >
-              <iconify-icon icon="game-icons:sands-of-time"></iconify-icon> <span>Finalizar Turno</span>
-            </button>
-
-            <button
-              type="button"
-              id="btn-force-turn"
-              title="Avanço Forçado pelo Mestre (Anti-AFK)"
-              class="master-only-el px-3.5 py-2.5 rounded-lg font-serif-fantasy font-bold text-xs uppercase tracking-wider app-secondary-btn"
-            >
-              <iconify-icon icon="game-icons:lightning-branches"></iconify-icon> <span>Forçar Avanço</span>
+              <iconify-icon icon="game-icons:monster-grasp"></iconify-icon>
+              <span>CRIAR INIMIGO</span>
             </button>
           </div>
         </div>
 
-        <!-- 4 Cards de Telemetria + Cargas Compartilhadas do Grupo -->
-        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <div class="fantasy-card p-4">
-            <span class="text-[10px] font-serif-fantasy uppercase tracking-widest app-muted">Rodada Atual (Rounds)</span>
-            <div id="battle-round-num" class="text-2xl font-mono font-black gold-title mt-1">1</div>
-          </div>
-          <div class="fantasy-card p-4">
-            <span class="text-[10px] font-serif-fantasy uppercase tracking-widest app-muted">Turnos Totais</span>
-            <div id="battle-total-turns" class="text-2xl font-mono font-black app-title mt-1">0</div>
-          </div>
-          <div class="fantasy-card p-4">
-            <span class="text-[10px] font-serif-fantasy uppercase tracking-widest app-muted">Turnos do Mestre</span>
-            <div id="battle-master-turns" class="text-2xl font-mono font-black text-rose-400 mt-1">0</div>
-          </div>
-          <div class="fantasy-card p-4 border-amber-500/40">
-            <div class="flex items-center justify-between">
-              <span class="text-[10px] font-serif-fantasy uppercase tracking-widest gold-title font-bold"><iconify-icon icon="game-icons:lightning-branches"></iconify-icon> <span>Cargas do Grupo</span></span>
-              <span class="text-[10px] app-muted">Pool Coletivo</span>
-            </div>
-            <div class="flex items-center justify-between mt-1.5">
-              <span id="battle-group-charges" class="text-2xl font-mono font-black gold-title">0</span>
-              <div class="flex items-center gap-1.5">
-                <button type="button" id="btn-charge-dec" class="w-8 h-8 rounded-lg font-mono font-black text-base app-secondary-btn">－</button>
-                <button type="button" id="btn-charge-inc" class="w-8 h-8 rounded-lg font-mono font-black text-base btn-gold">＋</button>
-              </div>
-            </div>
-          </div>
+        <!-- Grid Estrito Paginado (3 Colunas x 2 Linhas = Máx 6 por Página) -->
+        <div id="bestiary-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"></div>
+
+        <!-- Estado Vazio -->
+        <div id="empty-bestiary-state" class="hidden flex-col items-center justify-center p-12 text-center fantasy-card border-dashed space-y-3">
+          <iconify-icon icon="game-icons:monster-grasp" class="text-5xl text-neutral-600"></iconify-icon>
+          <h3 class="font-serif-fantasy text-base font-bold gold-title uppercase">Nenhum Inimigo Encontrado</h3>
+          <p id="empty-bestiary-message" class="text-xs app-muted max-w-sm">
+            Nenhuma criatura cadastrada no Bestiário ou visível com o filtro atual.
+          </p>
         </div>
 
-        <!-- Fila de Iniciativa + Rolador de Dados 1d20 -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
-          <!-- Ordem de Iniciativa -->
-          <div class="lg:col-span-2 fantasy-card p-5 space-y-4">
-            <div class="flex flex-wrap items-center justify-between gap-2">
-              <h3 class="font-serif-fantasy text-sm font-extrabold uppercase tracking-wider gold-title">
-                <iconify-icon icon="game-icons:tied-scroll"></iconify-icon> <span>Ordem de Iniciativa (Jogadores &amp; Mestre)</span>
-              </h3>
-              <div class="flex items-center gap-2">
-                <button
-                  type="button"
-                  id="btn-sync-initiative-chars"
-                  class="master-only-el px-3 py-1.5 rounded-lg text-xs font-bold app-secondary-btn"
-                >
-                  <iconify-icon icon="game-icons:cycle"></iconify-icon> <span>Sincronizar Participantes</span>
-                </button>
-                <button
-                  type="button"
-                  id="btn-roll-all-initiative"
-                  class="master-only-el px-3 py-1.5 rounded-lg text-xs font-bold btn-gold-outline"
-                >
-                  <iconify-icon icon="game-icons:dice-twenty-faces-twenty"></iconify-icon> <span>Rolar 1d20 p/ Todos</span>
-                </button>
-              </div>
-            </div>
-
-            <div id="initiative-list-container" class="space-y-2.5"></div>
-          </div>
-
-          <!-- Rolador Rápido de Dados & Resumo de Regras de Turno -->
-          <div class="space-y-4">
-            <div class="fantasy-card p-5 space-y-3">
-              <h3 class="font-serif-fantasy text-sm font-extrabold uppercase tracking-wider gold-title">
-                <iconify-icon icon="game-icons:rolling-dices"></iconify-icon> <span>Rolador Tático de Dados</span>
-              </h3>
-              <div class="grid grid-cols-3 gap-2">
-                <button type="button" data-roll-die="20" class="py-2.5 rounded-lg font-mono font-extrabold text-xs btn-gold">1d20</button>
-                <button type="button" data-roll-die="12" class="py-2.5 rounded-lg font-mono font-extrabold text-xs app-secondary-btn">1d12</button>
-                <button type="button" data-roll-die="10" class="py-2.5 rounded-lg font-mono font-extrabold text-xs app-secondary-btn">1d10</button>
-                <button type="button" data-roll-die="8" class="py-2.5 rounded-lg font-mono font-extrabold text-xs app-secondary-btn">1d8</button>
-                <button type="button" data-roll-die="6" class="py-2.5 rounded-lg font-mono font-extrabold text-xs app-secondary-btn">1d6</button>
-                <button type="button" data-roll-die="100" class="py-2.5 rounded-lg font-mono font-extrabold text-xs app-secondary-btn">1d100</button>
-              </div>
-              <div id="dice-roller-result" class="p-3 rounded-lg bg-black/30 border app-divider-border text-center font-mono text-sm app-muted">
-                Clique em um dado para rolar na mesa.
-              </div>
-            </div>
-
-            <div class="fantasy-card p-5 space-y-2 text-xs app-muted leading-relaxed">
-              <h4 class="font-serif-fantasy font-bold uppercase gold-title"><iconify-icon icon="game-icons:cog-lock"></iconify-icon> <span>Regras Automáticas de Combate</span></h4>
-              <p>• <strong>Início de Turno (Jogador Vivo):</strong> Recarrega PA para o máximo (3 PA), recupera Mana pela taxa de Regen e soma <strong>+1 Carga do Grupo</strong>.</p>
-              <p>• <strong>Turno do Mestre / Morto:</strong> Não acumula cargas nem regenera recursos.</p>
-              <p>• <strong>Sobrecarga de Armadura:</strong> Se o Dano Final superar a Armadura Atual, a Armadura Máxima sofre degradação temporária até o fim do combate.</p>
-            </div>
-          </div>
+        <!-- Paginação -->
+        <div id="bestiary-pagination" class="flex items-center justify-between p-4 fantasy-card">
+          <button
+            type="button"
+            id="btn-bestiary-prev"
+            class="app-secondary-btn px-4 py-2 rounded-lg text-xs font-bold font-serif-fantasy uppercase flex items-center gap-1.5 transition"
+          >
+            <span>←</span> <span>Anterior</span>
+          </button>
+          <span id="bestiary-page-info" class="font-mono text-xs font-bold gold-title">
+            Página 1 de 1
+          </span>
+          <button
+            type="button"
+            id="btn-bestiary-next"
+            class="btn-gold px-4 py-2 rounded-lg text-xs font-bold font-serif-fantasy uppercase flex items-center gap-1.5 transition"
+          >
+            <span>Próxima</span> <span>→</span>
+          </button>
         </div>
       </section>
 
@@ -973,7 +933,7 @@
         <div>
           <div class="flex items-center justify-between mb-2">
             <h4 class="font-serif-fantasy font-extrabold uppercase tracking-wider app-muted">
-              <iconify-icon icon="game-icons:alembic"></iconify-icon> <span>Limites Máximos das 7 Barras de Status (Sangramento, Veneno, etc.)</span>
+              <iconify-icon icon="game-icons:round-bottom-flask"></iconify-icon> <span>Limites Máximos das 7 Barras de Status (Sangramento, Veneno, etc.)</span>
             </h4>
             <button type="button" id="btn-reset-res-defaults" class="text-[11px] font-bold gold-title hover:underline">
               Padrão (100)
@@ -1252,7 +1212,7 @@
     <div class="modal-panel w-full max-w-lg rounded-2xl overflow-hidden flex flex-col max-h-[90vh]">
       <div class="px-5 py-4 border-b flex items-center justify-between app-modal-header">
         <div class="flex items-center gap-2.5">
-          <iconify-icon icon="game-icons:alembic" class="text-xl gold-title"></iconify-icon>
+          <iconify-icon icon="game-icons:round-bottom-flask" class="text-xl gold-title"></iconify-icon>
           <div>
             <h3 class="font-serif-fantasy text-base font-black tracking-wider uppercase gold-title">PAINEL DE RESISTÊNCIAS</h3>
             <p id="res-panel-char-name" class="text-xs font-bold app-muted"></p>
@@ -1461,7 +1421,7 @@
 
         <div>
           <label class="block font-bold uppercase mb-1 app-label">Descrição</label>
-          <textarea id="cat-item-desc" rows="2" class="w-full px-3 py-2 app-input"></textarea>
+          <textarea id="cat-item-desc" rows="4" class="w-full px-3 py-2 app-input item-description" placeholder="Descreva os efeitos, propriedades e lore do item..."></textarea>
         </div>
 
         <div class="grid grid-cols-2 gap-3">
@@ -1977,6 +1937,240 @@
           </button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- MODAL: CRIAR / EDITAR INIMIGO (BESTIÁRIO)                                -->
+  <!-- ========================================================================= -->
+  <div id="modal-enemy-form" class="modal-backdrop hidden fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
+    <div class="modal-panel w-full max-w-2xl rounded-2xl overflow-hidden flex flex-col max-h-[92vh]">
+      <div class="px-5 py-4 border-b flex items-center justify-between app-modal-header">
+        <div class="flex items-center gap-2">
+          <span class="text-xl flex items-center text-rose-400"><iconify-icon icon="game-icons:monster-grasp"></iconify-icon></span>
+          <h3 id="enemy-form-title" class="font-serif-fantasy text-base font-black tracking-wider gold-title uppercase">
+            CRIAR INIMIGO (BESTIÁRIO)
+          </h3>
+        </div>
+        <button type="button" data-close-modal="modal-enemy-form" class="w-8 h-8 rounded-lg flex items-center justify-center app-icon-btn">✕</button>
+      </div>
+
+      <form id="form-enemy" class="p-5 overflow-y-auto space-y-5 flex-1 text-xs">
+        <input type="hidden" id="enemy-form-id" value="" />
+
+        <!-- Identificação Básica & Liberação para Jogadores -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div class="sm:col-span-2">
+            <label for="enemy-name-input" class="block font-bold uppercase tracking-wider mb-1 app-label">Nome do Inimigo / Criatura</label>
+            <input id="enemy-name-input" type="text" placeholder="Ex: Zhefitis" maxlength="40" required class="w-full px-3 py-2 text-sm font-bold app-input" />
+          </div>
+          <div>
+            <label for="enemy-level-input" class="block font-bold uppercase tracking-wider mb-1 app-label">Nível (NV)</label>
+            <input id="enemy-level-input" type="number" min="1" step="1" value="1" required class="w-full px-3 py-2 font-mono font-bold app-input" />
+          </div>
+        </div>
+
+        <!-- Switch de Visibilidade -->
+        <div class="p-3.5 rounded-xl bg-black/30 border app-divider-border flex items-center justify-between">
+          <div>
+            <span class="font-bold uppercase tracking-wider gold-title block">Liberar para Jogadores</span>
+            <p class="text-[11px] app-muted">Se ativado, os jogadores podem ver a ficha completa e habilidades tanto no Bestiário quanto nos cards de mesa.</p>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" id="enemy-revealed-input" class="sr-only peer" />
+            <div class="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+          </label>
+        </div>
+
+        <!-- Recursos Vitais & Status Base -->
+        <div>
+          <h4 class="font-serif-fantasy font-extrabold uppercase tracking-wider gold-title mb-2">
+            <iconify-icon icon="game-icons:heart-bottle" class="icon-hp"></iconify-icon> <span>Recursos Vitais &amp; Atributos de Combate</span>
+          </h4>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+            <div>
+              <label for="enemy-max-hp" class="block font-bold mb-1 text-rose-400"><iconify-icon icon="game-icons:heart-bottle" class="icon-hp"></iconify-icon> <span>Vida Máx</span></label>
+              <input id="enemy-max-hp" type="number" min="1" step="1" value="100" required class="w-full px-3 py-2 font-mono font-bold app-input" />
+            </div>
+            <div>
+              <label for="enemy-max-armor" class="block font-bold mb-1 text-sky-400"><iconify-icon icon="game-icons:breastplate" class="icon-armor"></iconify-icon> <span>Armadura Máx</span></label>
+              <input id="enemy-max-armor" type="number" min="0" step="1" value="10" required class="w-full px-3 py-2 font-mono font-bold app-input" />
+            </div>
+            <div>
+              <label for="enemy-max-mana" class="block font-bold mb-1 text-indigo-400"><iconify-icon icon="game-icons:crystal-bars" class="icon-mana"></iconify-icon> <span>Mana Máx</span></label>
+              <input id="enemy-max-mana" type="number" min="0" step="1" value="50" required class="w-full px-3 py-2 font-mono font-bold app-input" />
+            </div>
+            <div>
+              <label for="enemy-regen" class="block font-bold mb-1 text-violet-400"><iconify-icon icon="game-icons:fairy-wand" class="icon-mana"></iconify-icon> <span>Regeneração %</span></label>
+              <input id="enemy-regen" type="number" min="0" step="any" value="10" required class="w-full px-3 py-2 font-mono font-bold app-input" />
+            </div>
+            <div>
+              <label for="enemy-defense" class="block font-bold mb-1 text-emerald-400"><iconify-icon icon="game-icons:dragon-shield"></iconify-icon> <span>Defesa</span></label>
+              <input id="enemy-defense" type="number" step="1" value="0" required class="w-full px-3 py-2 font-mono font-bold app-input" />
+            </div>
+            <div>
+              <label for="enemy-attack" class="block font-bold mb-1 text-orange-400"><iconify-icon icon="game-icons:gladius" class="icon-dmg"></iconify-icon> <span>Ataque</span></label>
+              <input id="enemy-attack" type="number" step="1" value="0" class="w-full px-3 py-2 font-mono font-bold app-input" />
+            </div>
+            <div>
+              <label for="enemy-arcana" class="block font-bold mb-1 text-purple-400"><iconify-icon icon="game-icons:crystal-ball"></iconify-icon> <span>Arcana</span></label>
+              <input id="enemy-arcana" type="number" step="1" value="0" class="w-full px-3 py-2 font-mono font-bold app-input" />
+            </div>
+            <div>
+              <label for="enemy-santidade" class="block font-bold mb-1 text-amber-300"><iconify-icon icon="game-icons:sparkles"></iconify-icon> <span>Santidade</span></label>
+              <input id="enemy-santidade" type="number" step="1" value="0" class="w-full px-3 py-2 font-mono font-bold app-input" />
+            </div>
+          </div>
+        </div>
+
+        <!-- 5 Atributos Canônicos -->
+        <div class="p-3.5 rounded-xl bg-black/25 border app-divider-border space-y-2.5">
+          <h4 class="font-serif-fantasy font-extrabold uppercase tracking-wider gold-title">
+            <iconify-icon icon="game-icons:dna1"></iconify-icon> <span>5 Atributos Básicos</span>
+          </h4>
+          <div class="grid grid-cols-2 sm:grid-cols-5 gap-2" id="enemy-attributes-grid">
+            <div>
+              <label class="block font-mono font-bold mb-1 app-muted">FORÇA</label>
+              <input id="enemy-attr-forca" type="number" min="1" value="10" class="w-full px-2 py-1.5 font-mono font-bold app-input" />
+            </div>
+            <div>
+              <label class="block font-mono font-bold mb-1 app-muted">DESTREZA</label>
+              <input id="enemy-attr-destreza" type="number" min="1" value="10" class="w-full px-2 py-1.5 font-mono font-bold app-input" />
+            </div>
+            <div>
+              <label class="block font-mono font-bold mb-1 app-muted">INTELIGÊNCIA</label>
+              <input id="enemy-attr-inteligencia" type="number" min="1" value="10" class="w-full px-2 py-1.5 font-mono font-bold app-input" />
+            </div>
+            <div>
+              <label class="block font-mono font-bold mb-1 app-muted">SABEDORIA</label>
+              <input id="enemy-attr-sabedoria" type="number" min="1" value="10" class="w-full px-2 py-1.5 font-mono font-bold app-input" />
+            </div>
+            <div>
+              <label class="block font-mono font-bold mb-1 app-muted">LÁBIA</label>
+              <input id="enemy-attr-labia" type="number" min="1" value="10" class="w-full px-2 py-1.5 font-mono font-bold app-input" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Limites Máximos das 7 Resistências de Status -->
+        <div>
+          <h4 class="font-serif-fantasy font-extrabold uppercase tracking-wider app-muted mb-2">
+            <iconify-icon icon="game-icons:round-bottom-flask"></iconify-icon> <span>Limites Máximos das 7 Resistências de Status</span>
+          </h4>
+          <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2" id="enemy-resistances-grid"></div>
+        </div>
+
+        <!-- HABILIDADES GERAIS (Unificada) -->
+        <div class="p-3.5 rounded-xl bg-purple-950/20 border border-purple-500/30 space-y-2">
+          <div class="flex items-center justify-between">
+            <label for="enemy-general-skills" class="font-serif-fantasy font-extrabold uppercase tracking-wider text-purple-300 flex items-center gap-1.5 text-xs">
+              <iconify-icon icon="game-icons:scroll-unfurled"></iconify-icon>
+              <span>HABILIDADES GERAIS</span>
+            </label>
+            <span class="text-[10px] app-muted">Ataques, passivas, ações e mecânicas unificadas</span>
+          </div>
+          <textarea
+            id="enemy-general-skills"
+            rows="6"
+            placeholder="Cole aqui todas as habilidades, ataques, passivas e descrições do inimigo..."
+            class="w-full p-3 font-mono text-xs app-input leading-relaxed"
+          ></textarea>
+        </div>
+
+        <div class="pt-3 border-t app-divider-border flex items-center justify-end gap-2">
+          <button type="button" data-close-modal="modal-enemy-form" class="px-4 py-2.5 rounded-lg font-bold text-xs uppercase app-secondary-btn">
+            Cancelar
+          </button>
+          <button type="submit" class="btn-gold px-6 py-2.5 font-serif-fantasy font-black text-xs uppercase flex items-center gap-1.5">
+            <iconify-icon icon="game-icons:save"></iconify-icon>
+            <span>Salvar Inimigo</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- MODAL: TRAZER INIMIGO DO BESTIÁRIO PARA A MESA                            -->
+  <!-- ========================================================================= -->
+  <div id="modal-spawn-enemy" class="modal-backdrop hidden fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
+    <div class="modal-panel w-full max-w-xl rounded-2xl overflow-hidden flex flex-col max-h-[85vh]">
+      <div class="px-5 py-4 border-b flex items-center justify-between app-modal-header">
+        <div class="flex items-center gap-2">
+          <span class="text-xl flex items-center text-rose-400"><iconify-icon icon="game-icons:monster-grasp"></iconify-icon></span>
+          <h3 class="font-serif-fantasy text-base font-black tracking-wider gold-title uppercase">
+            TRAZER INIMIGO PARA A MESA
+          </h3>
+        </div>
+        <button type="button" data-close-modal="modal-spawn-enemy" class="w-8 h-8 rounded-lg flex items-center justify-center app-icon-btn">✕</button>
+      </div>
+
+      <div class="p-4 border-b app-divider-border">
+        <div class="relative">
+          <iconify-icon icon="game-icons:magnifying-glass" class="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs opacity-60"></iconify-icon>
+          <input
+            id="spawn-enemy-search"
+            type="text"
+            placeholder="BUSCAR INIMIGO DO BESTIÁRIO..."
+            class="w-full pl-9 pr-3 py-2 text-xs font-semibold tracking-wide app-input"
+          />
+        </div>
+      </div>
+
+      <div id="spawn-enemy-list" class="p-4 overflow-y-auto space-y-3 flex-1"></div>
+
+      <div class="px-5 py-3 border-t app-divider-border flex items-center justify-end">
+        <button type="button" data-close-modal="modal-spawn-enemy" class="px-4 py-2 rounded-lg font-bold text-xs uppercase app-secondary-btn">
+          Fechar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- MODAL: HABILIDADES GERAIS DO INIMIGO                                     -->
+  <!-- ========================================================================= -->
+  <div id="modal-general-skills" class="modal-backdrop hidden fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-6">
+    <div class="modal-panel w-full max-w-2xl rounded-2xl overflow-hidden flex flex-col max-h-[90vh]">
+      <div class="px-5 py-4 border-b flex items-center justify-between app-modal-header">
+        <div class="flex items-center gap-2.5">
+          <span class="text-2xl flex items-center text-purple-400"><iconify-icon icon="game-icons:scroll-unfurled"></iconify-icon></span>
+          <div>
+            <h3 id="general-skills-modal-title" class="font-serif-fantasy text-base sm:text-lg font-black uppercase gold-title">
+              HABILIDADES GERAIS
+            </h3>
+            <p id="general-skills-modal-subtitle" class="text-xs font-mono font-bold app-muted"></p>
+          </div>
+        </div>
+        <button type="button" data-close-modal="modal-general-skills" class="w-9 h-9 rounded-lg flex items-center justify-center app-icon-btn text-base">✕</button>
+      </div>
+
+      <div class="p-5 overflow-y-auto space-y-4 flex-1 text-xs">
+        <input type="hidden" id="general-skills-target-id" value="" />
+        <input type="hidden" id="general-skills-target-type" value="bestiary" />
+
+        <div id="general-skills-readonly-view" class="p-4 rounded-xl bg-black/40 border app-divider-border font-mono text-xs leading-relaxed whitespace-pre-line text-neutral-200 min-h-[160px]"></div>
+
+        <div id="general-skills-edit-view" class="space-y-2 hidden">
+          <label for="general-skills-textarea" class="block font-bold uppercase tracking-wider app-label">Editar Habilidades, Golpes &amp; Descrições</label>
+          <textarea
+            id="general-skills-textarea"
+            rows="10"
+            class="w-full p-3 font-mono text-xs app-input leading-relaxed"
+            placeholder="Escreva ou cole aqui as habilidades gerais do inimigo..."
+          ></textarea>
+        </div>
+      </div>
+
+      <div class="px-5 py-3.5 border-t flex items-center justify-end gap-2 app-divider-border">
+        <button type="button" data-close-modal="modal-general-skills" class="px-4 py-2.5 rounded-lg font-bold uppercase app-secondary-btn">
+          Fechar
+        </button>
+        <button type="button" id="btn-save-general-skills" class="master-only-el btn-gold px-5 py-2.5 font-serif-fantasy font-black uppercase flex items-center gap-1.5">
+          <iconify-icon icon="game-icons:save"></iconify-icon>
+          <span>Salvar Alterações</span>
+        </button>
+      </div>
     </div>
   </div>
 

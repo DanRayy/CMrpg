@@ -760,3 +760,33 @@ iconify-icon {
 .icon-dmg { color: #f97316; filter: drop-shadow(0 0 4px rgba(249, 115, 22, 0.4)); }
 .icon-gold { color: #fbbf24; filter: drop-shadow(0 0 4px rgba(251, 191, 36, 0.3)); }
 
+/* ==========================================================================
+   Card Header & Top Action Buttons
+   ========================================================================== */
+.char-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+  width: 100%;
+}
+
+.char-top-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+/* ==========================================================================
+   Preservação de Formatação e Quebra de Linha em Descrições de Itens
+   ========================================================================== */
+.item-description,
+.item-card-description,
+[data-item-description] {
+  white-space: pre-wrap !important;
+  word-break: break-word !important;
+}
+

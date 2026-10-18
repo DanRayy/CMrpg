@@ -600,6 +600,60 @@ def build_default_campaign_state() -> Dict[str, Any]:
             }
         ],
         "escrowSales": [],
+        "bestiary": [
+            {
+                "id": "bestiary_guardiao_cinzas",
+                "name": "Guardião de Cinzas",
+                "level": 3,
+                "maxHp": 220,
+                "maxArmor": 40,
+                "maxMana": 80,
+                "regen": 10,
+                "defense": 15,
+                "attack": 18,
+                "arcana": 12,
+                "santidade": 0,
+                "reveladoParaJogadores": False,
+                "generalSkills": "• Golpe da Forja Ancestral: Causa 25 de Dano Físico e aplica 30 de Sangramento.\n• Sopro de Fuligem: Explosão em área causando 15 de Dano Pyro em todos os alvos à frente.\n• Couraça de Escória (Passiva): Sempre que sua Armadura sofre dano, reflete 5 de Dano Pyro ao atacante.",
+                "attributes": {"FORCA": 16, "DESTREZA": 8, "INTELIGENCIA": 10, "SABEDORIA": 12, "LABIA": 6},
+                "resistances": {
+                    "congelamento": {"current": 0, "max": 100},
+                    "choque": {"current": 0, "max": 100},
+                    "sangramento": {"current": 0, "max": 150},
+                    "chamas": {"current": 0, "max": 200},
+                    "veneno": {"current": 0, "max": 100},
+                    "atordoamento": {"current": 0, "max": 120},
+                    "cegueira": {"current": 0, "max": 100},
+                },
+                "elementalResistances": {"Físico": 20, "Mágico": 0, "Pyro": 50, "Cryo": -20, "Elétrico": 0, "Profano": 0, "Sacro": 0},
+            },
+            {
+                "id": "bestiary_lobo_cinzento",
+                "name": "Lobo Cinzento",
+                "level": 1,
+                "maxHp": 90,
+                "maxArmor": 10,
+                "maxMana": 40,
+                "regen": 10,
+                "defense": 5,
+                "attack": 14,
+                "arcana": 0,
+                "santidade": 0,
+                "reveladoParaJogadores": False,
+                "generalSkills": "• Mordida Voraz: Causa 14 de dano físico e 20 de sangramento.\n• Uivo da Matilha: Concede +2 de Ataque para todos os aliados próximos por 2 rodadas.",
+                "attributes": {"FORCA": 12, "DESTREZA": 14, "INTELIGENCIA": 6, "SABEDORIA": 10, "LABIA": 4},
+                "resistances": {
+                    "congelamento": {"current": 0, "max": 100},
+                    "choque": {"current": 0, "max": 100},
+                    "sangramento": {"current": 0, "max": 100},
+                    "chamas": {"current": 0, "max": 80},
+                    "veneno": {"current": 0, "max": 100},
+                    "atordoamento": {"current": 0, "max": 100},
+                    "cegueira": {"current": 0, "max": 100},
+                },
+                "elementalResistances": {"Físico": 0, "Mágico": 0, "Pyro": -10, "Cryo": 20, "Elétrico": 0, "Profano": 0, "Sacro": 0},
+            }
+        ],
         "battle": {
             "isActive": False,
             "roundNumber": 1,
@@ -707,11 +761,20 @@ def normalize_character(
     char["skillPassive"] = str(char.get("skillPassive", "")).strip()
     char["skillActive"] = str(char.get("skillActive", "")).strip()
     char["skillSupreme"] = str(char.get("skillSupreme", "")).strip()
+    char["isEnemy"] = bool(char.get("isEnemy", False))
+    char["bestiaryId"] = str(char.get("bestiaryId")) if char.get("bestiaryId") else None
+    char["generalSkills"] = str(char.get("generalSkills", "")).strip()
+    char["reveladoParaJogadores"] = bool(char.get("reveladoParaJogadores", False))
 
-    raw_max_weight = float(char.get("maxWeight", 27))
-    char["maxWeight"] = int(raw_max_weight) if raw_max_weight.is_integer() else round(raw_max_weight, 2)
-    if char["maxWeight"] < 0:
-        char["maxWeight"] = 27
+    if char["isEnemy"]:
+        char["maxWeight"] = 999
+        if not char.get("avatar"):
+            char["avatar"] = "monster-grasp"
+    else:
+        raw_max_weight = float(char.get("maxWeight", 27))
+        char["maxWeight"] = int(raw_max_weight) if raw_max_weight.is_integer() else round(raw_max_weight, 2)
+        if char["maxWeight"] < 0:
+            char["maxWeight"] = 27
 
     rounding_mode = room_settings.get("roundingMode", "ROUND_DOWN")
     char["level"] = max(1, int(char.get("level", 1)))
@@ -988,11 +1051,12 @@ class StateManager:
                 "escrowSales": self.state["escrowSales"],
                 "battle": self.state["battle"],
                 "quests": self.state["quests"],
+                "bestiary": self.state.get("bestiary", []),
             }
         )
 
     def _restore_core(self, snap: Dict[str, Any]) -> None:
-        for key in ("room", "members", "characters", "itemsCatalog", "npcs", "escrowSales", "battle", "quests"):
+        for key in ("room", "members", "characters", "itemsCatalog", "npcs", "escrowSales", "battle", "quests", "bestiary"):
             if key in snap:
                 self.state[key] = copy.deepcopy(snap[key])
         self._recalculate_all()
@@ -1180,6 +1244,7 @@ class StateManager:
             "escrowSales": self.state["escrowSales"],
             "battle": self.state["battle"],
             "quests": self.state["quests"],
+            "bestiary": self.state.get("bestiary", []),
             "auditLog": self.state["auditLog"],
             "network": {
                 **HOST_NETWORK_INFO,
@@ -1207,7 +1272,7 @@ class StateManager:
                     self.undo_stack = self.undo_stack[-HISTORY_LIMIT:]
                 self.redo_stack.clear()
 
-            for key in ("room", "members", "characters", "itemsCatalog", "npcs", "escrowSales", "battle", "quests"):
+            for key in ("room", "members", "characters", "itemsCatalog", "npcs", "escrowSales", "battle", "quests", "bestiary"):
                 if key in data and data[key] is not None:
                     self.state[key] = data[key]
 
