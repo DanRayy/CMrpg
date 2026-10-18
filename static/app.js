@@ -173,6 +173,9 @@
     npcModalTypeFilter: 'ALL',
     selectedShopNpcId: null,
     selectedBuyerCharId: null,
+    auditFilterType: 'ALL',
+    auditFilterUser: 'ALL',
+    auditFilterSearch: '',
 
     // Modals & Operations state
     activeResistanceCharId: null,
@@ -3101,10 +3104,35 @@
     grid.innerHTML = state.quests
       .map((q) => {
         const rw = q.rewards || {};
-        const rewardItemNames = (rw.itemIds || [])
-          .map((id) => itemsById[id]?.nome)
-          .filter(Boolean)
-          .join(', ');
+        const rewardItems = [];
+        if (Array.isArray(rw.items) && rw.items.length > 0) {
+          rw.items.forEach((it) => {
+            if (it && it.itemId) {
+              const tpl = itemsById[it.itemId];
+              const name = tpl ? tpl.nome : it.itemId;
+              const qty = Math.max(1, Number(it.quantity || 1));
+              rewardItems.push(`${qty}x ${name}`);
+            }
+          });
+        } else if (Array.isArray(rw.itemIds)) {
+          rw.itemIds.forEach((id) => {
+            const tpl = itemsById[id];
+            if (tpl) rewardItems.push(`1x ${tpl.nome}`);
+          });
+        }
+        const rewardItemNames = rewardItems.join(', ');
+
+        let acceptedBadgeHtml = '';
+        if (q.acceptedByCharacterId) {
+          const charObj = (state.characters || []).find((c) => c.id === q.acceptedByCharacterId);
+          const charName = q.acceptedByCharacterName || charObj?.name || 'Personagem';
+          acceptedBadgeHtml = `
+            <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-500/10 border border-amber-500/25 text-amber-200 text-xs font-mono">
+              <iconify-icon icon="game-icons:hooded-figure" class="icon-gold"></iconify-icon>
+              <span><strong>Aceita por:</strong> ${escapeHtml(charName)}</span>
+            </div>
+          `;
+        }
 
         return `
         <div class="fantasy-card p-5 flex flex-col justify-between gap-4">
@@ -3119,6 +3147,8 @@
             </div>
 
             <p class="text-xs app-muted leading-relaxed">${escapeHtml(q.description)}</p>
+
+            ${acceptedBadgeHtml}
 
             <!-- Pacote de Recompensas -->
             <div class="p-3 rounded-xl bg-black/25 border app-divider-border space-y-1.5">
@@ -3138,8 +3168,8 @@
           <div class="pt-3 border-t app-divider-border flex flex-wrap items-center justify-between gap-2 text-xs">
             <div class="flex items-center gap-1.5">
               ${
-                q.status === 'PENDENTE'
-                  ? `<button type="button" data-quest-status="${escapeHtml(q.id)}" data-status="ACEITA" class="px-3 py-1.5 rounded-lg font-bold btn-gold">Aceitar Missão</button>`
+                q.status === 'PENDENTE' && !q.acceptedByCharacterId
+                  ? `<button type="button" data-action="open-accept-quest" data-quest-id="${escapeHtml(q.id)}" class="px-3 py-1.5 rounded-lg font-bold btn-gold flex items-center gap-1.5"><iconify-icon icon="game-icons:tied-scroll"></iconify-icon> <span>Aceitar Missão</span></button>`
                   : ''
               }
               ${
@@ -3153,12 +3183,17 @@
               canManage
                 ? `
               <div class="flex items-center gap-1.5">
+                <button type="button" data-edit-quest="${escapeHtml(q.id)}" class="px-2 py-1 rounded app-secondary-btn text-amber-300 hover:text-amber-200" title="Editar Missão">
+                  <iconify-icon icon="game-icons:quill-ink"></iconify-icon>
+                </button>
                 <select data-quest-select-status="${escapeHtml(q.id)}" class="px-2 py-1 app-input text-[11px] font-bold">
                   ${['PENDENTE', 'ACEITA', 'EM_PROGRESSO', 'PAUSADA', 'CONCLUIDA', 'RECUSADA', 'CANCELADA']
                     .map((st) => `<option value="${st}" ${q.status === st ? 'selected' : ''}>${st}</option>`)
                     .join('')}
                 </select>
-                <button type="button" data-delete-quest="${escapeHtml(q.id)}" class="px-2 py-1 rounded app-secondary-btn text-rose-400"><iconify-icon icon="game-icons:crowned-skull"></iconify-icon></button>
+                <button type="button" data-delete-quest="${escapeHtml(q.id)}" class="px-2 py-1 rounded app-secondary-btn text-rose-400 hover:bg-rose-500/20" title="Excluir Missão">
+                  <iconify-icon icon="game-icons:crowned-skull"></iconify-icon>
+                </button>
               </div>
             `
                 : ''
@@ -3171,7 +3206,7 @@
   }
 
   // ---------------------------------------------------------------------------
-  // ABA 7: ADMINISTRAÇÃO & AUDITORIA PERPÉTUA
+  // ABA 7: ADMINISTRAÇÃO & AUDITORIA PERPÉTUA COM FILTROS AVANÇADOS
   // ---------------------------------------------------------------------------
   function renderAdminTab() {
     const r = state.room || {};
@@ -3192,21 +3227,67 @@
     const logEl = document.getElementById('audit-log-container');
     if (!logEl) return;
 
-    const logs = state.auditLog || [];
-    if (logs.length === 0) {
-      logEl.innerHTML = `<div class="p-6 text-center app-muted">Nenhum evento auditado ainda.</div>`;
+    const allLogs = state.auditLog || [];
+
+    // Preenchimento dinâmico dos selects de filtro
+    const typeSelect = document.getElementById('audit-filter-type');
+    const userSelect = document.getElementById('audit-filter-user');
+    const searchInput = document.getElementById('audit-filter-search');
+    const counterEl = document.getElementById('audit-log-counter');
+
+    if (searchInput && searchInput.value !== (state.auditFilterSearch || '')) {
+      searchInput.value = state.auditFilterSearch || '';
+    }
+
+    if (typeSelect) {
+      const currentVal = state.auditFilterType || 'ALL';
+      const types = Array.from(new Set(allLogs.map((l) => l.actionType).filter(Boolean))).sort();
+      typeSelect.innerHTML =
+        `<option value="ALL">Todos os Tipos</option>` +
+        types.map((t) => `<option value="${escapeHtml(t)}" ${t === currentVal ? 'selected' : ''}>[${escapeHtml(t)}]</option>`).join('');
+    }
+
+    if (userSelect) {
+      const currentVal = state.auditFilterUser || 'ALL';
+      const users = Array.from(new Set(allLogs.map((l) => l.actorName).filter(Boolean))).sort();
+      userSelect.innerHTML =
+        `<option value="ALL">Todos os Usuários</option>` +
+        users.map((u) => `<option value="${escapeHtml(u)}" ${u === currentVal ? 'selected' : ''}>${escapeHtml(u)}</option>`).join('');
+    }
+
+    // Filtragem em tempo real
+    const q = (state.auditFilterSearch || '').trim().toLowerCase();
+    const selType = state.auditFilterType || 'ALL';
+    const selUser = state.auditFilterUser || 'ALL';
+
+    const filteredLogs = allLogs.filter((entry) => {
+      if (selType !== 'ALL' && entry.actionType !== selType) return false;
+      if (selUser !== 'ALL' && entry.actorName !== selUser) return false;
+      if (q) {
+        const fullHaystack = `${entry.actionType || ''} ${entry.targetEntity || ''} ${entry.summary || ''} ${entry.actorName || ''} ${entry.createdAt || ''}`.toLowerCase();
+        if (!fullHaystack.includes(q)) return false;
+      }
+      return true;
+    });
+
+    if (counterEl) {
+      counterEl.textContent = `Exibindo ${filteredLogs.length} de ${allLogs.length} registros`;
+    }
+
+    if (filteredLogs.length === 0) {
+      logEl.innerHTML = `<div class="p-8 text-center text-xs app-muted">Nenhum registro encontrado para os filtros aplicados.</div>`;
       return;
     }
 
-    logEl.innerHTML = logs
+    logEl.innerHTML = filteredLogs
       .map(
         (entry) => `
-      <div class="p-3 rounded-xl bg-black/25 border app-divider-border text-xs space-y-1">
+      <div class="p-3 rounded-xl bg-black/25 border app-divider-border text-xs space-y-1 hover:border-amber-500/30 transition">
         <div class="flex items-center justify-between">
           <span class="font-mono font-bold gold-title">[${escapeHtml(entry.actionType)}] ${escapeHtml(entry.targetEntity || '')}</span>
           <span class="text-[10px] font-mono app-muted">${escapeHtml(entry.createdAt || '')}</span>
         </div>
-        <p class="app-label">${escapeHtml(entry.summary || '')}</p>
+        <p class="app-label leading-relaxed">${escapeHtml(entry.summary || '')}</p>
         <div class="text-[10px] app-muted">Autor: <strong>${escapeHtml(entry.actorName || 'Sistema')}</strong></div>
       </div>
     `
@@ -7048,54 +7129,188 @@
       closeModal('modal-bulk-reward');
     });
 
-    document.getElementById('btn-new-quest')?.addEventListener('click', () => {
-      document.getElementById('quest-form-id').value = '';
-      document.getElementById('quest-title-input').value = '';
-      document.getElementById('quest-desc-input').value = '';
-      const sel = document.getElementById('quest-reward-item');
-      sel.innerHTML =
-        `<option value="">Nenhum item</option>` +
-        state.itemsCatalog.map((it) => `<option value="${escapeHtml(it.id)}">${escapeHtml(it.nome)}</option>`).join('');
+    const addQuestRewardItemRow = (container, itemId = '', qty = 1) => {
+      if (!container) return;
+      const row = document.createElement('div');
+      row.className = 'quest-reward-item-row flex items-center gap-2 p-2 rounded-lg bg-black/25 border app-divider-border';
+
+      const optionsHtml = (state.itemsCatalog || [])
+        .map((it) => `<option value="${escapeHtml(it.id)}" ${it.id === itemId ? 'selected' : ''}>${escapeHtml(it.nome)} (${it.tipo})</option>`)
+        .join('');
+
+      row.innerHTML = `
+        <div class="flex-1 min-w-0">
+          <select class="quest-reward-item-select w-full px-2.5 py-1.5 text-xs app-input">
+            <option value="">Selecione um item...</option>
+            ${optionsHtml}
+          </select>
+        </div>
+        <div class="w-24 shrink-0">
+          <div class="flex items-center gap-1">
+            <span class="text-[10px] font-bold app-muted">Qtd:</span>
+            <input type="number" min="1" step="1" value="${Math.max(1, Number(qty || 1))}" class="quest-reward-item-qty w-full px-2 py-1 text-xs font-mono font-bold app-input" />
+          </div>
+        </div>
+        <button type="button" class="btn-remove-quest-reward-item w-7 h-7 rounded flex items-center justify-center app-secondary-btn text-rose-400 hover:bg-rose-500/20 shrink-0" title="Remover item">
+          ✕
+        </button>
+      `;
+
+      row.querySelector('.btn-remove-quest-reward-item')?.addEventListener('click', () => {
+        row.remove();
+      });
+
+      container.appendChild(row);
+    };
+
+    const openQuestModal = (questId = null) => {
+      const idInput = document.getElementById('quest-form-id');
+      const titleInput = document.getElementById('quest-title-input');
+      const descInput = document.getElementById('quest-desc-input');
+      const goldInput = document.getElementById('quest-reward-gold');
+      const xpInput = document.getElementById('quest-reward-xp');
+      const attrInput = document.getElementById('quest-reward-attr');
+      const skillInput = document.getElementById('quest-reward-skill');
+      const container = document.getElementById('quest-reward-items-container');
+
+      if (container) container.innerHTML = '';
+
+      if (questId) {
+        const q = (state.quests || []).find((x) => x.id === questId);
+        if (!q) return;
+        if (idInput) idInput.value = q.id;
+        if (titleInput) titleInput.value = q.title || '';
+        if (descInput) descInput.value = q.description || '';
+        const rw = q.rewards || {};
+        if (goldInput) goldInput.value = String(rw.gold ?? 0);
+        if (xpInput) xpInput.value = String(rw.xp ?? 0);
+        if (attrInput) attrInput.value = String(rw.attributePoints ?? 0);
+        if (skillInput) skillInput.value = String(rw.skillPoints ?? 0);
+
+        if (Array.isArray(rw.items) && rw.items.length > 0) {
+          rw.items.forEach((it) => addQuestRewardItemRow(container, it.itemId, it.quantity));
+        } else if (Array.isArray(rw.itemIds)) {
+          rw.itemIds.forEach((id) => addQuestRewardItemRow(container, id, 1));
+        }
+      } else {
+        if (idInput) idInput.value = '';
+        if (titleInput) titleInput.value = '';
+        if (descInput) descInput.value = '';
+        if (goldInput) goldInput.value = '200';
+        if (xpInput) xpInput.value = '80';
+        if (attrInput) attrInput.value = '0';
+        if (skillInput) skillInput.value = '0';
+      }
+
       openModal('modal-quest');
+    };
+
+    document.getElementById('btn-new-quest')?.addEventListener('click', () => openQuestModal(null));
+    document.getElementById('btn-add-quest-reward-item')?.addEventListener('click', () => {
+      addQuestRewardItemRow(document.getElementById('quest-reward-items-container'));
     });
 
     document.getElementById('form-quest')?.addEventListener('submit', (e) => {
       e.preventDefault();
+      const questId = document.getElementById('quest-form-id').value.trim();
       const title = document.getElementById('quest-title-input').value.trim() || 'Missão';
       const description = document.getElementById('quest-desc-input').value.trim();
       const gold = Math.max(0, Number(document.getElementById('quest-reward-gold').value || 0));
       const xp = Math.max(0, Number(document.getElementById('quest-reward-xp').value || 0));
       const attributePoints = Math.max(0, Number(document.getElementById('quest-reward-attr').value || 0));
       const skillPoints = Math.max(0, Number(document.getElementById('quest-reward-skill').value || 0));
-      const itemId = document.getElementById('quest-reward-item').value;
+
+      const rewardItems = [];
+      document.querySelectorAll('#quest-reward-items-container .quest-reward-item-row').forEach((row) => {
+        const sel = row.querySelector('.quest-reward-item-select');
+        const qtyInput = row.querySelector('.quest-reward-item-qty');
+        const itemId = sel?.value;
+        const quantity = Math.max(1, Math.round(Number(qtyInput?.value || 1)));
+        if (itemId) {
+          rewardItems.push({ itemId, quantity });
+        }
+      });
 
       commitMutation(
         (st) => {
-          st.quests.unshift({
-            id: `quest_${Date.now()}`,
-            title,
-            description,
-            status: 'PENDENTE',
-            assignedCharacterIds: st.characters.map((c) => c.id),
-            rewards: {
+          if (questId) {
+            const target = (st.quests || []).find((x) => x.id === questId);
+            if (!target) return false;
+            target.title = title;
+            target.description = description;
+            target.rewards = {
               gold,
               xp,
               attributePoints,
               skillPoints,
-              itemIds: itemId ? [itemId] : [],
-            },
-            rewarded: false,
-            createdAt: new Date().toLocaleString('pt-BR'),
-          });
+              items: rewardItems,
+              itemIds: rewardItems.map((i) => i.itemId),
+            };
+          } else {
+            st.quests = st.quests || [];
+            st.quests.unshift({
+              id: `quest_${Date.now()}`,
+              title,
+              description,
+              status: 'PENDENTE',
+              assignedCharacterIds: [],
+              acceptedByCharacterId: null,
+              acceptedByCharacterName: null,
+              rewards: {
+                gold,
+                xp,
+                attributePoints,
+                skillPoints,
+                items: rewardItems,
+                itemIds: rewardItems.map((i) => i.itemId),
+              },
+              rewarded: false,
+              createdAt: new Date().toLocaleString('pt-BR'),
+            });
+          }
           return true;
         },
         {
-          actionType: 'QUEST_CREATE',
+          actionType: questId ? 'QUEST_EDIT' : 'QUEST_CREATE',
           targetEntity: `Missão: ${title}`,
-          summary: `Missão "${title}" cadastrada no quadro.`,
+          summary: questId
+            ? `Missão "${title}" atualizada com ${rewardItems.length} item(ns) de recompensa.`
+            : `Missão "${title}" cadastrada no quadro com ${rewardItems.length} item(ns) de recompensa.`,
         }
       );
       closeModal('modal-quest');
+      renderQuestsTab();
+    });
+
+    document.getElementById('btn-confirm-accept-quest')?.addEventListener('click', () => {
+      const qid = document.getElementById('accept-quest-id').value;
+      const charId = document.getElementById('accept-quest-char-select').value;
+      const selectedChar = (state.characters || []).find((c) => c.id === charId);
+      if (!qid || !selectedChar) return;
+
+      commitMutation(
+        (st, toasts) => {
+          const q = (st.quests || []).find((x) => x.id === qid);
+          if (!q) return false;
+          if (q.acceptedByCharacterId) {
+            toasts.push('Esta missão já foi aceita anteriormente por outro personagem!');
+            return false;
+          }
+          q.status = 'ACEITA';
+          q.acceptedByCharacterId = selectedChar.id;
+          q.acceptedByCharacterName = selectedChar.name;
+          q.assignedCharacterIds = [selectedChar.id];
+          toasts.push(`Missão "${q.title}" aceita por ${selectedChar.name}!`);
+          return true;
+        },
+        {
+          actionType: 'QUEST_ACCEPT',
+          targetEntity: `Missão: ${document.getElementById('accept-quest-title').textContent}`,
+          summary: `Missão aceita pelo personagem ${selectedChar.name}.`,
+        }
+      );
+      closeModal('modal-accept-quest');
+      renderQuestsTab();
     });
 
     const applyQuestStatusChange = (questId, newStatus) => {
@@ -7105,55 +7320,143 @@
           if (!q) return false;
           q.status = newStatus;
 
+          if (newStatus === 'PENDENTE') {
+            q.acceptedByCharacterId = null;
+            q.acceptedByCharacterName = null;
+            q.assignedCharacterIds = [];
+          }
+
           if (newStatus === 'CONCLUIDA' && !q.rewarded) {
             q.rewarded = true;
             const rw = q.rewards || {};
-            if (rw.gold > 0) {
-              st.room.sharedGold = (st.room.sharedGold || 0) + rw.gold;
-            }
-            const targets =
-              (q.assignedCharacterIds || []).length > 0
-                ? st.characters.filter((c) => q.assignedCharacterIds.includes(c.id))
-                : st.characters;
 
-            for (const c of targets) {
-              if (rw.xp > 0) grantXpToCharacter(c, rw.xp);
-              if (rw.attributePoints > 0) c.pendingAttributePoints = (c.pendingAttributePoints || 0) + rw.attributePoints;
-              if (rw.skillPoints > 0) c.skillPoints = (c.skillPoints || 0) + rw.skillPoints;
-              for (const itemId of rw.itemIds || []) {
-                const tpl = st.itemsCatalog.find((it) => it.id === itemId);
-                if (tpl) {
-                  addItemsToCharacterInventory(c, tpl, 1);
-                } else {
-                  c.inventory = c.inventory || [];
-                  c.inventory.push({
-                    id: `inv_${Date.now()}_${Math.random().toString(36).slice(2, 5)}`,
-                    itemId,
-                    quantity: 1,
-                    isEquipped: false,
-                    status: 'IN_INVENTORY',
+            // 1. Ouro: se compartilhado vai para a sala, senão reparte entre os jogadores
+            if (rw.gold > 0) {
+              if (st.room.isSharedWallet !== false) {
+                st.room.sharedGold = (st.room.sharedGold || 0) + rw.gold;
+              } else {
+                const playerChars = (st.characters || []).filter((c) => !c.isEnemy);
+                if (playerChars.length > 0) {
+                  const split = Math.floor(rw.gold / playerChars.length);
+                  playerChars.forEach((c) => {
+                    c.gold = (c.gold || 0) + split;
                   });
                 }
               }
             }
-            toasts.push(`Missão "${q.title}" concluída! Recompensas entregues ao grupo.`);
+
+            // 2. XP e Pontos: vão para todos os personagens não-inimigos
+            const allPlayerChars = (st.characters || []).filter((c) => !c.isEnemy);
+            for (const c of allPlayerChars) {
+              if (rw.xp > 0) grantXpToCharacter(c, rw.xp);
+              if (rw.attributePoints > 0) c.pendingAttributePoints = (c.pendingAttributePoints || 0) + rw.attributePoints;
+              if (rw.skillPoints > 0) c.skillPoints = (c.skillPoints || 0) + rw.skillPoints;
+            }
+
+            // 3. Itens: entregues diretamente ao inventário de quem aceitou a missão
+            const acceptingChar = (st.characters || []).find((c) => c.id === q.acceptedByCharacterId) || allPlayerChars[0];
+
+            const rewardItems = [];
+            if (Array.isArray(rw.items) && rw.items.length > 0) {
+              rw.items.forEach((it) => {
+                if (it && it.itemId) rewardItems.push({ itemId: it.itemId, quantity: Math.max(1, Number(it.quantity || 1)) });
+              });
+            } else if (Array.isArray(rw.itemIds)) {
+              rw.itemIds.forEach((id) => {
+                if (id) rewardItems.push({ itemId: id, quantity: 1 });
+              });
+            }
+
+            const deliveredSummary = [];
+            if (acceptingChar) {
+              acceptingChar.inventory = acceptingChar.inventory || [];
+              for (const ri of rewardItems) {
+                const tpl = (st.itemsCatalog || []).find((it) => it.id === ri.itemId);
+                const count = Math.max(1, Math.round(Number(ri.quantity || 1)));
+                if (!tpl) continue;
+
+                // Regra de Empilhamento (Stacking)
+                const existing = acceptingChar.inventory.find(
+                  (inv) => inv.itemId === tpl.id && !inv.isEquipped && inv.status === 'IN_INVENTORY'
+                );
+                if (existing) {
+                  existing.quantity = Math.max(1, Number(existing.quantity || 1)) + count;
+                } else {
+                  acceptingChar.inventory.push({
+                    id: `inv_${Date.now()}_${Math.random().toString(36).slice(2, 6)}_${Math.random().toString(36).slice(2, 4)}`,
+                    itemId: tpl.id,
+                    quantity: count,
+                    isEquipped: false,
+                    status: 'IN_INVENTORY',
+                  });
+                }
+                deliveredSummary.push(`${count}x ${tpl.nome}`);
+              }
+            }
+
+            const itemsMsg = deliveredSummary.length > 0 ? ` Itens entregues a ${acceptingChar?.name || 'personagem'}: ${deliveredSummary.join(', ')}.` : '';
+            toasts.push(`Missão "${q.title}" concluída! Recompensas entregues ao grupo.${itemsMsg}`);
           }
           return true;
         },
         {
-          actionType: 'QUEST_STATUS',
-          targetEntity: `Missão ID: ${questId}`,
+          actionType: 'MISSION_REWARD',
+          targetEntity: `Missão: ${questId}`,
           summary: `Status da missão alterado para ${newStatus}.`,
         }
       );
     };
 
     document.getElementById('quests-list-grid')?.addEventListener('click', (e) => {
+      // Aceitar Missão
+      const acceptBtn = e.target.closest('[data-action="open-accept-quest"]');
+      if (acceptBtn) {
+        const qid = acceptBtn.getAttribute('data-quest-id');
+        const q = (state.quests || []).find((x) => x.id === qid);
+        if (!q) return;
+
+        if (q.acceptedByCharacterId) {
+          showToast(`Esta missão já foi aceita por ${q.acceptedByCharacterName || 'outro personagem'}.`, 'warning');
+          return;
+        }
+
+        const playerChars = (state.characters || []).filter((c) => !c.isEnemy);
+        if (playerChars.length === 0) {
+          showToast('Nenhum personagem disponível para aceitar missões.', 'warning');
+          return;
+        }
+
+        document.getElementById('accept-quest-id').value = q.id;
+        document.getElementById('accept-quest-title').textContent = q.title;
+        document.getElementById('accept-quest-desc').textContent = q.description;
+
+        const charSelect = document.getElementById('accept-quest-char-select');
+        const activeMem = getActiveMember();
+        const myCharId = activeMem?.characterId;
+
+        charSelect.innerHTML = playerChars
+          .map((c) => `<option value="${escapeHtml(c.id)}" ${c.id === myCharId ? 'selected' : ''}>${escapeHtml(c.name)} (Nível ${c.level || 1})</option>`)
+          .join('');
+
+        openModal('modal-accept-quest');
+        return;
+      }
+
+      // Editar Missão
+      const editBtn = e.target.closest('[data-edit-quest]');
+      if (editBtn) {
+        openQuestModal(editBtn.getAttribute('data-edit-quest'));
+        return;
+      }
+
+      // Concluir ou alterar status via botão direto
       const stBtn = e.target.closest('[data-quest-status]');
       if (stBtn) {
         applyQuestStatusChange(stBtn.getAttribute('data-quest-status'), stBtn.getAttribute('data-status'));
         return;
       }
+
+      // Excluir Missão
       const delBtn = e.target.closest('[data-delete-quest]');
       if (delBtn) {
         const qid = delBtn.getAttribute('data-delete-quest');
@@ -7169,6 +7472,31 @@
       if (sel) {
         applyQuestStatusChange(sel.getAttribute('data-quest-select-status'), sel.value);
       }
+    });
+
+    // Filtros de Auditoria Perpétua
+    document.getElementById('audit-filter-type')?.addEventListener('change', (e) => {
+      state.auditFilterType = e.target.value;
+      renderAdminTab();
+    });
+
+    document.getElementById('audit-filter-user')?.addEventListener('change', (e) => {
+      state.auditFilterUser = e.target.value;
+      renderAdminTab();
+    });
+
+    document.getElementById('audit-filter-search')?.addEventListener('input', (e) => {
+      state.auditFilterSearch = e.target.value;
+      renderAdminTab();
+    });
+
+    document.getElementById('btn-audit-clear-filters')?.addEventListener('click', () => {
+      state.auditFilterType = 'ALL';
+      state.auditFilterUser = 'ALL';
+      state.auditFilterSearch = '';
+      const s = document.getElementById('audit-filter-search');
+      if (s) s.value = '';
+      renderAdminTab();
     });
 
     // -------------------------------------------------------------------------

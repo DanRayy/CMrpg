@@ -790,15 +790,60 @@
           </div>
 
           <!-- Log de Auditoria Perpétuo (ADR-005) -->
-          <div class="fantasy-card p-5 flex flex-col max-h-[540px]">
-            <div class="flex items-center justify-between mb-3">
+          <div class="fantasy-card p-5 flex flex-col max-h-[640px]">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
               <div>
-                <h3 class="font-serif-fantasy text-base font-extrabold uppercase gold-title">
+                <h3 class="font-serif-fantasy text-base font-extrabold uppercase gold-title flex items-center gap-2">
                   <iconify-icon icon="game-icons:tied-scroll"></iconify-icon> <span>Histórico de Auditoria Perpétuo (RoomAuditLog)</span>
                 </h3>
                 <p class="text-[11px] app-muted">Registro cronológico imutável de todas as ações da mesa.</p>
               </div>
+              <span id="audit-log-counter" class="text-xs font-mono font-bold app-muted"></span>
             </div>
+
+            <!-- Barra de Filtros Completa -->
+            <div class="p-3 mb-3 rounded-xl bg-black/30 border app-divider-border space-y-2">
+              <div class="grid grid-cols-1 sm:grid-cols-12 gap-2">
+                <!-- Busca Texto Livre -->
+                <div class="sm:col-span-5 relative">
+                  <iconify-icon icon="game-icons:magnifying-glass" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs opacity-60"></iconify-icon>
+                  <input
+                    id="audit-filter-search"
+                    type="text"
+                    placeholder="Pesquisar no histórico..."
+                    class="w-full pl-8 pr-2.5 py-1.5 text-xs app-input"
+                  />
+                </div>
+
+                <!-- Filtro por Tipo / Categoria -->
+                <div class="sm:col-span-3">
+                  <select id="audit-filter-type" class="w-full px-2.5 py-1.5 text-xs app-input">
+                    <option value="ALL">Todos os Tipos</option>
+                  </select>
+                </div>
+
+                <!-- Filtro por Usuário / Autor -->
+                <div class="sm:col-span-3">
+                  <select id="audit-filter-user" class="w-full px-2.5 py-1.5 text-xs app-input">
+                    <option value="ALL">Todos os Usuários</option>
+                  </select>
+                </div>
+
+                <!-- Botão Limpar Filtros -->
+                <div class="sm:col-span-1 flex items-center justify-end">
+                  <button
+                    type="button"
+                    id="btn-audit-clear-filters"
+                    title="Limpar todos os filtros"
+                    class="w-full py-1.5 px-2 rounded-lg text-xs font-bold app-secondary-btn hover:text-amber-300 flex items-center justify-center gap-1"
+                  >
+                    <iconify-icon icon="game-icons:sands-of-time"></iconify-icon>
+                    <span class="sm:hidden">Limpar</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
             <div id="audit-log-container" class="flex-1 overflow-y-auto space-y-2 pr-1"></div>
           </div>
         </div>
@@ -1554,14 +1599,63 @@
           </div>
         </div>
         <div>
-          <label class="block font-bold uppercase mb-1 app-label">Item de Recompensa (Opcional)</label>
-          <select id="quest-reward-item" class="w-full px-3 py-2 app-input"></select>
+          <div class="flex items-center justify-between mb-1.5">
+            <label class="block font-bold uppercase app-label flex items-center gap-1.5">
+              <iconify-icon icon="game-icons:knapsack"></iconify-icon>
+              <span>Itens de Recompensa (Opcional)</span>
+            </label>
+            <button
+              type="button"
+              id="btn-add-quest-reward-item"
+              class="text-[11px] font-bold gold-title hover:underline flex items-center gap-1"
+            >
+              <iconify-icon icon="game-icons:sparkles"></iconify-icon>
+              <span>+ Adicionar Item</span>
+            </button>
+          </div>
+          <div id="quest-reward-items-container" class="space-y-2 max-h-48 overflow-y-auto pr-1"></div>
         </div>
         <div class="pt-2 flex justify-end gap-2">
           <button type="button" data-close-modal="modal-quest" class="px-4 py-2 rounded-lg font-bold uppercase app-secondary-btn">Cancelar</button>
           <button type="submit" class="btn-gold px-5 py-2 font-serif-fantasy uppercase">Salvar Missão</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- MODAL: ACEITAR MISSÃO (VÍNCULO DE PERSONAGEM)                             -->
+  <!-- ========================================================================= -->
+  <div id="modal-accept-quest" class="modal-backdrop hidden fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
+    <div class="modal-panel w-full max-w-md rounded-2xl overflow-hidden">
+      <div class="px-5 py-4 border-b flex items-center justify-between app-modal-header">
+        <h3 class="font-serif-fantasy text-base font-black uppercase gold-title flex items-center gap-2">
+          <iconify-icon icon="game-icons:tied-scroll"></iconify-icon>
+          <span>Aceitar Missão</span>
+        </h3>
+        <button type="button" data-close-modal="modal-accept-quest" class="w-8 h-8 rounded-lg flex items-center justify-center app-icon-btn">✕</button>
+      </div>
+      <div class="p-5 space-y-4 text-xs">
+        <input type="hidden" id="accept-quest-id" value="" />
+        <div class="p-3 rounded-xl bg-black/30 border app-divider-border space-y-1">
+          <p class="font-bold text-sm gold-title" id="accept-quest-title"></p>
+          <p class="text-xs app-muted" id="accept-quest-desc"></p>
+        </div>
+        <div>
+          <label class="block font-bold uppercase mb-1.5 app-label">Qual Personagem Aceitará a Missão?</label>
+          <select id="accept-quest-char-select" class="w-full px-3 py-2 font-bold app-input text-xs"></select>
+          <p class="text-[10px] app-muted mt-1.5">
+            Ao concluir a missão, os itens de recompensa configurados serão entregues diretamente ao inventário deste personagem.
+          </p>
+        </div>
+        <div class="pt-2 flex justify-end gap-2 border-t app-divider-border">
+          <button type="button" data-close-modal="modal-accept-quest" class="px-4 py-2 rounded-lg font-bold uppercase app-secondary-btn">Cancelar</button>
+          <button type="button" id="btn-confirm-accept-quest" class="btn-gold px-5 py-2 font-serif-fantasy uppercase flex items-center gap-1.5">
+            <iconify-icon icon="game-icons:check-mark"></iconify-icon>
+            <span>Confirmar &amp; Aceitar</span>
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 
