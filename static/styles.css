@@ -274,7 +274,6 @@ html[data-theme="light"] .room-hero-banner {
   transform: translateY(-50%);
   pointer-events: none;
   opacity: 0.42;
-  filter: drop-shadow(0 0 24px rgba(245, 158, 11, 0.45));
 }
 
 /* Botão Dourado Padrão (Como "COPIAR LINK" na imagem) */
@@ -284,7 +283,7 @@ html[data-theme="light"] .room-hero-banner {
   font-weight: 800;
   border: 1px solid #f0c674;
   border-radius: 8px;
-  box-shadow: 0 4px 14px rgba(212, 168, 83, 0.25);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
   transition: all 0.15s ease;
 }
 
@@ -346,7 +345,6 @@ html[data-theme="light"] .room-hero-banner {
 
 .app-input:focus {
   border-color: var(--gold-primary);
-  box-shadow: 0 0 0 2px var(--gold-glow);
   outline: none;
 }
 
@@ -429,7 +427,7 @@ html[data-theme="light"] .room-hero-banner {
 
 .char-card.drop-target-active {
   border: 2px dashed var(--gold-primary) !important;
-  box-shadow: 0 0 0 4px var(--gold-glow), var(--shadow-card);
+  box-shadow: var(--shadow-card);
   transform: translateY(-2px);
 }
 
@@ -487,8 +485,8 @@ html[data-theme="light"] .room-hero-banner {
 }
 
 .stat-overflow-glow {
-  box-shadow: 0 0 12px rgba(212, 168, 83, 0.5);
-  border-color: var(--gold-primary) !important;
+  border: 2px solid var(--gold-primary) !important;
+  box-shadow: none !important;
 }
 
 /* Action Pills nos Cards */
@@ -558,7 +556,7 @@ html[data-theme="light"] .room-hero-banner {
   background: linear-gradient(180deg, #deb562 0%, #c4963c 100%);
   border-color: #f0c674;
   color: #14100a;
-  box-shadow: 0 4px 12px rgba(212, 168, 83, 0.3);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
 }
 
 .resistance-row {
@@ -737,7 +735,7 @@ html[data-theme="light"] .room-hero-banner {
 
 .cursor-color-swatch.active-swatch {
   border-color: #ffffff;
-  box-shadow: 0 0 0 2px #0a0908, 0 0 12px var(--swatch-color, #F59E0B);
+  box-shadow: 0 0 0 2px #0a0908, 0 0 0 4px #ffffff;
   transform: scale(1.1);
 }
 
@@ -897,11 +895,11 @@ iconify-icon {
   flex-shrink: 0;
 }
 
-.icon-hp { color: #e11d48; filter: drop-shadow(0 0 4px rgba(225, 29, 72, 0.4)); }
-.icon-armor { color: #60a5fa; filter: drop-shadow(0 0 4px rgba(96, 165, 250, 0.4)); }
-.icon-mana { color: #38bdf8; filter: drop-shadow(0 0 4px rgba(56, 189, 248, 0.4)); }
-.icon-dmg { color: #f97316; filter: drop-shadow(0 0 4px rgba(249, 115, 22, 0.4)); }
-.icon-gold { color: #fbbf24; filter: drop-shadow(0 0 4px rgba(251, 191, 36, 0.3)); }
+.icon-hp { color: #e11d48; }
+.icon-armor { color: #60a5fa; }
+.icon-mana { color: #38bdf8; }
+.icon-dmg { color: #f97316; }
+.icon-gold { color: #fbbf24; }
 
 /* ==========================================================================
    Card Header & Top Action Buttons
@@ -948,18 +946,8 @@ html[data-theme="light"] .battle-sidebar {
 }
 
 .card-active-turn {
-  border-color: #f59e0b !important;
-  box-shadow: 0 0 25px rgba(245, 158, 11, 0.45), inset 0 0 15px rgba(245, 158, 11, 0.08) !important;
-  animation: pulse-turn-glow 2.4s ease-in-out infinite;
-}
-
-@keyframes pulse-turn-glow {
-  0%, 100% {
-    box-shadow: 0 0 18px rgba(245, 158, 11, 0.35), inset 0 0 10px rgba(245, 158, 11, 0.06);
-  }
-  50% {
-    box-shadow: 0 0 32px rgba(245, 158, 11, 0.65), inset 0 0 20px rgba(245, 158, 11, 0.15);
-  }
+  border: 2px solid #f59e0b !important;
+  box-shadow: none !important;
 }
 
 #battle-sidebar.sidebar-collapsed {
@@ -1011,14 +999,121 @@ html[data-theme="light"] .battle-sidebar {
   color: #ef4444 !important;
   background-color: rgba(239, 68, 68, 0.12) !important;
   border: 1px solid rgba(239, 68, 68, 0.35) !important;
-  text-shadow: 0 0 8px rgba(239, 68, 68, 0.3);
 }
 
 .stat-badge-arcana {
   color: #3b82f6 !important;
   background-color: rgba(59, 130, 246, 0.12) !important;
   border: 1px solid rgba(59, 130, 246, 0.35) !important;
-  text-shadow: 0 0 8px rgba(59, 130, 246, 0.3);
+}
+
+/* ==========================================================================
+   SISTEMA DE PERMISSÕES: TOGGLE SWITCHES E CATEGORIAS (DARK FANTASY)
+   ========================================================================== */
+.fantasy-toggle {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+  flex-shrink: 0;
+  cursor: pointer;
+  user-select: none;
+}
+
+.fantasy-toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+  position: absolute;
+}
+
+.fantasy-toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(24, 24, 27, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 9999px;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.6);
+}
+
+.fantasy-toggle-slider::before {
+  position: absolute;
+  content: "";
+  height: 16px;
+  width: 16px;
+  left: 3px;
+  bottom: 3px;
+  background: linear-gradient(135deg, #a1a1aa, #71717a);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+.fantasy-toggle input:checked + .fantasy-toggle-slider {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.35), rgba(5, 150, 105, 0.5));
+  border-color: #10b981;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+.fantasy-toggle input:checked + .fantasy-toggle-slider::before {
+  transform: translateX(20px);
+  background: linear-gradient(135deg, #6ee7b7, #10b981);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+.fantasy-toggle input:focus-visible + .fantasy-toggle-slider {
+  outline: 2px solid #d4af37;
+  outline-offset: 2px;
+}
+
+.perm-cat-btn {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 0.75rem 0.875rem;
+  border-radius: 0.75rem;
+  background: rgba(15, 17, 23, 0.85);
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  transition: all 0.2s ease;
+  text-align: left;
+  cursor: pointer;
+}
+
+.perm-cat-btn:hover {
+  background: rgba(26, 29, 39, 0.95);
+  border-color: rgba(212, 175, 55, 0.55);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.perm-row-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.875rem;
+  padding: 0.75rem 1rem;
+  border-radius: 0.75rem;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.perm-row-card:hover {
+  border-color: rgba(212, 175, 55, 0.3);
+  background: rgba(0, 0, 0, 0.5);
+}
+
+/* ==========================================================================
+   Padronização de Bordas Arredondadas nos Botões da Toolbar
+   ========================================================================== */
+#btn-spawn-enemy,
+#btn-battle-toggle {
+  border-radius: 8px !important;
 }
 
 

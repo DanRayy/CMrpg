@@ -103,6 +103,44 @@ def now_iso() -> str:
 def master_full_permissions() -> Dict[str, Any]:
     return {
         "preset": "MESTRE_TOTAL",
+        # Categoria 1: Personagens & Fichas
+        "char_manage_own": True,
+        "char_view_others": True,
+        "char_create": True,
+        "char_edit_others": True,
+        "char_delete": True,
+        "char_reorder": True,
+        "char_grant_xp": True,
+        # Categoria 2: Combate, Turnos & Acúmulos
+        "combat_advance_own_turn": True,
+        "combat_manage_battle": True,
+        "combat_edit_order": True,
+        "combat_advance_any_turn": True,
+        "combat_manage_charges": True,
+        "combat_apply_damage_others": True,
+        "combat_manage_accumulations_others": True,
+        # Categoria 3: Itens, Inventário & Ouro
+        "inventory_view_others": True,
+        "inventory_transfer_any": True,
+        "inventory_edit_others": True,
+        "item_manage_catalog": True,
+        "gold_manage": True,
+        # Categoria 4: Loja, Mercadores & Escrow
+        "shop_buy_sell": True,
+        "shop_manage_npcs": True,
+        "shop_approve_escrow": True,
+        # Categoria 5: Bestiário & Invocação
+        "bestiary_view_revealed": True,
+        "bestiary_view_hidden": True,
+        "bestiary_manage": True,
+        "bestiary_summon": True,
+        # Categoria 6: Missões & Sistema
+        "mission_accept": True,
+        "mission_manage": True,
+        "mission_approve": True,
+        "system_undo_redo": True,
+        "system_view_audit_log": True,
+        # Retrocompatibilidade
         "canEditRoom": True,
         "canViewAudit": True,
         "canManageMembers": True,
@@ -120,8 +158,56 @@ def master_full_permissions() -> Dict[str, Any]:
 
 
 def default_permissions(preset: str = "JOGADOR_COMUM") -> Dict[str, Any]:
+    norm_preset = preset.upper() if isinstance(preset, str) else "JOGADOR_COMUM"
+    if norm_preset in ("JOGADOR_COMUM", "COMUM"):
+        norm_preset = "JOGADOR_COMUM"
+    elif norm_preset in ("SUB_MESTRE", "AJUDANTE", "MODERADOR"):
+        norm_preset = "SUB_MESTRE"
+    elif norm_preset in ("ESPECTADOR", "VIEWER"):
+        norm_preset = "ESPECTADOR"
+    else:
+        norm_preset = "PERSONALIZADO"
+
     base = {
-        "preset": preset,
+        "preset": norm_preset,
+        # Categoria 1: Personagens & Fichas
+        "char_manage_own": True,
+        "char_view_others": True,
+        "char_create": True,
+        "char_edit_others": False,
+        "char_delete": False,
+        "char_reorder": False,
+        "char_grant_xp": False,
+        # Categoria 2: Combate, Turnos & Acúmulos
+        "combat_advance_own_turn": True,
+        "combat_manage_battle": False,
+        "combat_edit_order": False,
+        "combat_advance_any_turn": False,
+        "combat_manage_charges": True,
+        "combat_apply_damage_others": True,
+        "combat_manage_accumulations_others": False,
+        # Categoria 3: Itens, Inventário & Ouro
+        "inventory_view_others": True,
+        "inventory_transfer_any": True,
+        "inventory_edit_others": False,
+        "item_manage_catalog": False,
+        "gold_manage": False,
+        # Categoria 4: Loja, Mercadores & Escrow
+        "shop_buy_sell": True,
+        "shop_manage_npcs": False,
+        "shop_approve_escrow": False,
+        # Categoria 5: Bestiário & Invocação
+        "bestiary_view_revealed": True,
+        "bestiary_view_hidden": False,
+        "bestiary_manage": False,
+        "bestiary_summon": False,
+        # Categoria 6: Missões & Sistema
+        "mission_accept": True,
+        "mission_manage": False,
+        "mission_approve": False,
+        "system_undo_redo": False,
+        "system_view_audit_log": True,
+        # Retrocompatibilidade
         "canEditRoom": False,
         "canViewAudit": True,
         "canManageMembers": False,
@@ -136,16 +222,50 @@ def default_permissions(preset: str = "JOGADOR_COMUM") -> Dict[str, Any]:
         "canManageGold": False,
         "canManageQuests": False,
     }
-    if preset == "MODERADOR":
-        base["canManageMembers"] = True
-        base["canManageQuests"] = True
-        base["canEditOtherCharacters"] = True
-    elif preset == "GERENTE_LOJA":
-        base["canManageItemsCatalog"] = True
-        base["canManageShopNpcs"] = True
-    elif preset == "GERENTE_INVENTARIO":
-        base["canApproveSales"] = True
-        base["canViewOtherInventories"] = True
+
+    if norm_preset == "SUB_MESTRE":
+        base.update({
+            "char_create": True,
+            "char_edit_others": True,
+            "char_grant_xp": True,
+            "combat_manage_battle": True,
+            "combat_edit_order": True,
+            "combat_advance_any_turn": True,
+            "combat_manage_charges": True,
+            "combat_apply_damage_others": True,
+            "combat_manage_accumulations_others": True,
+            "inventory_transfer_any": True,
+            "inventory_edit_others": True,
+            "shop_manage_npcs": True,
+            "shop_approve_escrow": True,
+            "bestiary_summon": True,
+            "mission_manage": True,
+            "mission_approve": True,
+            "system_view_audit_log": True,
+            # Aliases
+            "canCreateCharacters": True,
+            "canEditOtherCharacters": True,
+            "canApproveSales": True,
+            "canManageShopNpcs": True,
+            "canManageQuests": True,
+            "canViewAudit": True,
+        })
+    elif norm_preset == "ESPECTADOR":
+        base.update({
+            "char_create": False,
+            "char_manage_own": False,
+            "combat_advance_own_turn": False,
+            "combat_manage_charges": False,
+            "combat_apply_damage_others": False,
+            "inventory_transfer_any": False,
+            "shop_buy_sell": False,
+            "mission_accept": False,
+            "system_view_audit_log": False,
+            "canCreateCharacters": False,
+            "canEditOwnCharacter": False,
+            "canViewAudit": False,
+        })
+
     return base
 
 
@@ -735,6 +855,7 @@ def build_default_campaign_state() -> Dict[str, Any]:
                 "createdAt": now_iso(),
             }
         ],
+        "customPermissionPresets": [],
         "undo_stack": [],
         "redo_stack": [],
     }
@@ -971,8 +1092,20 @@ def normalize_members_list(raw_members: List[Dict[str, Any]]) -> List[Dict[str, 
 
         display_name = nickname if nickname else f"Sem apelido ({mip})"
         perms = m.get("permissions")
-        if not isinstance(perms, dict):
-            perms = default_permissions("JOGADOR_COMUM")
+        raw_preset = perms.get("preset", "JOGADOR_COMUM") if isinstance(perms, dict) else "JOGADOR_COMUM"
+        base_perms = default_permissions(raw_preset)
+        if isinstance(perms, dict):
+            for k, v in perms.items():
+                if k in base_perms:
+                    if raw_preset == "JOGADOR_COMUM" and k in (
+                        "char_create", "char_manage_own", "combat_manage_charges",
+                        "inventory_transfer_any", "system_view_audit_log",
+                        "canCreateCharacters", "canViewAudit", "combat_apply_damage_others"
+                    ):
+                        continue
+                    base_perms[k] = bool(v) if k != "preset" else v
+            base_perms["preset"] = raw_preset
+        perms = base_perms
 
         other_members_by_ip[mip] = {
             "id": f"ip_{mip}",
@@ -1056,11 +1189,12 @@ class StateManager:
                 "battle": self.state["battle"],
                 "quests": self.state["quests"],
                 "bestiary": self.state.get("bestiary", []),
+                "customPermissionPresets": self.state.get("customPermissionPresets", []),
             }
         )
 
     def _restore_core(self, snap: Dict[str, Any]) -> None:
-        for key in ("room", "members", "characters", "itemsCatalog", "npcs", "escrowSales", "battle", "quests", "bestiary"):
+        for key in ("room", "members", "characters", "itemsCatalog", "npcs", "escrowSales", "battle", "quests", "bestiary", "customPermissionPresets"):
             if key in snap:
                 self.state[key] = copy.deepcopy(snap[key])
         self._recalculate_all()
@@ -1249,6 +1383,7 @@ class StateManager:
             "battle": self.state["battle"],
             "quests": self.state["quests"],
             "bestiary": self.state.get("bestiary", []),
+            "customPermissionPresets": self.state.get("customPermissionPresets", []),
             "auditLog": self.state["auditLog"],
             "network": {
                 **HOST_NETWORK_INFO,
@@ -1276,7 +1411,7 @@ class StateManager:
                     self.undo_stack = self.undo_stack[-HISTORY_LIMIT:]
                 self.redo_stack.clear()
 
-            for key in ("room", "members", "characters", "itemsCatalog", "npcs", "escrowSales", "battle", "quests", "bestiary"):
+            for key in ("room", "members", "characters", "itemsCatalog", "npcs", "escrowSales", "battle", "quests", "bestiary", "customPermissionPresets"):
                 if key in data and data[key] is not None:
                     self.state[key] = data[key]
 

@@ -207,6 +207,7 @@
     },
     quests: [],
     auditLog: [],
+    customPermissionPresets: [],
 
     // UI Filters & Selections
     searchQuery: '',
@@ -222,6 +223,9 @@
     auditFilterSearch: '',
 
     // Modals & Operations state
+    editingMemberId: null,
+    editingMemberPermissions: null,
+    activePermCategoryId: 'characters',
     activeResistanceCharId: null,
     activeBuffsNerfsCharId: null,
     activeSheetCharId: null,
@@ -629,7 +633,7 @@
           name: 'Jogador (Visão Teste)',
           nickname: 'Jogador (Visão Teste)',
           characterId: null,
-          permissions: { preset: 'JOGADOR_COMUM', canCreateCharacters: true, canViewOtherInventories: true },
+          permissions: getDefaultPermissionsForPreset('JOGADOR_COMUM'),
         }
       );
     }
@@ -640,17 +644,500 @@
     );
   }
 
+  // ===========================================================================
+  // Permissões por Categoria & Presets Canônicos
+  // ===========================================================================
+  const PERMISSION_CATEGORIES = [
+    {
+      id: 'characters',
+      title: 'Personagens & Fichas',
+      icon: 'game-icons:hooded-figure',
+      description: 'Criação, edição, visualização e concessão de XP/níveis.',
+      permissions: [
+        {
+          key: 'char_manage_own',
+          name: 'Gerenciar Própria Ficha',
+          description: 'Editar atributos, talentos, habilidades e usar inventário do próprio personagem.',
+          defaultVal: true,
+        },
+        {
+          key: 'char_view_others',
+          name: 'Visualizar Outros Personagens',
+          description: 'Abrir e inspecionar fichas de outros jogadores em modo somente leitura.',
+          defaultVal: true,
+        },
+        {
+          key: 'char_create',
+          name: 'Criar Novos Personagens',
+          description: 'Criar novas fichas de personagens na mesa através do botão ＋ CRIAR.',
+          defaultVal: false,
+        },
+        {
+          key: 'char_edit_others',
+          name: 'Editar Fichas de Outros',
+          description: 'Alterar atributos, talentos, habilidades e dados de fichas de outros jogadores.',
+          defaultVal: false,
+        },
+        {
+          key: 'char_delete',
+          name: 'Excluir Personagens',
+          description: 'Excluir fichas de personagens da mesa permanentemente.',
+          defaultVal: false,
+        },
+        {
+          key: 'char_reorder',
+          name: 'Reordenar Fichas',
+          description: 'Mudar a ordem dos cards de personagens na mesa arrastando pelo cabeçalho.',
+          defaultVal: false,
+        },
+        {
+          key: 'char_grant_xp',
+          name: 'Distribuir XP / Nível em Lote',
+          description: 'Conceder experiência e alterar níveis e pontos de atributos de personagens.',
+          defaultVal: false,
+        },
+      ],
+    },
+    {
+      id: 'combat',
+      title: 'Combate, Turnos & Acúmulos',
+      icon: 'game-icons:crossed-swords',
+      description: 'Controle de batalha, iniciativa, avançar turnos, cargas e dano.',
+      permissions: [
+        {
+          key: 'combat_advance_own_turn',
+          name: 'Avançar Próprio Turno',
+          description: 'Avançar o turno da batalha quando for a vez do seu próprio personagem.',
+          defaultVal: true,
+        },
+        {
+          key: 'combat_manage_battle',
+          name: 'Iniciar / Encerrar Batalha',
+          description: 'Iniciar novas batalhas e encerrar batalhas ativas na mesa.',
+          defaultVal: false,
+        },
+        {
+          key: 'combat_edit_order',
+          name: 'Editar Ordem de Batalha',
+          description: 'Alterar a fila de iniciativa e posições dos combatentes na sidebar.',
+          defaultVal: false,
+        },
+        {
+          key: 'combat_advance_any_turn',
+          name: 'Avançar Qualquer Turno',
+          description: 'Forçar o avanço de turno de qualquer participante ou inimigo.',
+          defaultVal: false,
+        },
+        {
+          key: 'combat_manage_charges',
+          name: 'Controlar Cargas de Batalha',
+          description: 'Adicionar, gastar ou resetar o contador de Cargas de batalha.',
+          defaultVal: false,
+        },
+        {
+          key: 'combat_apply_damage_others',
+          name: 'Ações Rápidas nos Cards (Dano/Vida/Armadura/Mana/Regen/Resetar)',
+          description: 'Permite usar os 6 botões inferiores dos cards em si mesmo, aliados e inimigos na mesa.',
+          defaultVal: true,
+        },
+        {
+          key: 'combat_manage_accumulations_others',
+          name: 'Gerenciar Acúmulos / Buffs de Terceiros',
+          description: 'Alterar acúmulos, buffs e debuffs de outros personagens e inimigos.',
+          defaultVal: false,
+        },
+      ],
+    },
+    {
+      id: 'inventory',
+      title: 'Itens, Inventário & Ouro',
+      icon: 'game-icons:backpack',
+      description: 'Visualização e manipulação de mochilas, catálogo de itens e moedas.',
+      permissions: [
+        {
+          key: 'inventory_view_others',
+          name: 'Visualizar Outros Inventários',
+          description: 'Abrir mochilas de outros jogadores em modo somente leitura.',
+          defaultVal: true,
+        },
+        {
+          key: 'inventory_transfer_any',
+          name: 'Transferir Itens entre Inventários (Qualquer Ficha)',
+          description: 'Mover e transferir itens de qualquer ficha para outra ficha da mesa.',
+          defaultVal: true,
+        },
+        {
+          key: 'inventory_edit_others',
+          name: 'Modificar Inventários de Outros',
+          description: 'Adicionar, remover livremente ou equipar itens de outros jogadores.',
+          defaultVal: false,
+        },
+        {
+          key: 'item_manage_catalog',
+          name: 'Gerenciar Catálogo de Itens',
+          description: 'Criar, editar e excluir itens do compêndio geral do jogo.',
+          defaultVal: false,
+        },
+        {
+          key: 'gold_manage',
+          name: 'Gerenciar Ouro Global',
+          description: 'Alterar o saldo de moedas de ouro do cofre compartilhado livremente.',
+          defaultVal: false,
+        },
+      ],
+    },
+    {
+      id: 'shop',
+      title: 'Loja, Mercadores & Escrow',
+      icon: 'game-icons:shop',
+      description: 'Compra, venda, gerenciamento de NPCs mercadores e aprovações.',
+      permissions: [
+        {
+          key: 'shop_buy_sell',
+          name: 'Comprar e Vender na Loja',
+          description: 'Comprar produtos dos mercadores e solicitar vendas para o Escrow.',
+          defaultVal: true,
+        },
+        {
+          key: 'shop_manage_npcs',
+          name: 'Gerenciar Mercadores (NPCs)',
+          description: 'Criar mercadores, definir estoque, preços e tipos de moeda.',
+          defaultVal: false,
+        },
+        {
+          key: 'shop_approve_escrow',
+          name: 'Aprovar Vendas no Escrow',
+          description: 'Avaliar e aprovar ou recusar solicitações de venda de jogadores.',
+          defaultVal: false,
+        },
+      ],
+    },
+    {
+      id: 'bestiary',
+      title: 'Bestiário & Invocação',
+      icon: 'game-icons:monster-grasp',
+      description: 'Acesso a criaturas hostis, revelação e convocação para a mesa.',
+      permissions: [
+        {
+          key: 'bestiary_view_revealed',
+          name: 'Ver Bestas Reveladas',
+          description: 'Ver fichas e dados de criaturas reveladas pelo Mestre.',
+          defaultVal: true,
+        },
+        {
+          key: 'bestiary_view_hidden',
+          name: 'Ver Bestas Ocultas',
+          description: 'Acessar informações completas de monstros não revelados aos jogadores.',
+          defaultVal: false,
+        },
+        {
+          key: 'bestiary_manage',
+          name: 'Gerenciar Bestiário',
+          description: 'Criar, editar e excluir criaturas do Bestiário.',
+          defaultVal: false,
+        },
+        {
+          key: 'bestiary_summon',
+          name: 'Trazer Inimigos para Mesa',
+          description: 'Puxar monstros do Bestiário para o combate e dispensá-los.',
+          defaultVal: false,
+        },
+      ],
+    },
+    {
+      id: 'system',
+      title: 'Missões & Sistema',
+      icon: 'game-icons:scroll-quill',
+      description: 'Mural de missões, recompensas, histórico temporal e auditoria.',
+      permissions: [
+        {
+          key: 'mission_accept',
+          name: 'Aceitar Missões',
+          description: 'Aceitar missões disponíveis no mural com o próprio personagem.',
+          defaultVal: true,
+        },
+        {
+          key: 'mission_manage',
+          name: 'Gerenciar Mural de Missões',
+          description: 'Criar, editar e remover missões do mural.',
+          defaultVal: false,
+        },
+        {
+          key: 'mission_approve',
+          name: 'Aprovar Conclusão de Missões',
+          description: 'Validar missões concluídas e distribuir as recompensas.',
+          defaultVal: false,
+        },
+        {
+          key: 'system_undo_redo',
+          name: 'Desfazer / Refazer (Undo/Redo)',
+          description: 'Usar o histórico temporal para reverter mutações do jogo.',
+          defaultVal: false,
+        },
+        {
+          key: 'system_view_audit_log',
+          name: 'Ver Histórico de Auditoria',
+          description: 'Consultar o log completo de ações dos participantes.',
+          defaultVal: false,
+        },
+      ],
+    },
+  ];
+
+  const PRESET_DEFINITIONS = {
+    JOGADOR_COMUM: {
+      char_manage_own: true,
+      char_view_others: true,
+      char_create: true,
+      char_edit_others: false,
+      char_delete: false,
+      char_reorder: false,
+      char_grant_xp: false,
+      combat_advance_own_turn: true,
+      combat_manage_battle: false,
+      combat_edit_order: false,
+      combat_advance_any_turn: false,
+      combat_manage_charges: true,
+      combat_apply_damage_others: true,
+      combat_manage_accumulations_others: false,
+      inventory_view_others: true,
+      inventory_transfer_any: true,
+      inventory_edit_others: false,
+      item_manage_catalog: false,
+      gold_manage: false,
+      shop_buy_sell: true,
+      shop_manage_npcs: false,
+      shop_approve_escrow: false,
+      bestiary_view_revealed: true,
+      bestiary_view_hidden: false,
+      bestiary_manage: false,
+      bestiary_summon: false,
+      mission_accept: true,
+      mission_manage: false,
+      mission_approve: false,
+      system_undo_redo: false,
+      system_view_audit_log: true,
+    },
+    SUB_MESTRE: {
+      char_manage_own: true,
+      char_view_others: true,
+      char_create: true,
+      char_edit_others: true,
+      char_delete: false,
+      char_reorder: false,
+      char_grant_xp: true,
+      combat_advance_own_turn: true,
+      combat_manage_battle: true,
+      combat_edit_order: true,
+      combat_advance_any_turn: true,
+      combat_manage_charges: true,
+      combat_apply_damage_others: true,
+      combat_manage_accumulations_others: true,
+      inventory_view_others: true,
+      inventory_transfer_any: true,
+      inventory_edit_others: true,
+      item_manage_catalog: false,
+      gold_manage: false,
+      shop_buy_sell: true,
+      shop_manage_npcs: true,
+      shop_approve_escrow: true,
+      bestiary_view_revealed: true,
+      bestiary_view_hidden: false,
+      bestiary_manage: false,
+      bestiary_summon: true,
+      mission_accept: true,
+      mission_manage: true,
+      mission_approve: true,
+      system_undo_redo: false,
+      system_view_audit_log: true,
+    },
+    ESPECTADOR: {
+      char_manage_own: false,
+      char_view_others: true,
+      char_create: false,
+      char_edit_others: false,
+      char_delete: false,
+      char_reorder: false,
+      char_grant_xp: false,
+      combat_advance_own_turn: false,
+      combat_manage_battle: false,
+      combat_edit_order: false,
+      combat_advance_any_turn: false,
+      combat_manage_charges: false,
+      combat_apply_damage_others: false,
+      combat_manage_accumulations_others: false,
+      inventory_view_others: true,
+      inventory_transfer_any: false,
+      inventory_edit_others: false,
+      item_manage_catalog: false,
+      gold_manage: false,
+      shop_buy_sell: false,
+      shop_manage_npcs: false,
+      shop_approve_escrow: false,
+      bestiary_view_revealed: true,
+      bestiary_view_hidden: false,
+      bestiary_manage: false,
+      bestiary_summon: false,
+      mission_accept: false,
+      mission_manage: false,
+      mission_approve: false,
+      system_undo_redo: false,
+      system_view_audit_log: false,
+    },
+  };
+
+  function syncLegacyPermAliases(perms) {
+    if (!perms || typeof perms !== 'object') return;
+    perms.canCreateCharacters = Boolean(perms.char_create);
+    perms.canEditOwnCharacter = Boolean(perms.char_manage_own);
+    perms.canEditOtherCharacters = Boolean(perms.char_edit_others);
+    perms.canDeleteCharacters = Boolean(perms.char_delete);
+    perms.canViewOtherInventories = Boolean(perms.inventory_view_others);
+    perms.canManageItemsCatalog = Boolean(perms.item_manage_catalog);
+    perms.canApproveSales = Boolean(perms.shop_approve_escrow);
+    perms.canManageShopNpcs = Boolean(perms.shop_manage_npcs);
+    perms.canManageGold = Boolean(perms.gold_manage);
+    perms.canManageQuests = Boolean(perms.mission_manage);
+    perms.canViewAudit = Boolean(perms.system_view_audit_log);
+  }
+
+  function getDefaultPermissionsForPreset(preset) {
+    if (!preset) return { preset: 'JOGADOR_COMUM', ...PRESET_DEFINITIONS.JOGADOR_COMUM };
+    const norm = String(preset).toUpperCase();
+    if (norm === 'MESTRE_TOTAL') {
+      return masterFullPermissionsClient();
+    }
+    const custom = (state.customPermissionPresets || []).find(
+      (cp) => cp && (cp.id === preset || cp.id === norm || (cp.name && cp.name.toUpperCase() === norm))
+    );
+    if (custom && custom.permissions) {
+      const perms = { preset: custom.id, ...deepClone(custom.permissions) };
+      syncLegacyPermAliases(perms);
+      return perms;
+    }
+    const def = PRESET_DEFINITIONS[norm] || PRESET_DEFINITIONS.JOGADOR_COMUM;
+    const perms = { preset: norm in PRESET_DEFINITIONS ? norm : 'PERSONALIZADO', ...def };
+    syncLegacyPermAliases(perms);
+    return perms;
+  }
+
+  function masterFullPermissionsClient() {
+    const full = { preset: 'MESTRE_TOTAL' };
+    PERMISSION_CATEGORIES.forEach((cat) => {
+      cat.permissions.forEach((p) => {
+        full[p.key] = true;
+      });
+    });
+    syncLegacyPermAliases(full);
+    return full;
+  }
+
+  function detectMatchingPreset(perms) {
+    if (!perms) return 'JOGADOR_COMUM';
+    if (perms.preset) {
+      const explicitCustom = (state.customPermissionPresets || []).find((cp) => cp && cp.id === perms.preset);
+      if (explicitCustom && explicitCustom.permissions) {
+        let matches = true;
+        for (const cat of PERMISSION_CATEGORIES) {
+          for (const p of cat.permissions) {
+            if (Boolean(perms[p.key]) !== Boolean(explicitCustom.permissions[p.key])) {
+              matches = false;
+              break;
+            }
+          }
+          if (!matches) break;
+        }
+        if (matches) return explicitCustom.id;
+      }
+      if (PRESET_DEFINITIONS[perms.preset]) {
+        const defObj = PRESET_DEFINITIONS[perms.preset];
+        let matches = true;
+        for (const [k, v] of Object.entries(defObj)) {
+          if (Boolean(perms[k]) !== Boolean(v)) {
+            matches = false;
+            break;
+          }
+        }
+        if (matches) return perms.preset;
+      }
+    }
+    for (const cp of (state.customPermissionPresets || [])) {
+      if (!cp || !cp.permissions) continue;
+      let matches = true;
+      for (const cat of PERMISSION_CATEGORIES) {
+        for (const p of cat.permissions) {
+          if (Boolean(perms[p.key]) !== Boolean(cp.permissions[p.key])) {
+            matches = false;
+            break;
+          }
+        }
+        if (!matches) break;
+      }
+      if (matches) return cp.id;
+    }
+    for (const [presetKey, defObj] of Object.entries(PRESET_DEFINITIONS)) {
+      let matches = true;
+      for (const [k, v] of Object.entries(defObj)) {
+        if (Boolean(perms[k]) !== Boolean(v)) {
+          matches = false;
+          break;
+        }
+      }
+      if (matches) return presetKey;
+    }
+    return 'PERSONALIZADO';
+  }
+
+  const PERM_LEGACY_MAP = {
+    char_manage_own: 'canEditOwnCharacter',
+    char_create: 'canCreateCharacters',
+    char_edit_others: 'canEditOtherCharacters',
+    char_delete: 'canDeleteCharacters',
+    inventory_view_others: 'canViewOtherInventories',
+    item_manage_catalog: 'canManageItemsCatalog',
+    shop_approve_escrow: 'canApproveSales',
+    shop_manage_npcs: 'canManageShopNpcs',
+    gold_manage: 'canManageGold',
+    mission_manage: 'canManageQuests',
+    system_view_audit_log: 'canViewAudit',
+  };
+  const LEGACY_TO_PERM_MAP = {
+    canEditOwnCharacter: 'char_manage_own',
+    canCreateCharacters: 'char_create',
+    canEditOtherCharacters: 'char_edit_others',
+    canDeleteCharacters: 'char_delete',
+    canViewOtherInventories: 'inventory_view_others',
+    canManageItemsCatalog: 'item_manage_catalog',
+    canApproveSales: 'shop_approve_escrow',
+    canManageShopNpcs: 'shop_manage_npcs',
+    canManageGold: 'gold_manage',
+    canManageQuests: 'mission_manage',
+    canViewAudit: 'system_view_audit_log',
+  };
+
   function hasPermission(permKey) {
     if (isEffectiveMaster()) return true;
     const member = getActiveMember();
-    return Boolean(member?.permissions?.[permKey]);
+    if (!member || !member.permissions) return false;
+    const perms = member.permissions;
+
+    if (perms[permKey] !== undefined) return Boolean(perms[permKey]);
+    if (PERM_LEGACY_MAP[permKey] && perms[PERM_LEGACY_MAP[permKey]] !== undefined) {
+      return Boolean(perms[PERM_LEGACY_MAP[permKey]]);
+    }
+    if (LEGACY_TO_PERM_MAP[permKey] && perms[LEGACY_TO_PERM_MAP[permKey]] !== undefined) {
+      return Boolean(perms[LEGACY_TO_PERM_MAP[permKey]]);
+    }
+    const def = getDefaultPermissionsForPreset(perms.preset || (member.role === 'MESTRE' ? 'MESTRE_TOTAL' : 'JOGADOR_COMUM'));
+    if (def && def[permKey] !== undefined) {
+      return Boolean(def[permKey]);
+    }
+    return false;
   }
 
-  function canEditCharacter(char) {
+  function isCharacterOwner(char) {
     if (!char) return false;
-    if (isEffectiveMaster()) return true;
-    if (hasPermission('canEditOtherCharacters')) return true;
-
+    if (char.isEnemy) return false;
     const activeMem = getActiveMember();
     if (!activeMem) return false;
 
@@ -663,6 +1150,97 @@
       return true;
     }
     return false;
+  }
+
+  function canEditCharacter(char) {
+    if (!char) return false;
+    if (isEffectiveMaster()) return true;
+    if (char.isEnemy) return false;
+
+    if (isCharacterOwner(char)) {
+      return hasPermission('char_manage_own');
+    }
+    return hasPermission('char_edit_others');
+  }
+
+  function canViewCharacter(char) {
+    if (!char) return false;
+    if (isEffectiveMaster()) return true;
+    if (char.isEnemy) {
+      const bestiaryRef = (state.bestiary || []).find((b) => b.id === char.bestiaryId);
+      const isRevealed = bestiaryRef ? Boolean(bestiaryRef.reveladoParaJogadores) : Boolean(char.reveladoParaJogadores);
+      return isRevealed || hasPermission('bestiary_view_hidden');
+    }
+    if (isCharacterOwner(char)) return true;
+    return hasPermission('char_view_others') || hasPermission('char_edit_others');
+  }
+
+  function canEditInventory(char) {
+    if (!char) return false;
+    if (isEffectiveMaster()) return true;
+    if (char.isEnemy) return false;
+
+    if (isCharacterOwner(char)) {
+      return hasPermission('char_manage_own');
+    }
+    return hasPermission('inventory_edit_others');
+  }
+
+  function canTransferFromInventory(char) {
+    if (!char) return false;
+    if (isEffectiveMaster()) return true;
+    if (char.isEnemy) return false;
+    if (hasPermission('inventory_transfer_any')) return true;
+    if (isCharacterOwner(char)) return hasPermission('char_manage_own');
+    return hasPermission('inventory_edit_others');
+  }
+
+  function canViewInventory(char) {
+    if (!char) return false;
+    if (isEffectiveMaster()) return true;
+    if (char.isEnemy) return false;
+    if (isCharacterOwner(char)) return true;
+    return (
+      hasPermission('inventory_view_others') ||
+      hasPermission('inventory_transfer_any') ||
+      hasPermission('inventory_edit_others')
+    );
+  }
+
+  function canApplyCombatActions(char) {
+    if (!char) return false;
+    if (isEffectiveMaster()) return true;
+    if (char.isEnemy) {
+      return hasPermission('combat_apply_damage_others');
+    }
+    if (isCharacterOwner(char)) {
+      return hasPermission('char_manage_own');
+    }
+    return hasPermission('combat_apply_damage_others');
+  }
+
+  function canAdjustPa(char) {
+    if (!char) return false;
+    if (isEffectiveMaster()) return true;
+    if (char.isEnemy) {
+      return hasPermission('combat_apply_damage_others') || hasPermission('combat_edit_order');
+    }
+    if (isCharacterOwner(char)) {
+      return hasPermission('char_manage_own');
+    }
+    return hasPermission('combat_apply_damage_others');
+  }
+
+  function canManageAccumulations(char) {
+    if (!char) return false;
+    if (isEffectiveMaster()) return true;
+    if (char.isEnemy) {
+      return hasPermission('combat_manage_accumulations_others');
+    }
+    if (isCharacterOwner(char)) {
+      return hasPermission('char_manage_own');
+    }
+    return hasPermission('combat_manage_accumulations_others');
   }
 
   function updateRoleUI() {
@@ -690,6 +1268,46 @@
         el.classList.add('hidden');
       }
     });
+
+    // Ajustes finos baseados no novo sistema granular de permissões
+    const canCreateChar = hasPermission('char_create');
+    document.getElementById('btn-create-char')?.classList.toggle('hidden', !canCreateChar);
+
+    const canSummon = hasPermission('bestiary_summon');
+    document.getElementById('btn-spawn-enemy')?.classList.toggle('hidden', !canSummon);
+
+    const canManageBattle = hasPermission('combat_manage_battle');
+    document.getElementById('btn-battle-toggle')?.classList.toggle('hidden', !canManageBattle);
+
+    const canGrantXp = hasPermission('char_grant_xp');
+    document.getElementById('btn-bulk-rewards')?.classList.toggle('hidden', !canGrantXp);
+    document.getElementById('btn-quests-bulk-xp')?.classList.toggle('hidden', !canGrantXp);
+
+    const canManageCatalog = hasPermission('item_manage_catalog');
+    document.getElementById('btn-new-catalog-item')?.classList.toggle('hidden', !canManageCatalog);
+
+    const canManageShopNpc = hasPermission('shop_manage_npcs');
+    document.getElementById('btn-new-npc')?.classList.toggle('hidden', !canManageShopNpc);
+
+    const canManageBestiary = hasPermission('bestiary_manage');
+    document.getElementById('btn-create-enemy')?.classList.toggle('hidden', !canManageBestiary);
+
+    const canManageQuests = hasPermission('mission_manage');
+    document.getElementById('btn-new-quest')?.classList.toggle('hidden', !canManageQuests);
+
+    const canManageGold = hasPermission('gold_manage');
+    const goldBtn = document.getElementById('btn-manage-gold');
+    if (goldBtn) {
+      goldBtn.classList.toggle('hidden', !canManageGold);
+      goldBtn.style.cursor = canManageGold ? 'pointer' : 'default';
+      goldBtn.title = canManageGold ? 'Gerenciar Saldo de Ouro' : 'Saldo Global de Ouro';
+    }
+
+    const canUndoRedo = hasPermission('system_undo_redo');
+    const undoBtn = document.getElementById('btn-undo');
+    const redoBtn = document.getElementById('btn-redo');
+    if (undoBtn) undoBtn.classList.toggle('hidden', !canUndoRedo);
+    if (redoBtn) redoBtn.classList.toggle('hidden', !canUndoRedo);
   }
 
   // ===========================================================================
@@ -886,17 +1504,7 @@
         characterId: null,
         online: true,
         connectionsCount: 1,
-        permissions: {
-          preset: 'MESTRE_TOTAL',
-          canCreateCharacters: true,
-          canEditOtherCharacters: true,
-          canManageItemsCatalog: true,
-          canManageShopNpcs: true,
-          canApproveSales: true,
-          canManageGold: true,
-          canManageQuests: true,
-          canViewOtherInventories: true,
-        },
+        permissions: masterFullPermissionsClient(),
       },
     ];
     state.characters.forEach(recalculateCharacterDerived);
@@ -927,17 +1535,7 @@
         characterId: null,
         online: true,
         connectionsCount: 1,
-        permissions: {
-          preset: 'MESTRE_TOTAL',
-          canCreateCharacters: true,
-          canEditOtherCharacters: true,
-          canManageItemsCatalog: true,
-          canManageShopNpcs: true,
-          canApproveSales: true,
-          canManageGold: true,
-          canManageQuests: true,
-          canViewOtherInventories: true,
-        },
+        permissions: masterFullPermissionsClient(),
       });
     }
   }
@@ -1012,11 +1610,12 @@
       bestiary: state.bestiary,
       battle: state.battle,
       quests: state.quests,
+      customPermissionPresets: state.customPermissionPresets,
     });
   }
 
   function restoreCoreState(snap) {
-    for (const k of ['room', 'members', 'characters', 'itemsCatalog', 'npcs', 'escrowSales', 'bestiary', 'battle', 'quests']) {
+    for (const k of ['room', 'members', 'characters', 'itemsCatalog', 'npcs', 'escrowSales', 'bestiary', 'battle', 'quests', 'customPermissionPresets']) {
       if (snap[k] !== undefined) state[k] = deepClone(snap[k]);
     }
     state.characters.forEach(recalculateCharacterDerived);
@@ -1025,10 +1624,17 @@
   function updateHistoryButtonsUI() {
     const btnUndo = document.getElementById('btn-undo');
     const btnRedo = document.getElementById('btn-redo');
-    const canUndo = state.wsConnected ? state.serverCanUndo : state.undoStack.length > 0;
-    const canRedo = state.wsConnected ? state.serverCanRedo : state.redoStack.length > 0;
-    if (btnUndo) btnUndo.disabled = !canUndo;
-    if (btnRedo) btnRedo.disabled = !canRedo;
+    const allowed = isEffectiveMaster() || hasPermission('system_undo_redo');
+    const canUndo = allowed && (state.wsConnected ? state.serverCanUndo : state.undoStack.length > 0);
+    const canRedo = allowed && (state.wsConnected ? state.serverCanRedo : state.redoStack.length > 0);
+    if (btnUndo) {
+      btnUndo.disabled = !canUndo;
+      btnUndo.classList.toggle('hidden', !allowed);
+    }
+    if (btnRedo) {
+      btnRedo.disabled = !canRedo;
+      btnRedo.classList.toggle('hidden', !allowed);
+    }
   }
 
   function commitMutation(mutatorFn, auditInfo = null) {
@@ -1080,6 +1686,7 @@
           bestiary: state.bestiary,
           battle: state.battle,
           quests: state.quests,
+          customPermissionPresets: state.customPermissionPresets,
           auditEntry,
           record_history: true,
           toasts,
@@ -1092,6 +1699,10 @@
   }
 
   function triggerUndo() {
+    if (!isEffectiveMaster() && !hasPermission('system_undo_redo')) {
+      showToast('Você não tem permissão para desfazer ações.', 'warning');
+      return;
+    }
     if (state.wsConnected && state.ws && state.ws.readyState === WebSocket.OPEN) {
       if (!state.serverCanUndo) return;
       state.ws.send(JSON.stringify({ type: 'undo' }));
@@ -1108,6 +1719,10 @@
   }
 
   function triggerRedo() {
+    if (!isEffectiveMaster() && !hasPermission('system_undo_redo')) {
+      showToast('Você não tem permissão para refazer ações.', 'warning');
+      return;
+    }
     if (state.wsConnected && state.ws && state.ws.readyState === WebSocket.OPEN) {
       if (!state.serverCanRedo) return;
       state.ws.send(JSON.stringify({ type: 'redo' }));
@@ -1808,6 +2423,7 @@
             if (data.battle) state.battle = data.battle;
             if (Array.isArray(data.quests)) state.quests = data.quests;
             if (Array.isArray(data.auditLog)) state.auditLog = data.auditLog;
+            if (Array.isArray(data.customPermissionPresets)) state.customPermissionPresets = data.customPermissionPresets;
 
             state.serverCanUndo = Boolean(data.can_undo);
             state.serverCanRedo = Boolean(data.can_redo);
@@ -2074,7 +2690,7 @@
               } border flex items-center justify-center text-base shrink-0" ${
                 isMasterRole
                   ? ''
-                  : `style="box-shadow: 0 0 0 2px ${escapeHtml(memberCursorColor)}44;"`
+                  : `style="border-color: ${escapeHtml(memberCursorColor)};"`
               }>
                 ${isMasterRole ? '<iconify-icon icon="game-icons:crown" class="gold-title"></iconify-icon>' : '<iconify-icon icon="game-icons:hooded-figure"></iconify-icon>'}
               </div>
@@ -2302,7 +2918,7 @@
   function adjustCharacterPa(charId, delta) {
     commitMutation((st) => {
       const char = st.characters.find((c) => c.id === charId);
-      if (!char || !canEditCharacter(char)) return false;
+      if (!char || !canAdjustPa(char)) return false;
 
       const penalty = calculateCombatantPaPenalty(char);
       const baseMax = Math.max(1, Number(char.baseMaxPa || 3));
@@ -2343,13 +2959,17 @@
     const battle = getBattleState();
     if (!battle.isActive || battle.orderIds.length === 0) return false;
     if (isEffectiveMaster()) return true;
+    if (hasPermission('combat_advance_any_turn')) return true;
 
     const actingId = battle.orderIds[battle.currentTurnIndex % battle.orderIds.length];
     const actingChar = (state.characters || []).find((c) => c.id === actingId);
     if (!actingChar) return false;
     if (actingChar.isEnemy) return false;
 
-    return canEditCharacter(actingChar);
+    if (isCharacterOwner(actingChar)) {
+      return hasPermission('combat_advance_own_turn');
+    }
+    return false;
   }
 
   function getTurnPermissionText() {
@@ -2360,14 +2980,22 @@
     if (!actingChar) return 'Aguardando combatente...';
 
     const isMaster = isEffectiveMaster();
+    const canAdvanceAny = hasPermission('combat_advance_any_turn');
     if (actingChar.isEnemy) {
-      return isMaster
+      return (isMaster || canAdvanceAny)
         ? `Turno de ${actingChar.name} (Inimigo) — Você tem controle de avanço.`
         : `Turno de ${actingChar.name} (Inimigo) — Aguardando o Mestre avançar.`;
     }
 
-    if (canEditCharacter(actingChar)) {
-      return `É o seu turno (${actingChar.name})! Clique em Avançar Turno para finalizar.`;
+    if (isCharacterOwner(actingChar)) {
+      if (hasPermission('combat_advance_own_turn')) {
+        return `É o seu turno (${actingChar.name})! Clique em Avançar Turno para finalizar.`;
+      }
+      return `É o turno de seu personagem (${actingChar.name}), mas você não tem permissão para avançar turnos.`;
+    }
+
+    if (canAdvanceAny) {
+      return `Turno de ${actingChar.name} — Você pode avançar este turno como Sub-Mestre.`;
     }
 
     return `Turno de ${actingChar.name} — Aguardando o jogador ou Mestre avançar.`;
@@ -2442,7 +3070,7 @@
   }
 
   function adjustBattleCharges(delta) {
-    if (!isEffectiveMaster()) return;
+    if (!isEffectiveMaster() && !hasPermission('combat_manage_charges')) return;
     commitMutation((st) => {
       if (!st.battle || !st.battle.isActive) return false;
       st.battle.charges = Math.max(0, Number(st.battle.charges || 0) + delta);
@@ -2458,12 +3086,12 @@
 
     const battle = getBattleState();
     if (battle.isActive) {
-      btn.className = 'master-only-el px-3.5 py-2 text-xs font-serif-fantasy uppercase tracking-wider bg-rose-950/80 hover:bg-rose-900 border border-rose-500/70 text-rose-200 font-extrabold flex items-center gap-1.5 shadow-md transition';
+      btn.className = 'master-only-el rounded-lg px-3.5 py-2 text-xs font-serif-fantasy uppercase tracking-wider bg-rose-950/80 hover:bg-rose-900 border border-rose-500/70 text-rose-200 font-extrabold flex items-center gap-1.5 shadow-md transition';
       if (icon) icon.setAttribute('icon', 'game-icons:skull-crossed-bones');
       text.textContent = 'ENCERRAR BATALHA';
       btn.title = 'Encerrar o combate ativo e zerar contadores de turno e cargas';
     } else {
-      btn.className = 'master-only-el px-3.5 py-2 text-xs font-serif-fantasy uppercase tracking-wider btn-gold flex items-center gap-1.5 shadow-md transition';
+      btn.className = 'master-only-el rounded-lg px-3.5 py-2 text-xs font-serif-fantasy uppercase tracking-wider btn-gold flex items-center gap-1.5 shadow-md transition';
       if (icon) icon.setAttribute('icon', 'game-icons:crossed-swords');
       text.textContent = 'INICIAR BATALHA';
       btn.title = 'Configurar ordem e iniciar combate';
@@ -2471,27 +3099,42 @@
   }
 
   function handleBattleToggleClick() {
-    if (!isEffectiveMaster()) return;
+    if (!isEffectiveMaster() && !hasPermission('combat_manage_battle')) return;
     const battle = getBattleState();
     if (battle.isActive) {
       openConfirmModal({
         icon: '<iconify-icon icon="game-icons:skull-crossed-bones" class="text-rose-400"></iconify-icon>',
         title: 'ENCERRAR BATALHA?',
-        message: 'Deseja realmente encerrar o combate atual? A fila de batalha será fechada e os contadores de turnos e cargas serão zerados.',
-        confirmText: '<iconify-icon icon="game-icons:skull-crossed-bones"></iconify-icon> <span>Encerrar</span>',
+        message: 'Deseja realmente encerrar o combate atual? A fila de batalha será fechada, os contadores serão zerados e todas as fichas de inimigos em campo serão removidas da mesa.',
+        confirmText: '<iconify-icon icon="game-icons:skull-crossed-bones"></iconify-icon> <span>Encerrar Batalha</span>',
         onConfirm: () => {
-          commitMutation((st, toasts) => {
-            st.battle = {
-              isActive: false,
-              roundNumber: 1,
-              currentTurnIndex: 0,
-              charges: 0,
-              orderIds: [],
-              turnCounts: {},
-            };
-            toasts.push('Combate encerrado pelo Mestre.');
-            return true;
-          });
+          commitMutation(
+            (st, toasts) => {
+              const enemyCount = (st.characters || []).filter((c) => Boolean(c.isEnemy)).length;
+              st.characters = (st.characters || []).filter((c) => !c.isEnemy);
+              st.battle = {
+                isActive: false,
+                roundNumber: 1,
+                currentTurnIndex: 0,
+                charges: 0,
+                orderIds: [],
+                turnCounts: {},
+              };
+              if (enemyCount > 0) {
+                toasts.push(`Combate encerrado. ${enemyCount} ficha(s) de inimigo removida(s) da mesa.`);
+              } else {
+                toasts.push('Combate encerrado pelo Mestre.');
+              }
+              return true;
+            },
+            {
+              actionType: 'BATTLE_END',
+              targetEntity: 'Mesa de Combate',
+              summary: 'Batalha encerrada e todas as fichas de inimigos foram removidas da mesa.',
+            }
+          );
+          closeModal('modal-general-skills');
+          renderCharactersTab();
         },
       });
     } else {
@@ -2500,6 +3143,7 @@
   }
 
   function openBattleOrderModal() {
+    if (!isEffectiveMaster() && !hasPermission('combat_manage_battle') && !hasPermission('combat_edit_order')) return;
     const battle = getBattleState();
     const aliveChars = (state.characters || []).filter((c) => Number(c.hp || 0) > 0 && !c.isDead);
     const validAliveIds = new Set(aliveChars.map((c) => c.id));
@@ -2752,6 +3396,10 @@
   }
 
   function handleConfirmBattleOrder() {
+    if (!isEffectiveMaster() && !hasPermission('combat_manage_battle') && !hasPermission('combat_edit_order')) {
+      showToast('Você não tem permissão para configurar a ordem de batalha.', 'warning');
+      return;
+    }
     if (battleOrderWorkingQueue.length === 0) {
       showToast('Adicione pelo menos 1 participante à fila de combate!', 'warning');
       return;
@@ -2827,6 +3475,18 @@
     const dockCharges = document.getElementById('battle-dock-tab-charges');
     if (dockCharges) dockCharges.textContent = `C:${battle.charges || 0}`;
 
+    const canManageCharges = isEffectiveMaster() || hasPermission('combat_manage_charges');
+    const chargeBtns = document.getElementById('btn-battle-charge-sub')?.parentElement;
+    if (chargeBtns) {
+      chargeBtns.classList.toggle('hidden', !canManageCharges);
+    }
+
+    const canEditOrder = isEffectiveMaster() || hasPermission('combat_edit_order') || hasPermission('combat_manage_battle');
+    const editOrderBtn = document.getElementById('btn-battle-edit-order');
+    if (editOrderBtn) {
+      editOrderBtn.classList.toggle('hidden', !canEditOrder);
+    }
+
     const actingIndex = battle.currentTurnIndex % battle.orderIds.length;
     const actingId = battle.orderIds[actingIndex];
     const actingChar = (state.characters || []).find((c) => c.id === actingId);
@@ -2845,7 +3505,7 @@
 
     const queueListEl = document.getElementById('battle-queue-list');
     if (queueListEl) {
-      const isMaster = isEffectiveMaster();
+      const canReorderQueue = isEffectiveMaster() || hasPermission('combat_edit_order');
       queueListEl.innerHTML = battle.orderIds.map((id, index) => {
         const c = (state.characters || []).find((char) => char.id === id);
         if (!c) return '';
@@ -2893,7 +3553,7 @@
             </div>
 
             ${
-              isMaster
+              canReorderQueue
                 ? `<div class="flex items-center gap-0.5 shrink-0">
                     <button
                       type="button"
@@ -2916,7 +3576,7 @@
         `;
       }).join('');
 
-      if (isMaster) {
+      if (canReorderQueue) {
         queueListEl.querySelectorAll('[data-sidebar-move-up]').forEach((btn) => {
           btn.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -3090,6 +3750,11 @@
         const maxWeight = Number.isFinite(Number(char.maxWeight)) ? Number(char.maxWeight) : 27;
         const isOverweight = !isEnemy && weight > maxWeight;
         const canEdit = !isEnemy && canEditCharacter(char);
+        const canCombat = canApplyCombatActions(char);
+        const canPa = canAdjustPa(char);
+        const canViewSheet = canViewCharacter(char);
+        const canViewInv = canViewInventory(char);
+        const canReorderChar = isMaster || hasPermission('char_reorder');
         const ownerMem =
           (state.members || []).find(
             (m) => m.id === char.ownerMemberId || (char.ownerIp && m.ip === char.ownerIp) || m.characterId === char.id
@@ -3163,7 +3828,7 @@
             </div>
           `;
         } else {
-          const paInteractiveHtml = (canEdit || isMaster)
+          const paInteractiveHtml = canPa
             ? `<span class="inline-flex items-center gap-0.5 px-1 py-0.5 rounded text-[11px] font-mono font-bold bg-amber-500/10 text-amber-300 border border-amber-500/25 select-none" title="Pontos de Ação (PA): Clique para gastar 1 PA ou use os botões - / +">
                 <button type="button" data-action="adjust-pa" data-delta="-1" data-char-id="${escapeHtml(char.id)}" class="w-4 h-4 rounded flex items-center justify-center hover:bg-amber-500/30 text-amber-200 transition font-black" title="Gastar 1 PA">-</button>
                 <button type="button" data-action="spend-pa" data-char-id="${escapeHtml(char.id)}" class="inline-flex items-center gap-1 hover:text-amber-100 transition px-1" title="Gastar 1 PA">
@@ -3215,7 +3880,6 @@
               </button>
             `;
           } else {
-            // Botão pequeno redundante de Habilidades Gerais removido do topo (acesso via banner principal no card / modal)
             topButtonsHtml = `
               <button
                 type="button"
@@ -3234,7 +3898,7 @@
                 }
               </button>
               ${
-                isMaster
+                (isMaster || hasPermission('bestiary_summon'))
                   ? `<button
                       type="button"
                       data-action="dismiss-enemy"
@@ -3250,24 +3914,32 @@
           }
         } else {
           topButtonsHtml = `
-            <button
-              type="button"
-              data-action="open-sheet"
-              data-char-id="${escapeHtml(char.id)}"
-              title="${canEdit ? 'Abrir Ficha Completa, 5 Atributos e Habilidades' : 'Visualizar Ficha do Personagem'}"
-              class="w-9 h-9 rounded-lg flex items-center justify-center text-base app-icon-btn shrink-0 transition"
-            >
-              <iconify-icon icon="game-icons:tied-scroll"></iconify-icon>
-            </button>
-            <button
-              type="button"
-              data-action="open-inventory"
-              data-char-id="${escapeHtml(char.id)}"
-              title="${canEdit ? 'Abrir Inventário 3x(Infinito) com Filtros e Pesquisa' : 'Visualizar Inventário'}"
-              class="w-9 h-9 rounded-lg flex items-center justify-center text-base app-icon-btn shrink-0 transition"
-            >
-              <iconify-icon icon="game-icons:knapsack"></iconify-icon>
-            </button>
+            ${
+              canViewSheet
+                ? `<button
+                    type="button"
+                    data-action="open-sheet"
+                    data-char-id="${escapeHtml(char.id)}"
+                    title="${canEdit ? 'Abrir Ficha Completa, 5 Atributos e Habilidades' : 'Visualizar Ficha do Personagem (Somente Leitura)'}"
+                    class="w-9 h-9 rounded-lg flex items-center justify-center text-base app-icon-btn shrink-0 transition"
+                  >
+                    <iconify-icon icon="game-icons:tied-scroll"></iconify-icon>
+                  </button>`
+                : ''
+            }
+            ${
+              canViewInv
+                ? `<button
+                    type="button"
+                    data-action="open-inventory"
+                    data-char-id="${escapeHtml(char.id)}"
+                    title="${canEdit ? 'Abrir Inventário 3x(Infinito) com Filtros e Pesquisa' : 'Visualizar Inventário (Somente Leitura)'}"
+                    class="w-9 h-9 rounded-lg flex items-center justify-center text-base app-icon-btn shrink-0 transition"
+                  >
+                    <iconify-icon icon="game-icons:knapsack"></iconify-icon>
+                  </button>`
+                : ''
+            }
             <button
               type="button"
               data-action="open-resistances"
@@ -3343,11 +4015,11 @@
               <span>Atributos e Ficha Ocultos pelo Mestre</span>
             </div>
           `;
-        } else if (isEnemy && !isMaster) {
+        } else if (!canCombat) {
           bottomActionsHtml = `
-            <div class="p-2 rounded-lg bg-black/20 border app-divider-border text-center text-xs font-mono text-emerald-300/80 flex items-center justify-center gap-1.5">
-              <iconify-icon icon="game-icons:eyeball" style="color: #4ade80;"></iconify-icon>
-              <span>Criatura Revelada (Controle do Mestre)</span>
+            <div class="p-2 rounded-lg bg-black/20 border app-divider-border text-center text-xs font-mono ${isEnemy ? 'text-emerald-300/80' : 'text-amber-200/80'} flex items-center justify-center gap-1.5">
+              <iconify-icon icon="${isEnemy ? 'game-icons:eyeball' : 'game-icons:tied-scroll'}" style="color: ${isEnemy ? '#4ade80' : '#f59e0b'};"></iconify-icon>
+              <span>${isEnemy ? 'Criatura Revelada (Controle do Mestre)' : 'Ficha de Aliado (Somente Visualização)'}</span>
             </div>
           `;
         } else {
@@ -3430,11 +4102,11 @@
             <div class="min-w-0 flex-1">
               <div class="flex items-center flex-wrap gap-2 min-w-0">
                 <div
-                  class="char-drag-handle inline-flex items-center gap-1.5 px-2 py-0.5 -ml-2 rounded-lg hover:bg-amber-500/10 transition group min-w-0 max-w-full"
-                  data-drag-char-id="${escapeHtml(char.id)}"
-                  title="Clique e segure no nome para arrastar e reordenar"
+                  class="${canReorderChar ? 'char-drag-handle' : ''} inline-flex items-center gap-1.5 px-2 py-0.5 -ml-2 rounded-lg ${canReorderChar ? 'hover:bg-amber-500/10 cursor-grab' : 'cursor-default'} transition group min-w-0 max-w-full"
+                  ${canReorderChar ? `data-drag-char-id="${escapeHtml(char.id)}"` : ''}
+                  title="${canReorderChar ? 'Clique e segure no nome para arrastar e reordenar' : escapeHtml(char.name)}"
                 >
-                  <span class="text-xs opacity-40 group-hover:opacity-90 shrink-0">⠿</span>
+                  ${canReorderChar ? '<span class="text-xs opacity-40 group-hover:opacity-90 shrink-0">⠿</span>' : ''}
                   <h2 class="font-serif-fantasy text-lg sm:text-xl font-black tracking-wide truncate app-title">
                     ${escapeHtml(char.name)}
                   </h2>
@@ -3570,7 +4242,8 @@
       return;
     }
 
-    const canManage = hasPermission('canManageItemsCatalog');
+    const canManage = isEffectiveMaster() || hasPermission('item_manage_catalog') || hasPermission('canManageItemsCatalog');
+    const canGrant = isEffectiveMaster() || hasPermission('inventory_edit_others');
 
     grid.innerHTML = items
       .map((it) => {
@@ -3620,17 +4293,23 @@
 
           <div class="pt-2.5 border-t app-divider-border flex items-center justify-between gap-2">
             ${
-              canManage
+              canGrant
                 ? `
               <button type="button" data-grant-item="${escapeHtml(it.id)}" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold btn-gold-outline">
                 <iconify-icon icon="game-icons:chest"></iconify-icon> <span>Conceder Item</span>
               </button>
+            `
+                : '<div></div>'
+            }
+            ${
+              canManage
+                ? `
               <div class="flex items-center gap-1">
-                <button type="button" data-edit-item="${escapeHtml(it.id)}" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold app-secondary-btn"><iconify-icon icon="game-icons:quill-ink"></iconify-icon></button>
-                <button type="button" data-delete-item="${escapeHtml(it.id)}" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-rose-400 app-secondary-btn"><iconify-icon icon="game-icons:crowned-skull"></iconify-icon></button>
+                <button type="button" data-edit-item="${escapeHtml(it.id)}" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold app-secondary-btn" title="Editar Item"><iconify-icon icon="game-icons:quill-ink"></iconify-icon></button>
+                <button type="button" data-delete-item="${escapeHtml(it.id)}" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-rose-400 app-secondary-btn" title="Excluir Item"><iconify-icon icon="game-icons:crowned-skull"></iconify-icon></button>
               </div>
             `
-                : `<span class="text-[11px] app-muted">Catálogo da Campanha</span>`
+                : (!canGrant ? `<span class="text-[11px] app-muted">Catálogo da Campanha</span>` : '')
             }
           </div>
         </div>
@@ -3869,9 +4548,16 @@
   // ---------------------------------------------------------------------------
   function renderBestiaryTab() {
     const isMaster = isEffectiveMaster();
-    const visibleEnemies = isMaster
+    const canSeeHidden = isMaster || hasPermission('bestiary_view_hidden');
+    const canSeeRevealed = isMaster || hasPermission('bestiary_view_revealed') || canSeeHidden;
+    const canManage = isMaster || hasPermission('bestiary_manage');
+    const canSummon = isMaster || hasPermission('bestiary_summon');
+
+    const visibleEnemies = canSeeHidden
       ? (state.bestiary || [])
-      : (state.bestiary || []).filter((b) => b.reveladoParaJogadores);
+      : canSeeRevealed
+      ? (state.bestiary || []).filter((b) => b.reveladoParaJogadores)
+      : [];
 
     const q = (state.bestiarySearchQuery || '').trim().toLowerCase();
     const filtered = visibleEnemies.filter((e) => (e.name || '').toLowerCase().includes(q));
@@ -3959,7 +4645,7 @@
               <!-- Switch / Indicador de Liberação -->
               <div class="shrink-0">
                 ${
-                  isMaster
+                  canManage
                     ? `<button
                         type="button"
                         data-toggle-reveal="${escapeHtml(e.id)}"
@@ -4025,35 +4711,43 @@
               <span>HABILIDADES GERAIS</span>
             </button>
 
-            <!-- Ações do Mestre -->
+            <!-- Ações do Mestre / Invocação -->
             ${
-              isMaster
+              (canSummon || canManage)
                 ? `<div class="flex items-center gap-2 pt-2 border-t app-divider-border">
-                    <button
-                      type="button"
-                      data-spawn-enemy="${escapeHtml(e.id)}"
-                      class="btn-gold flex-1 py-1.5 px-3 text-xs font-serif-fantasy font-extrabold uppercase tracking-wider flex items-center justify-center gap-1.5"
-                      title="Trazer este inimigo para a mesa de combate"
-                    >
-                      <iconify-icon icon="game-icons:portal"></iconify-icon>
-                      <span>Trazer p/ Mesa</span>
-                    </button>
-                    <button
-                      type="button"
-                      data-edit-enemy="${escapeHtml(e.id)}"
-                      class="app-secondary-btn py-1.5 px-2.5 text-xs font-bold rounded-lg flex items-center justify-center"
-                      title="Editar Ficha do Inimigo"
-                    >
-                      <iconify-icon icon="game-icons:quill-ink"></iconify-icon>
-                    </button>
-                    <button
-                      type="button"
-                      data-delete-enemy="${escapeHtml(e.id)}"
-                      class="py-1.5 px-2.5 text-xs font-bold rounded-lg flex items-center justify-center text-rose-400 border border-rose-500/30 hover:bg-rose-950/50 transition"
-                      title="Excluir do Bestiário"
-                    >
-                      <iconify-icon icon="game-icons:crowned-skull"></iconify-icon>
-                    </button>
+                    ${
+                      canSummon
+                        ? `<button
+                            type="button"
+                            data-spawn-enemy="${escapeHtml(e.id)}"
+                            class="btn-gold flex-1 py-1.5 px-3 text-xs font-serif-fantasy font-extrabold uppercase tracking-wider flex items-center justify-center gap-1.5"
+                            title="Trazer este inimigo para a mesa de combate"
+                          >
+                            <iconify-icon icon="game-icons:portal"></iconify-icon>
+                            <span>Trazer p/ Mesa</span>
+                          </button>`
+                        : ''
+                    }
+                    ${
+                      canManage
+                        ? `<button
+                            type="button"
+                            data-edit-enemy="${escapeHtml(e.id)}"
+                            class="app-secondary-btn py-1.5 px-2.5 text-xs font-bold rounded-lg flex items-center justify-center"
+                            title="Editar Ficha do Inimigo"
+                          >
+                            <iconify-icon icon="game-icons:quill-ink"></iconify-icon>
+                          </button>
+                          <button
+                            type="button"
+                            data-delete-enemy="${escapeHtml(e.id)}"
+                            class="py-1.5 px-2.5 text-xs font-bold rounded-lg flex items-center justify-center text-rose-400 border border-rose-500/30 hover:bg-rose-950/50 transition"
+                            title="Excluir do Bestiário"
+                          >
+                            <iconify-icon icon="game-icons:crowned-skull"></iconify-icon>
+                          </button>`
+                        : ''
+                    }
                   </div>`
                 : ''
             }
@@ -4081,7 +4775,9 @@
     const grid = document.getElementById('quests-list-grid');
     if (!grid) return;
 
-    const canManage = hasPermission('canManageQuests');
+    const canAccept = isEffectiveMaster() || hasPermission('mission_accept');
+    const canApprove = isEffectiveMaster() || hasPermission('mission_approve');
+    const canManage = isEffectiveMaster() || hasPermission('mission_manage');
     const itemsById = {};
     for (const it of state.itemsCatalog) itemsById[it.id] = it;
 
@@ -4157,12 +4853,12 @@
           <div class="pt-3 border-t app-divider-border flex flex-wrap items-center justify-between gap-2 text-xs">
             <div class="flex items-center gap-1.5">
               ${
-                q.status === 'PENDENTE' && !q.acceptedByCharacterId
+                q.status === 'PENDENTE' && !q.acceptedByCharacterId && canAccept
                   ? `<button type="button" data-action="open-accept-quest" data-quest-id="${escapeHtml(q.id)}" class="px-3 py-1.5 rounded-lg font-bold btn-gold flex items-center gap-1.5"><iconify-icon icon="game-icons:tied-scroll"></iconify-icon> <span>Aceitar Missão</span></button>`
                   : ''
               }
               ${
-                canManage && q.status !== 'CONCLUIDA'
+                canApprove && q.status !== 'CONCLUIDA'
                   ? `<button type="button" data-quest-status="${escapeHtml(q.id)}" data-status="CONCLUIDA" class="px-3 py-1.5 rounded-lg font-bold bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-1"><iconify-icon icon="game-icons:check-mark"></iconify-icon> <span>Concluir &amp; Premiar</span></button>`
                   : ''
               }
@@ -4198,10 +4894,14 @@
   // ABA 7: ADMINISTRAÇÃO & AUDITORIA PERPÉTUA COM FILTROS AVANÇADOS
   // ---------------------------------------------------------------------------
   function renderAdminTab() {
+    const isMaster = isEffectiveMaster();
     const r = state.room || {};
     const setVal = (id, v) => {
       const el = document.getElementById(id);
-      if (el) el.value = String(v ?? '');
+      if (el) {
+        el.value = String(v ?? '');
+        el.disabled = !isMaster;
+      }
     };
     setVal('cfg-room-name', r.name || 'SALA1');
     setVal('cfg-room-subtitle', r.subtitle || '');
@@ -4213,8 +4913,18 @@
     setVal('cfg-inv-limit', r.inventoryLimit || 10);
     setVal('cfg-room-quote', r.quote || '');
 
+    const btnSaveConfig = document.querySelector('#form-room-config button[type="submit"]');
+    if (btnSaveConfig) btnSaveConfig.classList.toggle('hidden', !isMaster);
+
     const logEl = document.getElementById('audit-log-container');
     if (!logEl) return;
+
+    if (!isMaster && !hasPermission('system_view_audit_log')) {
+      logEl.innerHTML = `<div class="p-8 text-center text-xs app-muted">Você não possui permissão para visualizar o log de auditoria.</div>`;
+      const counterEl = document.getElementById('audit-log-counter');
+      if (counterEl) counterEl.textContent = 'Acesso restrito pelo Mestre';
+      return;
+    }
 
     const allLogs = state.auditLog || [];
 
@@ -4338,6 +5048,26 @@
       const char = state.characters.find((c) => c.id === state.activeInventoryCharId);
       if (char) renderCharacterInventoryModalContent(char);
       else closeModal('modal-char-inventory');
+    }
+    const charFormModal = document.getElementById('modal-char-form');
+    if (charFormModal && !charFormModal.classList.contains('hidden')) {
+      const charFormId = document.getElementById('char-form-id')?.value;
+      if (charFormId && !state.characters.some((c) => c.id === charFormId)) {
+        closeModal('modal-char-form');
+      }
+    }
+    const genSkillsModal = document.getElementById('modal-general-skills');
+    if (genSkillsModal && !genSkillsModal.classList.contains('hidden')) {
+      const genType = document.getElementById('general-skills-target-type')?.value;
+      const genTargetId = document.getElementById('general-skills-target-id')?.value;
+      if (genType === 'character' && genTargetId && !state.characters.some((c) => c.id === genTargetId)) {
+        closeModal('modal-general-skills');
+      }
+    }
+    const memberModal = document.getElementById('modal-member');
+    if (memberModal && !memberModal.classList.contains('hidden') && state.editingMemberId) {
+      const curPresetVal = document.getElementById('member-preset-select')?.value;
+      renderMemberPresetDropdown(curPresetVal);
     }
   }
 
@@ -4533,6 +5263,10 @@
   }
 
   function openCreateCharacterModal() {
+    if (!isEffectiveMaster() && !hasPermission('char_create')) {
+      showToast('Você não possui permissão para criar novos personagens!', 'warning');
+      return;
+    }
     document.getElementById('char-form-id').value = '';
     document.getElementById('char-form-icon').innerHTML = '<iconify-icon icon="game-icons:sparkles"></iconify-icon>';
     document.getElementById('char-form-title').textContent = 'CRIAR PERSONAGEM';
@@ -4613,7 +5347,8 @@
     renderCharFormResistanceInputs(char.resistances);
     renderCharFormElementalResistanceInputs(char.elementalResistances);
 
-    document.getElementById('btn-delete-char')?.classList.remove('hidden');
+    const canDel = isEffectiveMaster() || hasPermission('char_delete');
+    document.getElementById('btn-delete-char')?.classList.toggle('hidden', !canDel);
     openModal('modal-char-form');
   }
 
@@ -4623,7 +5358,12 @@
     if (charId) {
       const existingChar = state.characters.find((c) => c.id === charId);
       if (existingChar && !canEditCharacter(existingChar)) {
-        showToast('Você só pode editar fichas de personagens criados por você!');
+        showToast('Você não possui permissão para editar a ficha deste personagem!', 'warning');
+        return;
+      }
+    } else {
+      if (!isEffectiveMaster() && !hasPermission('char_create')) {
+        showToast('Você não possui permissão para criar novos personagens!', 'warning');
         return;
       }
     }
@@ -5158,8 +5898,12 @@
     const charId = document.getElementById('char-form-id').value;
     const char = state.characters.find((c) => c.id === charId);
     if (!char) return;
+    if (!isEffectiveMaster() && !hasPermission('char_delete')) {
+      showToast('Você não possui permissão para excluir personagens!', 'warning');
+      return;
+    }
     if (!canEditCharacter(char)) {
-      showToast('Você só pode excluir personagens criados por você!');
+      showToast('Você não possui permissão para excluir a ficha deste personagem!', 'warning');
       return;
     }
 
@@ -5503,6 +6247,10 @@
   function openCharacterSheetModal(charId) {
     const char = state.characters.find((c) => c.id === charId);
     if (!char) return;
+    if (!canViewCharacter(char)) {
+      showToast('Você não possui permissão para visualizar a ficha deste personagem.', 'warning');
+      return;
+    }
     state.activeSheetCharId = char.id;
     renderCharacterSheetModalContent(char);
     openModal('modal-char-sheet');
@@ -5859,6 +6607,10 @@
   function openCharacterInventoryModal(charId) {
     const char = state.characters.find((c) => c.id === charId);
     if (!char) return;
+    if (!canViewInventory(char)) {
+      showToast('Você não possui permissão para visualizar o inventário deste personagem.', 'warning');
+      return;
+    }
     state.activeInventoryCharId = char.id;
     state.invModalFilter = 'ALL';
     state.invModalSearchQuery = '';
@@ -5875,7 +6627,8 @@
   }
 
   function renderCharacterInventoryModalContent(char) {
-    const canEdit = canEditCharacter(char);
+    const canEdit = canEditInventory(char);
+    const canTransfer = canTransferFromInventory(char);
     const weight = char.derived?.totalWeight ?? 0;
     const maxWeight = Number.isFinite(Number(char.maxWeight)) ? Number(char.maxWeight) : 27;
     const isOverweight = weight > maxWeight;
@@ -5889,7 +6642,12 @@
     if (!gridEl) return;
 
     if (titleEl) {
-      titleEl.textContent = `INVENTÁRIO — ${char.name.toUpperCase()}${!canEdit ? ' (SOMENTE VISUALIZAÇÃO)' : ''}`;
+      const modeSuffix = canEdit
+        ? ''
+        : canTransfer
+        ? ' (TRANSFERÊNCIAS PERMITIDAS)'
+        : ' (SOMENTE VISUALIZAÇÃO)';
+      titleEl.textContent = `INVENTÁRIO — ${char.name.toUpperCase()}${modeSuffix}`;
     }
     if (metaEl) {
       metaEl.innerHTML = `<iconify-icon icon="game-icons:two-coins" class="icon-gold"></iconify-icon> ${char.gold || 0} ${escapeHtml(state.room?.currencyName || 'Golds')} • ${(char.inventory || []).length} tipo(s) de item na mochila`;
@@ -6010,33 +6768,38 @@
             </div>
 
             ${
-              canEdit
+              canEdit || (canTransfer && otherChars.length > 0)
                 ? `<div class="flex flex-wrap items-center gap-1.5 pt-2 border-t app-divider-border">
                     ${
-                      !inEscrow && tpl.equipavel
+                      canEdit && !inEscrow && tpl.equipavel
                         ? `<button type="button" data-inv-toggle-equip="${escapeHtml(inv.id)}" class="flex-1 py-1.5 px-2 rounded-lg font-bold text-[11px] ${
                             inv.isEquipped ? 'app-secondary-btn' : 'btn-gold'
                           }">${inv.isEquipped ? 'Desequipar' : 'Equipar'}</button>`
                         : ''
                     }
                     ${
-                      !inEscrow && tpl.tipo === 'CONSUMIVEL'
+                      canEdit && !inEscrow && tpl.tipo === 'CONSUMIVEL'
                         ? `<button type="button" data-inv-use-consumable="${escapeHtml(inv.id)}" class="flex-1 py-1.5 px-2 rounded-lg font-bold text-[11px] bg-purple-600 hover:bg-purple-500 text-white flex items-center justify-center gap-1"><iconify-icon icon="game-icons:health-potion"></iconify-icon> <span>Usar</span></button>`
                         : ''
                     }
                     ${
-                      !inEscrow && !tpl.naoNegociavel && otherChars.length > 0
-                        ? `<button type="button" data-inv-transfer="${escapeHtml(inv.id)}" class="py-1.5 px-2.5 rounded-lg font-bold text-[11px] app-secondary-btn flex items-center gap-1" title="Escolher personagem para enviar este item"><iconify-icon icon="game-icons:knapsack"></iconify-icon> <span>P2P</span></button>`
+                      canTransfer && !inEscrow && otherChars.length > 0
+                        ? `<button type="button" data-inv-transfer="${escapeHtml(inv.id)}" class="py-1.5 px-2.5 rounded-lg font-bold text-[11px] btn-gold-outline flex items-center gap-1 hover:brightness-110 transition" title="Transferir este item para outro personagem da mesa"><iconify-icon icon="game-icons:trade"></iconify-icon> <span>Transferir</span></button>`
                         : ''
                     }
                     ${
-                      !inEscrow && !tpl.naoNegociavel
+                      canEdit && !inEscrow && (isEffectiveMaster() || hasPermission('shop_buy_sell') || hasPermission('canSellToShop'))
                         ? `<button type="button" data-inv-sell-escrow="${escapeHtml(inv.id)}" class="py-1.5 px-2.5 rounded-lg font-bold text-[11px] btn-gold-outline flex items-center gap-1" title="Solicitar venda para aprovação do Mestre"><iconify-icon icon="game-icons:two-coins" class="icon-gold"></iconify-icon> <span>Vender</span></button>`
                         : ''
                     }
                     ${
-                      !inEscrow
+                      canEdit && !inEscrow
                         ? `<button type="button" data-inv-remove="${escapeHtml(inv.id)}" class="py-1.5 px-2 rounded-lg font-bold text-[11px] text-rose-400 app-secondary-btn flex items-center justify-center" title="Descartar item"><iconify-icon icon="game-icons:crowned-skull"></iconify-icon></button>`
+                        : ''
+                    }
+                    ${
+                      !canEdit && canTransfer
+                        ? `<span class="ml-auto text-[10px] font-mono app-muted italic flex items-center gap-1"><iconify-icon icon="game-icons:eyeball"></iconify-icon> <span>Apenas Transferência</span></span>`
                         : ''
                     }
                   </div>`
@@ -6105,12 +6868,12 @@
         return;
       }
       const maxQty = Math.max(1, Number(inv.quantity || 1));
-      if (iconEl) iconEl.innerHTML = '<iconify-icon icon="game-icons:knapsack"></iconify-icon>';
-      if (titleEl) titleEl.textContent = 'ENVIAR ITEM (P2P)';
-      if (subtitleEl) subtitleEl.textContent = `De: ${sender.name} • Item: ${tpl.nome} (Disponível: x${maxQty})`;
+      if (iconEl) iconEl.innerHTML = '<iconify-icon icon="game-icons:trade" class="icon-gold"></iconify-icon>';
+      if (titleEl) titleEl.textContent = 'TRANSFERIR ITEM ENTRE INVENTÁRIOS';
+      if (subtitleEl) subtitleEl.textContent = `Origem: ${sender.name} • Item: ${tpl.nome} (Disponível: x${maxQty})`;
       qtyInput.max = String(maxQty);
       qtyInput.value = '1';
-      if (qtyHint) qtyHint.textContent = `Máximo disponível na mochila de ${sender.name}: ${maxQty} unid.`;
+      if (qtyHint) qtyHint.textContent = `Máximo disponível no inventário de ${sender.name}: ${maxQty} unid.`;
 
       selectEl.innerHTML = others
         .map((c) => {
@@ -6162,10 +6925,16 @@
       return;
     }
 
-    // Modo P2P
+    // Modo Transferência entre Inventários (P2P)
     const senderPreview = state.characters.find((c) => c.id === senderCharId);
     const receiverPreview = state.characters.find((c) => c.id === targetCharId);
     if (!senderPreview || !receiverPreview) return;
+
+    if (!canTransferFromInventory(senderPreview)) {
+      showToast('Você não possui permissão para transferir itens deste inventário.', 'warning');
+      closeModal('modal-item-recipient');
+      return;
+    }
 
     commitMutation(
       (st, toasts) => {
@@ -6189,13 +6958,13 @@
           sChar.inventory.splice(idx, 1);
         }
 
-        toasts.push(`${sendQty}x ${tpl?.nome || 'Item'} enviado(s) de ${sChar.name} para ${rChar.name}!`);
+        toasts.push(`${sendQty}x ${tpl?.nome || 'Item'} transferido(s) de ${sChar.name} para ${rChar.name}!`);
         return true;
       },
       {
-        actionType: 'ITEM_TRANSFER_P2P',
+        actionType: 'ITEM_TRANSFER',
         targetEntity: `${senderPreview.name} → ${receiverPreview.name}`,
-        summary: `Transferência P2P realizada (${rawQty} unid.).`,
+        summary: `Item transferido entre inventários (${rawQty} unid.).`,
       }
     );
     closeModal('modal-item-recipient');
@@ -6301,6 +7070,7 @@
 
   function startCardDrag(evt, handleEl) {
     if (evt.type === 'mousedown' && evt.button !== 0) return;
+    if (!isEffectiveMaster() && !hasPermission('char_reorder')) return;
     const charId = handleEl.getAttribute('data-drag-char-id');
     const cardEl = handleEl.closest('.char-card');
     if (!charId || !cardEl) return;
@@ -6749,7 +7519,201 @@
     openModal('modal-general-skills');
   }
 
-    // ===========================================================================
+  // ---------------------------------------------------------------------------
+  // Modal de Permissões: Categorias & Toggle Switches Deslizantes
+  // ---------------------------------------------------------------------------
+  function updateDeleteCustomPresetButtonUI() {
+    const select = document.getElementById('member-preset-select');
+    const deleteBtn = document.getElementById('btn-delete-custom-preset');
+    if (!select || !deleteBtn) return;
+    const val = select.value;
+    const isCustom = (state.customPermissionPresets || []).some((cp) => cp && cp.id === val);
+    if (isCustom && isEffectiveMaster()) {
+      deleteBtn.classList.remove('hidden');
+    } else {
+      deleteBtn.classList.add('hidden');
+    }
+  }
+
+  function renderMemberPresetDropdown(selectedVal) {
+    const select = document.getElementById('member-preset-select');
+    if (!select) return;
+
+    const customPresets = state.customPermissionPresets || [];
+    let html = `
+      <optgroup label="Perfis Padrão">
+        <option value="JOGADOR_COMUM">Jogador Comum (Padrão)</option>
+        <option value="SUB_MESTRE">Sub-Mestre / Ajudante</option>
+        <option value="ESPECTADOR">Espectador</option>
+      </optgroup>
+      <optgroup label="Outro">
+        ${customPresets.map((cp) => `
+          <option value="${escapeHtml(cp.id)}">${escapeHtml(cp.name)}</option>
+        `).join('')}
+        <option value="PERSONALIZADO">Personalizado</option>
+      </optgroup>
+    `;
+
+    select.innerHTML = html;
+    if (selectedVal) {
+      select.value = selectedVal;
+    }
+    updateDeleteCustomPresetButtonUI();
+  }
+
+  function renderMemberPermCategoryButtons() {
+    const container = document.getElementById('member-perm-category-buttons');
+    const totalBadge = document.getElementById('member-perms-total-badge');
+    const presetSelect = document.getElementById('member-preset-select');
+    if (!container) return;
+
+    const perms = state.editingMemberPermissions || {};
+    let totalActiveCount = 0;
+    let totalPermsCount = 0;
+
+    container.innerHTML = PERMISSION_CATEGORIES.map((cat) => {
+      const catTotal = cat.permissions.length;
+      totalPermsCount += catTotal;
+      const catActive = cat.permissions.filter((p) => Boolean(perms[p.key])).length;
+      totalActiveCount += catActive;
+      const isFull = catActive === catTotal;
+      const isNone = catActive === 0;
+
+      return `
+        <button
+          type="button"
+          data-open-perm-cat="${escapeHtml(cat.id)}"
+          class="perm-cat-btn p-3 rounded-xl border flex flex-col justify-between gap-2.5 text-left transition ${
+            catActive > 0
+              ? 'border-amber-500/40 bg-amber-500/10 hover:border-amber-400'
+              : 'border-app-divider-border bg-black/30 hover:border-amber-500/30'
+          }"
+        >
+          <div class="flex items-center justify-between gap-2">
+            <div class="flex items-center gap-2 min-w-0">
+              <span class="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 border border-amber-500/30 bg-amber-500/15 text-amber-300 text-sm">
+                <iconify-icon icon="${escapeHtml(cat.icon)}"></iconify-icon>
+              </span>
+              <div class="font-serif-fantasy font-black text-xs uppercase tracking-wider gold-title truncate">
+                ${escapeHtml(cat.title)}
+              </div>
+            </div>
+            <span class="text-[10px] font-mono font-black px-1.5 py-0.5 rounded ${
+              isFull
+                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                : isNone
+                ? 'bg-neutral-800/80 text-neutral-400 border border-neutral-700'
+                : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+            } shrink-0">
+              ${catActive}/${catTotal}
+            </span>
+          </div>
+          <div class="text-[10px] app-muted line-clamp-1 leading-snug">
+            ${escapeHtml(cat.description)}
+          </div>
+        </button>
+      `;
+    }).join('');
+
+    if (totalBadge) {
+      totalBadge.textContent = `${totalActiveCount} de ${totalPermsCount} ativas`;
+    }
+
+    if (presetSelect) {
+      presetSelect.value = detectMatchingPreset(perms);
+      updateDeleteCustomPresetButtonUI();
+    }
+  }
+
+  function openPermissionCategoryModal(catId) {
+    state.activePermCategoryId = catId || 'characters';
+    renderPermissionCategoryModalContent();
+    openModal('modal-perm-category');
+  }
+
+  function renderPermissionCategoryModalContent() {
+    const cat = PERMISSION_CATEGORIES.find((c) => c.id === state.activePermCategoryId) || PERMISSION_CATEGORIES[0];
+    if (!cat) return;
+
+    const iconEl = document.getElementById('perm-cat-modal-icon');
+    const titleEl = document.getElementById('perm-cat-modal-title');
+    const subtitleEl = document.getElementById('perm-cat-modal-subtitle');
+    const countBadge = document.getElementById('perm-cat-modal-count-badge');
+    const listEl = document.getElementById('perm-cat-switches-list');
+
+    if (iconEl) iconEl.innerHTML = `<iconify-icon icon="${escapeHtml(cat.icon)}"></iconify-icon>`;
+    if (titleEl) titleEl.textContent = cat.title;
+    if (subtitleEl) subtitleEl.textContent = cat.description;
+
+    const perms = state.editingMemberPermissions || {};
+    const catTotal = cat.permissions.length;
+    const catActive = cat.permissions.filter((p) => Boolean(perms[p.key])).length;
+
+    if (countBadge) {
+      countBadge.textContent = `${catActive} de ${catTotal} ativas`;
+      countBadge.className = `text-[11px] font-mono font-bold px-2 py-0.5 rounded ${
+        catActive === catTotal
+          ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+          : catActive === 0
+          ? 'bg-neutral-800 text-neutral-400 border border-neutral-700'
+          : 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
+      }`;
+    }
+
+    if (listEl) {
+      listEl.innerHTML = cat.permissions.map((p) => {
+        const isChecked = Boolean(perms[p.key]);
+        return `
+          <div class="perm-row-card p-3 rounded-xl border flex items-center justify-between gap-3 transition ${
+            isChecked ? 'border-emerald-500/40 bg-emerald-950/15' : 'border-app-divider-border bg-black/25'
+          }">
+            <div class="min-w-0 flex-1">
+              <div class="font-serif-fantasy font-black text-xs uppercase tracking-wide ${isChecked ? 'text-emerald-300' : 'app-title'}">
+                ${escapeHtml(p.name)}
+              </div>
+              <p class="text-[11px] app-muted mt-0.5 leading-relaxed">
+                ${escapeHtml(p.description)}
+              </p>
+            </div>
+            <div class="shrink-0 flex items-center">
+              <label class="fantasy-toggle" title="${isChecked ? 'Desativar permissão' : 'Ativar permissão'}">
+                <input type="checkbox" data-perm-switch="${escapeHtml(p.key)}" ${isChecked ? 'checked' : ''} />
+                <span class="fantasy-toggle-slider"></span>
+              </label>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+  }
+
+  function handleTogglePermSwitch(permKey, checked) {
+    if (!state.editingMemberPermissions) {
+      state.editingMemberPermissions = getDefaultPermissionsForPreset('JOGADOR_COMUM');
+    }
+    state.editingMemberPermissions[permKey] = Boolean(checked);
+    syncLegacyPermAliases(state.editingMemberPermissions);
+    state.editingMemberPermissions.preset = detectMatchingPreset(state.editingMemberPermissions);
+    renderPermissionCategoryModalContent();
+    renderMemberPermCategoryButtons();
+  }
+
+  function setAllPermissionsInCategory(checked) {
+    const cat = PERMISSION_CATEGORIES.find((c) => c.id === state.activePermCategoryId);
+    if (!cat) return;
+    if (!state.editingMemberPermissions) {
+      state.editingMemberPermissions = getDefaultPermissionsForPreset('JOGADOR_COMUM');
+    }
+    cat.permissions.forEach((p) => {
+      state.editingMemberPermissions[p.key] = Boolean(checked);
+    });
+    syncLegacyPermAliases(state.editingMemberPermissions);
+    state.editingMemberPermissions.preset = detectMatchingPreset(state.editingMemberPermissions);
+    renderPermissionCategoryModalContent();
+    renderMemberPermCategoryButtons();
+  }
+
+  // ===========================================================================
   // Registro de Todos os Eventos de UI
   // ===========================================================================
   function bindEvents() {
@@ -6868,7 +7832,7 @@
             class="cursor-color-swatch ${isSelected ? 'active-swatch' : ''}"
             style="background-color: ${escapeHtml(c.hex)}; --swatch-color: ${escapeHtml(c.hex)};"
           >
-            ${isSelected ? '<span class="text-[11px] font-black text-white drop-shadow flex items-center justify-center"><iconify-icon icon="game-icons:check-mark"></iconify-icon></span>' : ''}
+            ${isSelected ? '<span class="text-[11px] font-black text-white flex items-center justify-center"><iconify-icon icon="game-icons:check-mark"></iconify-icon></span>' : ''}
           </button>
         `;
       }).join('');
@@ -6912,12 +7876,15 @@
           .map((c) => `<option value="${escapeHtml(c.id)}" ${m.characterId === c.id ? 'selected' : ''}>${escapeHtml(c.name)}</option>`)
           .join('');
 
-      const perms = m.permissions || {};
-      document.getElementById('member-preset-select').value = perms.preset || 'JOGADOR_COMUM';
-      document.querySelectorAll('#member-perm-checkboxes [data-perm]').forEach((cb) => {
-        const k = cb.getAttribute('data-perm');
-        cb.checked = Boolean(perms[k]);
-      });
+      state.editingMemberId = m.id;
+      const rawPerms = m.permissions && typeof m.permissions === 'object' ? deepClone(m.permissions) : {};
+      const perms = { ...getDefaultPermissionsForPreset('JOGADOR_COMUM'), ...rawPerms };
+      syncLegacyPermAliases(perms);
+      perms.preset = detectMatchingPreset(perms);
+      state.editingMemberPermissions = perms;
+
+      renderMemberPresetDropdown(perms.preset);
+      renderMemberPermCategoryButtons();
 
       const permSec = document.getElementById('member-permissions-section');
       const remBtn = document.getElementById('btn-remove-member');
@@ -6956,7 +7923,7 @@
           cursorColor: assignedColor,
           online: false,
           connectionsCount: 0,
-          permissions: { preset: 'JOGADOR_COMUM', canCreateCharacters: true, canViewOtherInventories: true },
+          permissions: getDefaultPermissionsForPreset('JOGADOR_COMUM'),
         });
         setTimeout(() => openMemberModal(newId), 60);
         return true;
@@ -6974,18 +7941,151 @@
     });
 
     document.getElementById('member-preset-select')?.addEventListener('change', (e) => {
-      const p = e.target.value;
-      const map = {
-        JOGADOR_COMUM: ['canCreateCharacters', 'canViewOtherInventories'],
-        MODERADOR: ['canCreateCharacters', 'canEditOtherCharacters', 'canManageQuests', 'canViewOtherInventories'],
-        GERENTE_LOJA: ['canCreateCharacters', 'canManageItemsCatalog', 'canManageShopNpcs', 'canViewOtherInventories'],
-        GERENTE_INVENTARIO: ['canCreateCharacters', 'canApproveSales', 'canViewOtherInventories'],
-      };
-      if (map[p]) {
-        document.querySelectorAll('#member-perm-checkboxes [data-perm]').forEach((cb) => {
-          cb.checked = map[p].includes(cb.getAttribute('data-perm'));
-        });
+      const selectedPreset = e.target.value;
+      if (selectedPreset === 'PERSONALIZADO') {
+        if (state.editingMemberPermissions) {
+          state.editingMemberPermissions.preset = 'PERSONALIZADO';
+        }
+        updateDeleteCustomPresetButtonUI();
+        return;
       }
+      state.editingMemberPermissions = getDefaultPermissionsForPreset(selectedPreset);
+      renderMemberPermCategoryButtons();
+      updateDeleteCustomPresetButtonUI();
+      const modal = document.getElementById('modal-perm-category');
+      if (modal && !modal.classList.contains('hidden')) {
+        renderPermissionCategoryModalContent();
+      }
+    });
+
+    document.getElementById('btn-save-as-preset')?.addEventListener('click', () => {
+      if (!isEffectiveMaster()) {
+        showToast('Apenas o Mestre pode criar novos perfis de permissão.', 'warning');
+        return;
+      }
+      const inp = document.getElementById('custom-preset-name-input');
+      if (inp) inp.value = '';
+      openModal('modal-save-custom-preset');
+      setTimeout(() => inp?.focus(), 60);
+    });
+
+    document.getElementById('form-save-custom-preset')?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (!isEffectiveMaster()) {
+        showToast('Apenas o Mestre pode salvar perfis de permissão.', 'warning');
+        return;
+      }
+      const inp = document.getElementById('custom-preset-name-input');
+      const name = (inp?.value || '').trim();
+      if (!name) {
+        showToast('Informe um nome válido para o perfil.', 'warning');
+        return;
+      }
+
+      const cleanPerms = {};
+      PERMISSION_CATEGORIES.forEach((cat) => {
+        cat.permissions.forEach((p) => {
+          cleanPerms[p.key] = Boolean(state.editingMemberPermissions?.[p.key]);
+        });
+      });
+
+      let savedPresetId = null;
+      commitMutation(
+        (st, toasts) => {
+          if (!Array.isArray(st.customPermissionPresets)) {
+            st.customPermissionPresets = [];
+          }
+          const existingIdx = st.customPermissionPresets.findIndex(
+            (cp) => cp && cp.name && cp.name.trim().toLowerCase() === name.toLowerCase()
+          );
+          if (existingIdx >= 0) {
+            savedPresetId = st.customPermissionPresets[existingIdx].id;
+            st.customPermissionPresets[existingIdx].permissions = deepClone(cleanPerms);
+            toasts.push(`Perfil de permissão "${name}" foi atualizado!`);
+          } else {
+            savedPresetId = `preset_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+            st.customPermissionPresets.push({
+              id: savedPresetId,
+              name,
+              permissions: deepClone(cleanPerms),
+            });
+            toasts.push(`Perfil de permissão "${name}" salvo com sucesso!`);
+          }
+          return true;
+        },
+        {
+          actionType: 'CUSTOM_PRESET_SAVE',
+          targetEntity: `Perfil: ${name}`,
+          summary: `Perfil de permissões personalizado "${name}" salvo pelo Mestre.`,
+        }
+      );
+
+      closeModal('modal-save-custom-preset');
+
+      if (state.editingMemberPermissions && savedPresetId) {
+        state.editingMemberPermissions.preset = savedPresetId;
+      }
+      renderMemberPresetDropdown(savedPresetId);
+      renderMemberPermCategoryButtons();
+    });
+
+    document.getElementById('btn-delete-custom-preset')?.addEventListener('click', () => {
+      if (!isEffectiveMaster()) {
+        showToast('Apenas o Mestre pode excluir perfis de permissão.', 'warning');
+        return;
+      }
+      const select = document.getElementById('member-preset-select');
+      const val = select?.value;
+      const targetPreset = (state.customPermissionPresets || []).find((cp) => cp && cp.id === val);
+      if (!targetPreset) return;
+
+      openConfirmModal({
+        icon: '<iconify-icon icon="game-icons:trash-can" class="text-rose-400"></iconify-icon>',
+        title: `EXCLUIR PRESET "${targetPreset.name.toUpperCase()}"?`,
+        message: `Tem certeza que deseja apagar o perfil personalizado "${targetPreset.name}"? Os membros que já possuem estas permissões atribuídas não serão alterados, mas o perfil deixará de existir na lista de presets.`,
+        confirmText: '<iconify-icon icon="game-icons:trash-can"></iconify-icon> <span>Excluir Preset</span>',
+        onConfirm: () => {
+          commitMutation(
+            (st, toasts) => {
+              st.customPermissionPresets = (st.customPermissionPresets || []).filter((cp) => cp && cp.id !== targetPreset.id);
+              toasts.push(`Perfil de permissão "${targetPreset.name}" excluído.`);
+              return true;
+            },
+            {
+              actionType: 'CUSTOM_PRESET_DELETE',
+              targetEntity: `Perfil: ${targetPreset.name}`,
+              summary: `Perfil personalizado "${targetPreset.name}" excluído pelo Mestre.`,
+            }
+          );
+          state.editingMemberPermissions = getDefaultPermissionsForPreset('JOGADOR_COMUM');
+          renderMemberPresetDropdown('JOGADOR_COMUM');
+          renderMemberPermCategoryButtons();
+          const modal = document.getElementById('modal-perm-category');
+          if (modal && !modal.classList.contains('hidden')) {
+            renderPermissionCategoryModalContent();
+          }
+        },
+      });
+    });
+
+    document.getElementById('member-perm-category-buttons')?.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-open-perm-cat]');
+      if (!btn) return;
+      openPermissionCategoryModal(btn.getAttribute('data-open-perm-cat'));
+    });
+
+    document.getElementById('perm-cat-switches-list')?.addEventListener('change', (e) => {
+      const sw = e.target.closest('[data-perm-switch]');
+      if (!sw) return;
+      handleTogglePermSwitch(sw.getAttribute('data-perm-switch'), sw.checked);
+    });
+
+    document.getElementById('btn-perm-cat-enable-all')?.addEventListener('click', () => {
+      setAllPermissionsInCategory(true);
+    });
+
+    document.getElementById('btn-perm-cat-disable-all')?.addEventListener('click', () => {
+      setAllPermissionsInCategory(false);
     });
 
     document.getElementById('form-member')?.addEventListener('submit', (e) => {
@@ -6995,11 +8095,6 @@
       const newIpRaw = document.getElementById('member-ip-input')?.value.trim();
       const cid = document.getElementById('member-char-select').value || null;
       const chosenColorRaw = document.getElementById('member-cursor-color-input')?.value;
-      const preset = document.getElementById('member-preset-select').value;
-      const perms = { preset };
-      document.querySelectorAll('#member-perm-checkboxes [data-perm]').forEach((cb) => {
-        perms[cb.getAttribute('data-perm')] = cb.checked;
-      });
 
       commitMutation(
         (st, toasts) => {
@@ -7022,7 +8117,10 @@
             ? 'RGB_CHROMA'
             : assignPermanentMemberCursorColor(m.id, chosenColorRaw || m.cursorColor);
           if (isEffectiveMaster() && !isMasterRole) {
-            m.permissions = perms;
+            const savedPerms = deepClone(state.editingMemberPermissions || getDefaultPermissionsForPreset('JOGADOR_COMUM'));
+            syncLegacyPermAliases(savedPerms);
+            savedPerms.preset = detectMatchingPreset(savedPerms);
+            m.permissions = savedPerms;
           }
           toasts.push(
             isMasterRole
@@ -7051,6 +8149,10 @@
 
     // Gerenciar Moeda / Ouro
     document.getElementById('btn-manage-gold')?.addEventListener('click', () => {
+      if (!isEffectiveMaster() && !hasPermission('gold_manage')) {
+        showToast('Você não possui permissão para gerenciar o ouro do cofre!', 'warning');
+        return;
+      }
       document.getElementById('gold-amount-input').value = '';
       openModal('modal-gold');
       setTimeout(() => document.getElementById('gold-amount-input')?.focus(), 50);
@@ -7065,6 +8167,10 @@
     });
     document.getElementById('form-gold')?.addEventListener('submit', (e) => {
       e.preventDefault();
+      if (!isEffectiveMaster() && !hasPermission('gold_manage')) {
+        showToast('Você não possui permissão para gerenciar o ouro do cofre!', 'warning');
+        return;
+      }
       const val = Math.max(0, Math.round(Number(document.getElementById('gold-amount-input').value || 0)));
       const prevGold = state.room.sharedGold || 0;
       let nextGold = prevGold;
@@ -7227,7 +8333,20 @@
     const handleInventoryItemAction = (e, charId) => {
       if (!charId) return false;
       const targetChar = state.characters.find((x) => x.id === charId);
-      if (!targetChar || !canEditCharacter(targetChar)) return false;
+      if (!targetChar) return false;
+
+      const transferBtn = e.target.closest('[data-inv-transfer]');
+      if (transferBtn) {
+        if (!canTransferFromInventory(targetChar)) {
+          showToast('Você não possui permissão para transferir itens deste inventário!', 'warning');
+          return true;
+        }
+        const invId = transferBtn.getAttribute('data-inv-transfer');
+        openItemRecipientModal({ mode: 'P2P', senderCharId: charId, invId });
+        return true;
+      }
+
+      if (!canEditInventory(targetChar)) return false;
 
       const equipBtn = e.target.closest('[data-inv-toggle-equip]');
       if (equipBtn) {
@@ -7309,15 +8428,12 @@
 
       const sellBtn = e.target.closest('[data-inv-sell-escrow]');
       if (sellBtn) {
+        if (!isEffectiveMaster() && !hasPermission('shop_buy_sell') && !hasPermission('canSellToShop')) {
+          showToast('Você não possui permissão para solicitar venda no Escrow!', 'warning');
+          return true;
+        }
         const invId = sellBtn.getAttribute('data-inv-sell-escrow');
         openSellEscrowModal(charId, invId);
-        return true;
-      }
-
-      const transferBtn = e.target.closest('[data-inv-transfer]');
-      if (transferBtn) {
-        const invId = transferBtn.getAttribute('data-inv-transfer');
-        openItemRecipientModal({ mode: 'P2P', senderCharId: charId, invId });
         return true;
       }
 
@@ -7547,6 +8663,10 @@
     document.getElementById('btn-add-item-effect')?.addEventListener('click', () => addEffectRowToModal());
 
     document.getElementById('btn-new-catalog-item')?.addEventListener('click', () => {
+      if (!isEffectiveMaster() && !hasPermission('item_manage_catalog')) {
+        showToast('Você não possui permissão para cadastrar itens no catálogo!', 'warning');
+        return;
+      }
       document.getElementById('cat-item-id').value = '';
       document.getElementById('cat-item-name').value = '';
       document.getElementById('cat-item-type').value = 'ARMADURA';
@@ -7568,6 +8688,10 @@
     document.getElementById('catalog-items-grid')?.addEventListener('click', (e) => {
       const grantBtn = e.target.closest('[data-grant-item]');
       if (grantBtn) {
+        if (!isEffectiveMaster() && !hasPermission('inventory_edit_others')) {
+          showToast('Você não possui permissão para conceder itens a outros!', 'warning');
+          return;
+        }
         const itemId = grantBtn.getAttribute('data-grant-item');
         openItemRecipientModal({ mode: 'GRANT', itemId });
         return;
@@ -7575,6 +8699,10 @@
 
       const editBtn = e.target.closest('[data-edit-item]');
       if (editBtn) {
+        if (!isEffectiveMaster() && !hasPermission('item_manage_catalog')) {
+          showToast('Você não possui permissão para editar itens do catálogo!', 'warning');
+          return;
+        }
         const it = state.itemsCatalog.find((i) => i.id === editBtn.getAttribute('data-edit-item'));
         if (!it) return;
         document.getElementById('cat-item-id').value = it.id;
@@ -7599,6 +8727,10 @@
 
       const delBtn = e.target.closest('[data-delete-item]');
       if (delBtn) {
+        if (!isEffectiveMaster() && !hasPermission('item_manage_catalog')) {
+          showToast('Você não possui permissão para excluir itens do catálogo!', 'warning');
+          return;
+        }
         const itemId = delBtn.getAttribute('data-delete-item');
         commitMutation((st) => {
           st.itemsCatalog = st.itemsCatalog.filter((i) => i.id !== itemId);
@@ -7609,6 +8741,10 @@
 
     document.getElementById('form-catalog-item')?.addEventListener('submit', (e) => {
       e.preventDefault();
+      if (!isEffectiveMaster() && !hasPermission('item_manage_catalog')) {
+        showToast('Você não possui permissão para gerenciar itens no catálogo!', 'warning');
+        return;
+      }
       const id = document.getElementById('cat-item-id').value.trim();
       const nome = document.getElementById('cat-item-name').value.trim() || 'Item';
       const tipo = document.getElementById('cat-item-type').value;
@@ -7956,6 +9092,10 @@
 
       const buyBtn = e.target.closest('[data-buy-item]');
       if (!buyBtn) return;
+      if (!isEffectiveMaster() && !hasPermission('shop_buy_sell') && !hasPermission('canBuyFromShop')) {
+        showToast('Você não possui permissão para comprar itens na Loja!', 'warning');
+        return;
+      }
       const itemId = buyBtn.getAttribute('data-buy-item');
       const npcId = buyBtn.getAttribute('data-npc-id');
       const item = state.itemsCatalog.find((i) => i.id === itemId);
@@ -7966,9 +9106,13 @@
         showToast('Crie ou selecione um personagem comprador primeiro!', 'warning');
         return;
       }
+      if (!isEffectiveMaster() && !canEditCharacter(buyer) && !canEditInventory(buyer)) {
+        showToast('Você só pode comprar itens para a sua própria ficha!', 'warning');
+        return;
+      }
 
       const cardEl = buyBtn.closest('.fantasy-card');
-      const canManageShop = hasPermission('canManageShopNpcs');
+      const canManageShop = isEffectiveMaster() || hasPermission('shop_manage_npcs') || hasPermission('canManageShopNpcs');
       const inlinePriceInp = canManageShop ? cardEl?.querySelector(`[data-shop-custom-price="${itemId}"]`) : null;
       const inlineStr = inlinePriceInp ? inlinePriceInp.value.trim() : '';
       let finalUnitPrice = Number(item.preco || 0);
@@ -8045,9 +9189,9 @@
       });
     });
 
-    // Aprovar / Recusar Vendas em Escrow (Apenas Mestre / quem possui permissão canApproveSales)
+    // Aprovar / Recusar Vendas em Escrow (Apenas Mestre / quem possui permissão shop_approve_escrow / canApproveSales)
     document.getElementById('escrow-sales-list')?.addEventListener('click', (e) => {
-      if (!hasPermission('canApproveSales')) return;
+      if (!isEffectiveMaster() && !hasPermission('shop_approve_escrow') && !hasPermission('canApproveSales')) return;
       const appBtn = e.target.closest('[data-approve-escrow]');
       const rejBtn = e.target.closest('[data-reject-escrow]');
       if (!appBtn && !rejBtn) return;
@@ -8092,7 +9236,13 @@
     // -------------------------------------------------------------------------
     // Eventos do Bestiário & Invocação de Inimigos
     // -------------------------------------------------------------------------
-    document.getElementById('btn-create-enemy')?.addEventListener('click', () => openEnemyForm());
+    document.getElementById('btn-create-enemy')?.addEventListener('click', () => {
+      if (!isEffectiveMaster() && !hasPermission('bestiary_manage')) {
+        showToast('Você não possui permissão para criar criaturas no Bestiário!', 'warning');
+        return;
+      }
+      openEnemyForm();
+    });
 
     document.getElementById('bestiary-search-input')?.addEventListener('input', (e) => {
       state.bestiarySearchQuery = e.target.value;
@@ -8123,9 +9273,13 @@
 
     document.getElementById('btn-bestiary-next')?.addEventListener('click', () => {
       const isMaster = isEffectiveMaster();
-      const visible = isMaster
+      const canSeeHidden = isMaster || hasPermission('bestiary_view_hidden');
+      const canSeeRevealed = isMaster || hasPermission('bestiary_view_revealed') || canSeeHidden;
+      const visible = canSeeHidden
         ? (state.bestiary || [])
-        : (state.bestiary || []).filter((b) => b.reveladoParaJogadores);
+        : canSeeRevealed
+        ? (state.bestiary || []).filter((b) => b.reveladoParaJogadores)
+        : [];
       const q = (state.bestiarySearchQuery || '').trim().toLowerCase();
       const filtered = visible.filter((e) => (e.name || '').toLowerCase().includes(q));
       const totalPages = Math.max(1, Math.ceil(filtered.length / 6));
@@ -8138,6 +9292,10 @@
     document.getElementById('bestiary-grid')?.addEventListener('click', (e) => {
       const toggleBtn = e.target.closest('[data-toggle-reveal]');
       if (toggleBtn) {
+        if (!isEffectiveMaster() && !hasPermission('bestiary_manage')) {
+          showToast('Você não possui permissão para alterar a visibilidade de criaturas!', 'warning');
+          return;
+        }
         const id = toggleBtn.getAttribute('data-toggle-reveal');
         toggleEnemyReveal(id);
         return;
@@ -8145,6 +9303,10 @@
 
       const spawnBtn = e.target.closest('[data-spawn-enemy]');
       if (spawnBtn) {
+        if (!isEffectiveMaster() && !hasPermission('bestiary_summon')) {
+          showToast('Você não possui permissão para trazer inimigos para a mesa!', 'warning');
+          return;
+        }
         const id = spawnBtn.getAttribute('data-spawn-enemy');
         const enemy = (state.bestiary || []).find((b) => b.id === id);
         if (enemy) spawnEnemyInstance(enemy);
@@ -8153,6 +9315,10 @@
 
       const editBtn = e.target.closest('[data-edit-enemy]');
       if (editBtn) {
+        if (!isEffectiveMaster() && !hasPermission('bestiary_manage')) {
+          showToast('Você não possui permissão para editar criaturas do Bestiário!', 'warning');
+          return;
+        }
         const id = editBtn.getAttribute('data-edit-enemy');
         openEnemyForm(id);
         return;
@@ -8160,6 +9326,10 @@
 
       const delBtn = e.target.closest('[data-delete-enemy]');
       if (delBtn) {
+        if (!isEffectiveMaster() && !hasPermission('bestiary_manage')) {
+          showToast('Você não possui permissão para excluir criaturas do Bestiário!', 'warning');
+          return;
+        }
         const id = delBtn.getAttribute('data-delete-enemy');
         deleteEnemy(id);
         return;
@@ -8176,6 +9346,10 @@
 
     // Botão "TRAZER INIMIGO" na aba Personagens
     document.getElementById('btn-spawn-enemy')?.addEventListener('click', () => {
+      if (!isEffectiveMaster() && !hasPermission('bestiary_summon')) {
+        showToast('Você não possui permissão para trazer inimigos para a mesa!', 'warning');
+        return;
+      }
       openSpawnEnemyModal();
     });
 
@@ -8403,6 +9577,10 @@
     // Eventos de Missões & Recompensas em Lote
     // -------------------------------------------------------------------------
     const openBulkRewardModal = () => {
+      if (!isEffectiveMaster() && !hasPermission('char_grant_xp')) {
+        showToast('Você não possui permissão para conceder XP / Atributos em lote!', 'warning');
+        return;
+      }
       const box = document.getElementById('bulk-chars-checkboxes');
       if (box) {
         box.innerHTML = state.characters
@@ -8427,6 +9605,10 @@
 
     document.getElementById('form-bulk-reward')?.addEventListener('submit', (e) => {
       e.preventDefault();
+      if (!isEffectiveMaster() && !hasPermission('char_grant_xp')) {
+        showToast('Você não possui permissão para conceder XP / Atributos em lote!', 'warning');
+        return;
+      }
       const selectedIds = [];
       document.querySelectorAll('#bulk-chars-checkboxes [data-bulk-char]:checked').forEach((cb) => {
         selectedIds.push(cb.getAttribute('data-bulk-char'));
@@ -8541,13 +9723,23 @@
       openModal('modal-quest');
     };
 
-    document.getElementById('btn-new-quest')?.addEventListener('click', () => openQuestModal(null));
+    document.getElementById('btn-new-quest')?.addEventListener('click', () => {
+      if (!isEffectiveMaster() && !hasPermission('mission_manage')) {
+        showToast('Você não possui permissão para criar missões!', 'warning');
+        return;
+      }
+      openQuestModal(null);
+    });
     document.getElementById('btn-add-quest-reward-item')?.addEventListener('click', () => {
       addQuestRewardItemRow(document.getElementById('quest-reward-items-container'));
     });
 
     document.getElementById('form-quest')?.addEventListener('submit', (e) => {
       e.preventDefault();
+      if (!isEffectiveMaster() && !hasPermission('mission_manage')) {
+        showToast('Você não possui permissão para gerenciar missões!', 'warning');
+        return;
+      }
       const questId = document.getElementById('quest-form-id').value.trim();
       const title = document.getElementById('quest-title-input').value.trim() || 'Missão';
       const description = document.getElementById('quest-desc-input').value.trim();
@@ -8619,10 +9811,18 @@
     });
 
     document.getElementById('btn-confirm-accept-quest')?.addEventListener('click', () => {
+      if (!isEffectiveMaster() && !hasPermission('mission_accept') && !hasPermission('canAcceptQuests')) {
+        showToast('Você não possui permissão para aceitar missões!', 'warning');
+        return;
+      }
       const qid = document.getElementById('accept-quest-id').value;
       const charId = document.getElementById('accept-quest-char-select').value;
       const selectedChar = (state.characters || []).find((c) => c.id === charId);
       if (!qid || !selectedChar) return;
+      if (!isEffectiveMaster() && !isCharacterOwner(selectedChar) && !hasPermission('char_edit_others')) {
+        showToast('Você só pode aceitar missões com o seu próprio personagem!', 'warning');
+        return;
+      }
 
       commitMutation(
         (st, toasts) => {
@@ -8650,6 +9850,18 @@
     });
 
     const applyQuestStatusChange = (questId, newStatus) => {
+      if (newStatus === 'CONCLUIDA') {
+        if (!isEffectiveMaster() && !hasPermission('mission_approve')) {
+          showToast('Você não possui permissão para concluir/aprovar missões!', 'warning');
+          return;
+        }
+      } else {
+        if (!isEffectiveMaster() && !hasPermission('mission_manage')) {
+          showToast('Você não possui permissão para alterar o status desta missão!', 'warning');
+          return;
+        }
+      }
+
       commitMutation(
         (st, toasts) => {
           const q = st.quests.find((x) => x.id === questId);
@@ -8747,6 +9959,10 @@
       // Aceitar Missão
       const acceptBtn = e.target.closest('[data-action="open-accept-quest"]');
       if (acceptBtn) {
+        if (!isEffectiveMaster() && !hasPermission('mission_accept') && !hasPermission('canAcceptQuests')) {
+          showToast('Você não possui permissão para aceitar missões!', 'warning');
+          return;
+        }
         const qid = acceptBtn.getAttribute('data-quest-id');
         const q = (state.quests || []).find((x) => x.id === qid);
         if (!q) return;
@@ -8781,6 +9997,10 @@
       // Editar Missão
       const editBtn = e.target.closest('[data-edit-quest]');
       if (editBtn) {
+        if (!isEffectiveMaster() && !hasPermission('mission_manage')) {
+          showToast('Você não possui permissão para editar missões!', 'warning');
+          return;
+        }
         openQuestModal(editBtn.getAttribute('data-edit-quest'));
         return;
       }
@@ -8795,6 +10015,10 @@
       // Excluir Missão
       const delBtn = e.target.closest('[data-delete-quest]');
       if (delBtn) {
+        if (!isEffectiveMaster() && !hasPermission('mission_manage')) {
+          showToast('Você não possui permissão para excluir missões!', 'warning');
+          return;
+        }
         const qid = delBtn.getAttribute('data-delete-quest');
         commitMutation((st) => {
           st.quests = st.quests.filter((q) => q.id !== qid);

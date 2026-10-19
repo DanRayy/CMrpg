@@ -444,7 +444,7 @@
             <button
               type="button"
               id="btn-spawn-enemy"
-              class="master-only-el px-3.5 py-2 text-xs font-serif-fantasy uppercase tracking-wider bg-rose-950/60 hover:bg-rose-900/80 border border-rose-500/50 text-rose-300 font-extrabold flex items-center gap-1.5 shadow-md transition"
+              class="master-only-el rounded-lg px-3.5 py-2 text-xs font-serif-fantasy uppercase tracking-wider bg-rose-950/60 hover:bg-rose-900/80 border border-rose-500/50 text-rose-300 font-extrabold flex items-center gap-1.5 shadow-md transition"
               title="Trazer instâncias de inimigos do Bestiário para a mesa de combate"
             >
               <iconify-icon icon="game-icons:monster-grasp" class="text-base"></iconify-icon>
@@ -454,7 +454,7 @@
             <button
               type="button"
               id="btn-battle-toggle"
-              class="master-only-el px-3.5 py-2 text-xs font-serif-fantasy uppercase tracking-wider btn-gold flex items-center gap-1.5 shadow-md transition"
+              class="master-only-el rounded-lg px-3.5 py-2 text-xs font-serif-fantasy uppercase tracking-wider btn-gold flex items-center gap-1.5 shadow-md transition"
               title="Iniciar ou Encerrar Batalha e Ordem de Turnos"
             >
               <iconify-icon id="btn-battle-toggle-icon" icon="game-icons:crossed-swords" class="text-base"></iconify-icon>
@@ -1955,25 +1955,46 @@
         </div>
 
         <div id="member-permissions-section" class="space-y-3 p-3.5 rounded-xl bg-black/25 border app-divider-border">
-          <div class="flex items-center justify-between">
-            <label class="font-serif-fantasy font-bold uppercase gold-title"><iconify-icon icon="game-icons:dragon-shield"></iconify-icon> <span>Perfil Rápido de Permissão (Preset)</span></label>
-            <select id="member-preset-select" class="px-2.5 py-1 app-input font-bold">
-              <option value="JOGADOR_COMUM">Jogador Comum</option>
-              <option value="MODERADOR">Moderador</option>
-              <option value="GERENTE_LOJA">Gerente de Loja</option>
-              <option value="GERENTE_INVENTARIO">Gerente de Inventário</option>
-              <option value="PERSONALIZADO">Personalizado</option>
-            </select>
+          <div class="flex items-center justify-between flex-wrap gap-2">
+            <label class="font-serif-fantasy font-bold uppercase gold-title flex items-center gap-1.5 text-xs">
+              <iconify-icon icon="game-icons:dragon-shield"></iconify-icon>
+              <span>Perfil Rápido de Permissão (Preset)</span>
+            </label>
+            <div class="flex items-center gap-1.5">
+              <select id="member-preset-select" class="px-2.5 py-1.5 app-input font-bold text-xs rounded-lg max-w-[200px] truncate">
+                <option value="JOGADOR_COMUM">Jogador Comum (Padrão)</option>
+                <option value="SUB_MESTRE">Sub-Mestre / Ajudante</option>
+                <option value="ESPECTADOR">Espectador</option>
+                <option value="PERSONALIZADO">Personalizado</option>
+              </select>
+              <button
+                type="button"
+                id="btn-delete-custom-preset"
+                class="hidden p-1.5 rounded-lg text-rose-400 hover:text-rose-300 bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 transition text-xs flex items-center justify-center shrink-0"
+                title="Excluir este perfil personalizado salvo"
+              >
+                <iconify-icon icon="game-icons:trash-can" class="text-sm"></iconify-icon>
+              </button>
+              <button
+                type="button"
+                id="btn-save-as-preset"
+                class="px-2.5 py-1.5 rounded-lg btn-gold-outline text-xs font-bold flex items-center gap-1 hover:brightness-110 transition shrink-0"
+                title="Salvar a combinação atual de permissões como um novo perfil permanente"
+              >
+                <span>＋</span>
+                <span>Salvar Preset</span>
+              </button>
+            </div>
           </div>
-          <div class="grid grid-cols-2 gap-2 pt-1" id="member-perm-checkboxes">
-            <label class="flex items-center gap-1.5"><input type="checkbox" data-perm="canCreateCharacters" /> Criar Personagens</label>
-            <label class="flex items-center gap-1.5"><input type="checkbox" data-perm="canEditOtherCharacters" /> Editar Outros Chars</label>
-            <label class="flex items-center gap-1.5"><input type="checkbox" data-perm="canManageItemsCatalog" /> Gerenciar Catálogo Itens</label>
-            <label class="flex items-center gap-1.5"><input type="checkbox" data-perm="canManageShopNpcs" /> Gerenciar Loja / NPCs</label>
-            <label class="flex items-center gap-1.5"><input type="checkbox" data-perm="canApproveSales" /> Aprovar Vendas Escrow</label>
-            <label class="flex items-center gap-1.5"><input type="checkbox" data-perm="canManageGold" /> Gerenciar Moeda/Ouro</label>
-            <label class="flex items-center gap-1.5"><input type="checkbox" data-perm="canManageQuests" /> Gerenciar Missões</label>
-            <label class="flex items-center gap-1.5"><input type="checkbox" data-perm="canViewOtherInventories" /> Ver Outros Inventários</label>
+
+          <div>
+            <div class="text-[11px] font-mono app-muted mb-2 flex items-center justify-between">
+              <span>Categorias de Permissões (clique para abrir e ajustar):</span>
+              <span id="member-perms-total-badge" class="font-bold gold-title"></span>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2" id="member-perm-category-buttons">
+              <!-- Renderizado dinamicamente via JS -->
+            </div>
           </div>
         </div>
 
@@ -1987,6 +2008,59 @@
           </div>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- MODAL: DETALHES DE PERMISSÕES POR CATEGORIA (TOGGLE SWITCHES)            -->
+  <!-- ========================================================================= -->
+  <div id="modal-perm-category" class="modal-backdrop hidden fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-4">
+    <div class="modal-panel w-full max-w-xl rounded-2xl overflow-hidden flex flex-col max-h-[92vh] bg-[var(--bg-modal,#111318)] border border-amber-500/30 shadow-2xl">
+      <!-- Cabeçalho -->
+      <div class="px-5 py-4 border-b flex items-center justify-between app-modal-header border-app-divider-border bg-black/40">
+        <div class="flex items-center gap-2.5">
+          <span id="perm-cat-modal-icon" class="w-8 h-8 rounded-lg flex items-center justify-center bg-amber-500/10 border border-amber-500/30 text-amber-400 text-lg">
+            <iconify-icon icon="game-icons:hooded-figure"></iconify-icon>
+          </span>
+          <div>
+            <h3 id="perm-cat-modal-title" class="font-serif-fantasy text-sm sm:text-base font-black tracking-wider gold-title uppercase">
+              Personagens & Fichas
+            </h3>
+            <p id="perm-cat-modal-subtitle" class="text-xs app-muted font-bold truncate">Permissões de Jogador</p>
+          </div>
+        </div>
+        <button type="button" data-close-modal="modal-perm-category" class="w-8 h-8 rounded-lg flex items-center justify-center app-icon-btn hover:text-amber-400 transition">✕</button>
+      </div>
+
+      <!-- Barra de Ações Rápidas -->
+      <div class="px-5 py-2.5 bg-black/30 border-b border-app-divider-border flex items-center justify-between gap-2 flex-wrap">
+        <div class="flex items-center gap-2">
+          <button type="button" id="btn-perm-cat-enable-all" class="px-2.5 py-1 rounded-lg text-xs font-bold text-emerald-300 bg-emerald-500/15 border border-emerald-500/30 hover:bg-emerald-500/25 transition flex items-center gap-1">
+            <iconify-icon icon="game-icons:check-mark"></iconify-icon>
+            <span>Ativar Todas</span>
+          </button>
+          <button type="button" id="btn-perm-cat-disable-all" class="px-2.5 py-1 rounded-lg text-xs font-bold text-rose-300 bg-rose-500/15 border border-rose-500/30 hover:bg-rose-500/25 transition flex items-center gap-1">
+            <iconify-icon icon="game-icons:cancel"></iconify-icon>
+            <span>Desativar Todas</span>
+          </button>
+        </div>
+        <span id="perm-cat-modal-count-badge" class="text-[11px] font-mono font-bold px-2 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30">
+          0 de 0 ativas
+        </span>
+      </div>
+
+      <!-- Lista de Switches -->
+      <div id="perm-cat-switches-list" class="p-5 overflow-y-auto space-y-2.5 flex-1 app-scroll text-xs">
+        <!-- Renderizado dinamicamente via JS -->
+      </div>
+
+      <!-- Rodapé -->
+      <div class="px-5 py-3 border-t border-app-divider-border bg-black/40 flex justify-end">
+        <button type="button" data-close-modal="modal-perm-category" class="btn-gold px-5 py-2 font-serif-fantasy text-xs uppercase font-black flex items-center gap-1.5">
+          <iconify-icon icon="game-icons:check-mark"></iconify-icon>
+          <span>Concluir / Voltar</span>
+        </button>
+      </div>
     </div>
   </div>
 
@@ -2621,6 +2695,41 @@
           Confirmar
         </button>
       </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- MODAL: SALVAR PERFIL PERSONALIZADO DE PERMISSÃO                           -->
+  <!-- ========================================================================= -->
+  <div id="modal-save-custom-preset" class="modal-backdrop hidden fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-4">
+    <div class="modal-panel w-full max-w-sm rounded-2xl overflow-hidden flex flex-col bg-[var(--bg-modal,#111318)] border border-amber-500/30 shadow-2xl">
+      <div class="px-5 py-3.5 border-b flex items-center justify-between app-modal-header border-app-divider-border bg-black/40">
+        <div class="flex items-center gap-2">
+          <span class="w-7 h-7 rounded-lg flex items-center justify-center bg-amber-500/10 border border-amber-500/30 text-amber-400 text-sm">
+            <iconify-icon icon="game-icons:dragon-shield"></iconify-icon>
+          </span>
+          <h3 class="font-serif-fantasy font-bold text-sm gold-title">SALVAR NOVO PRESET</h3>
+        </div>
+        <button type="button" data-close-modal="modal-save-custom-preset" class="app-modal-close text-neutral-400 hover:text-white text-lg">✕</button>
+      </div>
+      <form id="form-save-custom-preset" class="p-4 space-y-4">
+        <div>
+          <label for="custom-preset-name-input" class="block text-xs font-bold uppercase tracking-wider mb-1.5 app-label">Nome do Preset</label>
+          <input
+            id="custom-preset-name-input"
+            type="text"
+            maxlength="40"
+            placeholder="Ex: Ajudante de Combate, Tesoureiro..."
+            required
+            class="w-full px-3 py-2 text-sm app-input font-bold"
+          />
+          <p class="text-[11px] app-muted mt-1.5">Este perfil salvará a combinação atual de permissões e ficará disponível na seção "Outro" para qualquer jogador da mesa.</p>
+        </div>
+        <div class="pt-2 flex items-center justify-end gap-2 border-t border-app-divider-border">
+          <button type="button" data-close-modal="modal-save-custom-preset" class="px-3 py-1.5 rounded-lg font-bold text-xs uppercase app-secondary-btn">Cancelar</button>
+          <button type="submit" id="btn-save-custom-preset-submit" class="btn-gold px-4 py-1.5 font-serif-fantasy text-xs uppercase tracking-wider">Salvar Preset</button>
+        </div>
+      </form>
     </div>
   </div>
 
