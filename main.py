@@ -1451,14 +1451,12 @@ async def preview_damage(request: Request) -> JSONResponse:
     attacker = body.get("attacker") or {}
     target = body.get("target") or {}
     is_true = bool(body.get("isTrueDamage", False))
-    degrade = bool(body.get("degradeArmor", True))
     rounding = state_manager.state["room"].get("roundingMode", "ROUND_DOWN")
     result = evaluate_damage_pipeline(
         attacker=attacker,
         target=target,
         rounding_mode=rounding,
         is_true_damage=is_true,
-        degrade_armor_on_overload=degrade,
     )
     return JSONResponse(content=result)
 
@@ -1610,7 +1608,7 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                                 incoming_battle["roundNumber"] = old_battle.get("roundNumber", 1)
                                 incoming_battle["charges"] = old_battle.get("charges", 0)
 
-                        if acting_char and acting_char.get("isEnemy"):
+                        if acting_char and (acting_char.get("isEnemy") or acting_char.get("hp", 1) <= 0 or acting_char.get("isDead")):
                             incoming_battle["charges"] = old_battle.get("charges", 0)
 
                 payload = await state_manager.update_full_state(

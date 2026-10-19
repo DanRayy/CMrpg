@@ -48,8 +48,52 @@
     { name: 'Chamas', icon: '<iconify-icon icon="game-icons:ifrit" style="color: #f97316;"></iconify-icon>', barClass: 'from-orange-500 to-red-500', textClass: 'text-orange-400' },
     { name: 'Veneno', icon: '<iconify-icon icon="game-icons:poison-bottle" style="color: #a3e635;"></iconify-icon>', barClass: 'from-emerald-500 to-lime-400', textClass: 'text-emerald-400' },
     { name: 'Atordoamento', icon: '<iconify-icon icon="game-icons:knockout" style="color: #c084fc;"></iconify-icon>', barClass: 'from-purple-500 to-fuchsia-400', textClass: 'text-purple-400' },
-    { name: 'Cegueira', icon: '<iconify-icon icon="game-icons:blindfold" style="color: #94a3b8;"></iconify-icon>', barClass: 'from-slate-500 to-zinc-400', textClass: 'text-slate-400' },
   ];
+
+  const ACCUMULATION_MAX_EFFECTS = {
+    Atordoamento: {
+      description: '-1 PA por 2 turnos',
+      duration: 2,
+      paModifier: -1,
+      type: 'NERF',
+    },
+    Congelamento: {
+      description: 'Congelamento Severo: -50% Movimento e Esquiva por 2 turnos',
+      duration: 2,
+      paModifier: 0,
+      type: 'NERF',
+    },
+    Choque: {
+      description: 'Sobrecarga de Choque: Sofre +15 de dano adicional na próxima ação por 2 turnos',
+      duration: 2,
+      paModifier: 0,
+      type: 'NERF',
+    },
+    Sangramento: {
+      description: 'Hemorragia Profunda: Sofre 10 de dano contínuo ao passar o turno por 3 turnos',
+      duration: 3,
+      paModifier: 0,
+      type: 'NERF',
+    },
+    Chamas: {
+      description: 'Combustão Viva: Sofre 15 de dano de fogo contínuo ao passar o turno por 2 turnos',
+      duration: 2,
+      paModifier: 0,
+      type: 'NERF',
+    },
+    Veneno: {
+      description: 'Intoxicação Letal: -50% de Cura recebida e 10 de dano contínuo por 3 turnos',
+      duration: 3,
+      paModifier: 0,
+      type: 'NERF',
+    },
+    Cegueira: {
+      description: 'Cegueira Completa: Desvantagem em ataques e testes de visão por 2 turnos',
+      duration: 2,
+      paModifier: 0,
+      type: 'NERF',
+    },
+  };
 
   const ELEMENTAL_RESISTANCE_TYPES = [
     { key: 'FISICO', label: 'Físico', icon: '<iconify-icon icon="game-icons:gladius"></iconify-icon>', textClass: 'text-slate-300', bgClass: 'bg-slate-500/10 border-slate-500/30' },
@@ -179,6 +223,7 @@
 
     // Modals & Operations state
     activeResistanceCharId: null,
+    activeBuffsNerfsCharId: null,
     activeSheetCharId: null,
     activeInventoryCharId: null,
     invModalFilter: 'ALL',
@@ -372,6 +417,12 @@
       const tpl = itemsById[inv.itemId];
       if (!tpl || !tpl.equipavel) continue;
       totalWeight += Number(tpl.peso || 0);
+
+      const directAtk = Number(tpl.attack ?? tpl.ataque ?? 0);
+      if (directAtk) flatMods.ATAQUE += directAtk;
+      const directArc = Number(tpl.arcana ?? 0);
+      if (directArc) flatMods.ARCANA += directArc;
+
       for (const eff of tpl.effects || []) {
         if (!(eff.targetStat in flatMods)) continue;
         if (eff.modifierType === 'PERCENT') {
@@ -436,11 +487,11 @@
     char.baseSantidade = Number(char.baseSantidade ?? char.santidade ?? 0);
     char.baseResistancePercent = Number(char.baseResistancePercent ?? char.resistancePercent ?? 0);
     char.baseDamageReductionPercent = Number(char.baseDamageReductionPercent ?? char.damageReductionPercent ?? 0);
-    char.armorDegradation = Math.max(0, Number(char.armorDegradation || 0));
+    char.armorDegradation = 0;
 
     const effMaxHp = Math.max(1, computeStatWithModifiers(char.baseMaxHp, flatMods.VIDA, pctMods.VIDA));
-    const effMaxArmorRaw = Math.max(0, computeStatWithModifiers(char.baseMaxArmor, flatMods.ARMADURA, pctMods.ARMADURA));
-    const effMaxArmor = Math.max(0, effMaxArmorRaw - char.armorDegradation);
+    const effMaxArmor = Math.max(0, computeStatWithModifiers(char.baseMaxArmor, flatMods.ARMADURA, pctMods.ARMADURA));
+    const effMaxArmorRaw = effMaxArmor;
     const effMaxMana = Math.max(0, computeStatWithModifiers(char.baseMaxMana, flatMods.MANA, pctMods.MANA));
     const effMaxPa = Math.max(0, computeStatWithModifiers(char.baseMaxPa, flatMods.PA, pctMods.PA));
     const effRegen = Math.max(0, computeStatWithModifiers(char.baseRegen, flatMods.REGEN_MANA, pctMods.REGEN_MANA));
@@ -491,7 +542,7 @@
     return char;
   }
 
-  function evaluateDamagePipelineClient(attacker, target, isTrueDamage, degradeArmorOnOverload) {
+  function evaluateDamagePipelineClient(attacker, target, isTrueDamage) {
     const rounding = state.room?.roundingMode || 'ROUND_DOWN';
     const baseDamage = Math.max(0, Number(attacker.baseDamage || 0));
     const multipliers = Number(attacker.statusMultipliers || 0);
@@ -541,9 +592,7 @@
     if (finalDamage > curArmor) {
       const overflow = finalDamage - curArmor;
       nextArmor = 0;
-      if (degradeArmorOnOverload && maxArmor > 0) {
-        armorDegradedBy = Math.min(maxArmor, overflow);
-      }
+      armorDegradedBy = 0;
       nextHp = Math.max(0, curHp - overflow);
     } else {
       nextArmor = curArmor - finalDamage;
@@ -2143,10 +2192,134 @@
     return state.battle;
   }
 
+  function calculateCombatantPaPenalty(char) {
+    if (!char || !Array.isArray(char.buffsNerfs)) return 0;
+    return char.buffsNerfs
+      .filter((e) => e.type === 'NERF' && Number(e.paModifier || 0) < 0)
+      .reduce((acc, e) => acc + Math.abs(Number(e.paModifier)), 0);
+  }
+
+  function resetTurnCombatantPa(char) {
+    if (!char) return;
+    const baseMax = Math.max(1, Number(char.baseMaxPa || 3));
+    const penalty = calculateCombatantPaPenalty(char);
+    const startingPa = Math.max(0, baseMax - penalty);
+    char.pa = startingPa;
+    char.maxPa = baseMax;
+  }
+
+  function triggerMaxAccumulationEffect(char, resName, maxVal, toasts = []) {
+    if (!char) return;
+    const template = ACCUMULATION_MAX_EFFECTS[resName] || {
+      description: `Penalidade de ${resName} por 2 turnos`,
+      duration: 2,
+      paModifier: 0,
+      type: 'NERF',
+    };
+
+    const sourceStr = `[Máx] acúmulos de ${resName.toLowerCase()}`;
+    let effectText = template.description;
+    if (resName === 'Atordoamento') {
+      effectText = `-1 PA por ${template.duration} turnos - Fonte: ${sourceStr}`;
+    } else if (!effectText.includes('Fonte:')) {
+      effectText = `${effectText} - Fonte: ${sourceStr}`;
+    }
+
+    if (!Array.isArray(char.buffsNerfs)) char.buffsNerfs = [];
+    char.buffsNerfs.push({
+      id: `bn_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+      type: 'NERF',
+      name: effectText,
+      description: effectText,
+      duration: template.duration,
+      source: sourceStr,
+      paModifier: template.paModifier || 0,
+      createdAt: Date.now(),
+    });
+
+    if (template.paModifier < 0) {
+      const penalty = calculateCombatantPaPenalty(char);
+      const maxAvailable = Math.max(0, (char.baseMaxPa || 3) - penalty);
+      if (char.pa > maxAvailable) {
+        char.pa = maxAvailable;
+      }
+    }
+
+    toasts.push(`${char.name} MAX ACÚMULO: ${resName.toUpperCase()}! Aplicado: ${effectText}`);
+  }
+
+  function syncBattleQueueAliveState(st, toasts = []) {
+    const b = st.battle;
+    if (!b || !b.isActive || !Array.isArray(b.orderIds) || b.orderIds.length === 0) return;
+
+    const validAliveIds = new Set(
+      (st.characters || [])
+        .filter((c) => Number(c.hp || 0) > 0 && !c.isDead)
+        .map((c) => c.id)
+    );
+
+    const initialOrder = [...b.orderIds];
+    const deadInQueue = initialOrder.filter((id) => !validAliveIds.has(id));
+    if (deadInQueue.length === 0) return;
+
+    const currentIdx = Number(b.currentTurnIndex || 0) % initialOrder.length;
+    const currentActingId = initialOrder[currentIdx];
+    const actingDied = !validAliveIds.has(currentActingId);
+
+    const newOrder = initialOrder.filter((id) => validAliveIds.has(id));
+
+    for (const deadId of deadInQueue) {
+      const deadChar = (st.characters || []).find((c) => c.id === deadId);
+      if (deadChar) {
+        toasts.push(`${deadChar.name} (0 HP) foi removido da Fila de Batalha.`);
+      }
+    }
+
+    if (newOrder.length === 0) {
+      b.orderIds = [];
+      b.currentTurnIndex = 0;
+      toasts.push('Todos os combatentes na Fila de Batalha foram derrotados!');
+      return;
+    }
+
+    b.orderIds = newOrder;
+
+    if (actingDied) {
+      const nextIdx = currentIdx % newOrder.length;
+      b.currentTurnIndex = nextIdx;
+      const newActingId = newOrder[nextIdx];
+      const newActingChar = (st.characters || []).find((c) => c.id === newActingId);
+      if (newActingChar) {
+        resetTurnCombatantPa(newActingChar);
+        toasts.push(`Turno transferido para ${newActingChar.name}!`);
+      }
+    } else {
+      const newIdx = newOrder.indexOf(currentActingId);
+      b.currentTurnIndex = newIdx !== -1 ? newIdx : (currentIdx % newOrder.length);
+    }
+  }
+
+  function adjustCharacterPa(charId, delta) {
+    commitMutation((st) => {
+      const char = st.characters.find((c) => c.id === charId);
+      if (!char || !canEditCharacter(char)) return false;
+
+      const penalty = calculateCombatantPaPenalty(char);
+      const baseMax = Math.max(1, Number(char.baseMaxPa || 3));
+      const maxAvailable = Math.max(0, baseMax - penalty);
+
+      const cur = Number(char.pa ?? maxAvailable);
+      char.pa = Math.max(0, Math.min(maxAvailable, cur + delta));
+      return true;
+    });
+  }
+
   function sanitizeBattleOrder() {
     const battle = getBattleState();
     if (!battle.isActive || battle.orderIds.length === 0) return false;
-    const validCharIds = new Set((state.characters || []).map((c) => c.id));
+    const validCharIds = new Set(
+      (state.characters || []).filter((c) => Number(c.hp || 0) > 0 && !c.isDead).map((c) => c.id)
+    );
     const originalLength = battle.orderIds.length;
     const currentActingId = battle.orderIds[battle.currentTurnIndex % battle.orderIds.length];
 
@@ -2210,6 +2383,9 @@
     }
 
     commitMutation((st, toasts) => {
+      // Sincroniza e remove combatentes com 0 HP antes de processar avanço
+      syncBattleQueueAliveState(st, toasts);
+
       const b = st.battle;
       if (!b || !b.isActive || !Array.isArray(b.orderIds) || b.orderIds.length === 0) return false;
       const len = b.orderIds.length;
@@ -2219,14 +2395,30 @@
       const finishingActingId = b.orderIds[currentActingIdx];
       const finishingChar = (st.characters || []).find((c) => c.id === finishingActingId);
 
-      // Regra de Cargas: +1 APENAS quando a ficha de um JOGADOR passar o turno.
-      // Se for INIMIGO, o contador NÃO pode aumentar.
+      // 1. Reduz em 1 a duração de todos os Buffs e Nerfs temporários do combatente
+      if (finishingChar && Array.isArray(finishingChar.buffsNerfs)) {
+        finishingChar.buffsNerfs.forEach((eff) => {
+          if (Number.isFinite(Number(eff.duration)) && Number(eff.duration) > 0) {
+            eff.duration = Number(eff.duration) - 1;
+          }
+        });
+        const prevCount = finishingChar.buffsNerfs.length;
+        finishingChar.buffsNerfs = finishingChar.buffsNerfs.filter(
+          (eff) => !Number.isFinite(Number(eff.duration)) || Number(eff.duration) > 0
+        );
+        if (finishingChar.buffsNerfs.length < prevCount) {
+          toasts.push(`Efeitos temporários de ${finishingChar.name} expiraram.`);
+        }
+      }
+
+      // 2. Regra de Cargas: +1 APENAS se for JOGADOR E NÃO ESTIVER MORTO (hp > 0 e !isDead)
       const isFinishingEnemy = Boolean(finishingChar && finishingChar.isEnemy);
-      if (finishingChar && !isFinishingEnemy) {
+      const isFinishingDead = !finishingChar || Number(finishingChar.hp || 0) <= 0 || Boolean(finishingChar.isDead);
+      if (finishingChar && !isFinishingEnemy && !isFinishingDead) {
         b.charges = Math.max(0, Number(b.charges || 0)) + 1;
       }
 
-      // Avança para o próximo combatente
+      // 3. Avança para o próximo combatente
       const nextIdx = Number(b.currentTurnIndex || 0) + 1;
       if (nextIdx >= len) {
         b.currentTurnIndex = 0;
@@ -2240,8 +2432,11 @@
       b.turnCounts[newActingId] = Number(b.turnCounts[newActingId] || 0) + 1;
 
       const charObj = (st.characters || []).find((c) => c.id === newActingId);
-      const charName = charObj ? charObj.name : 'Combatente';
-      toasts.push(`Rodada ${b.roundNumber} - Turno de ${charName}!`);
+      if (charObj) {
+        // 4. Reset Automático de PA no Início do Turno (descontando nerfs de PA)
+        resetTurnCombatantPa(charObj);
+        toasts.push(`Rodada ${b.roundNumber} - Turno de ${charObj.name}!`);
+      }
       return true;
     });
   }
@@ -2306,12 +2501,13 @@
 
   function openBattleOrderModal() {
     const battle = getBattleState();
-    const validIds = new Set((state.characters || []).map((c) => c.id));
+    const aliveChars = (state.characters || []).filter((c) => Number(c.hp || 0) > 0 && !c.isDead);
+    const validAliveIds = new Set(aliveChars.map((c) => c.id));
 
     if (battle.isActive && battle.orderIds.length > 0) {
-      battleOrderWorkingQueue = battle.orderIds.filter((id) => validIds.has(id));
+      battleOrderWorkingQueue = battle.orderIds.filter((id) => validAliveIds.has(id));
     } else {
-      battleOrderWorkingQueue = (state.characters || []).map((c) => c.id);
+      battleOrderWorkingQueue = aliveChars.map((c) => c.id);
     }
 
     const titleEl = document.getElementById('battle-order-modal-title');
@@ -2335,7 +2531,9 @@
     if (!availableContainer || !queueContainer) return;
 
     const queuedSet = new Set(battleOrderWorkingQueue);
-    const availableChars = (state.characters || []).filter((c) => !queuedSet.has(c.id));
+    const availableChars = (state.characters || []).filter(
+      (c) => !queuedSet.has(c.id) && Number(c.hp || 0) > 0 && !c.isDead
+    );
 
     if (availableCountEl) availableCountEl.textContent = String(availableChars.length);
     if (queueCountEl) queueCountEl.textContent = String(battleOrderWorkingQueue.length);
@@ -2576,6 +2774,9 @@
         state.battleSidebarCollapsed = false;
 
         const firstChar = (st.characters || []).find((c) => c.id === firstId);
+        if (firstChar) {
+          resetTurnCombatantPa(firstChar);
+        }
         const firstName = firstChar ? firstChar.name : '1º Combatente';
         toasts.push(`Combate iniciado! Turno de ${firstName}!`);
       } else {
@@ -2932,8 +3133,18 @@
           `;
         }
 
-        // Indicadores Táticos (PA, DEF, REGEN)
+        // Indicadores Táticos (PA, DEF, ATAQUE/ARCANA, REGEN)
         let tacticalHtml = '';
+        const atkVal = Number(char.attack ?? 0);
+        const arcVal = Number(char.arcana ?? 0);
+        const combatStatHtml = atkVal >= arcVal
+          ? `<span class="px-2 py-0.5 rounded text-[11px] font-mono font-bold stat-badge-attack flex items-center gap-1" title="Poder de Ataque (Base + Equipamentos)">
+              <iconify-icon icon="game-icons:broadsword"></iconify-icon> Ataque: ${atkVal}
+            </span>`
+          : `<span class="px-2 py-0.5 rounded text-[11px] font-mono font-bold stat-badge-arcana flex items-center gap-1" title="Poder Arcano (Base + Equipamentos)">
+              <iconify-icon icon="game-icons:crystal-wand"></iconify-icon> Arcana: ${arcVal}
+            </span>`;
+
         if (isMasked) {
           tacticalHtml = `
             <div class="flex flex-wrap items-center gap-1.5 mt-2">
@@ -2944,19 +3155,34 @@
                 <iconify-icon icon="game-icons:dragon-shield"></iconify-icon> DEF: ?
               </span>
               <span class="px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-black/40 text-neutral-400 border app-divider-border">
+                <iconify-icon icon="game-icons:broadsword"></iconify-icon> ATK/ARC: ?
+              </span>
+              <span class="px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-black/40 text-neutral-400 border app-divider-border">
                 <iconify-icon icon="game-icons:fairy-wand" class="icon-mana"></iconify-icon> REGEN: ?
               </span>
             </div>
           `;
         } else {
+          const paInteractiveHtml = (canEdit || isMaster)
+            ? `<span class="inline-flex items-center gap-0.5 px-1 py-0.5 rounded text-[11px] font-mono font-bold bg-amber-500/10 text-amber-300 border border-amber-500/25 select-none" title="Pontos de Ação (PA): Clique para gastar 1 PA ou use os botões - / +">
+                <button type="button" data-action="adjust-pa" data-delta="-1" data-char-id="${escapeHtml(char.id)}" class="w-4 h-4 rounded flex items-center justify-center hover:bg-amber-500/30 text-amber-200 transition font-black" title="Gastar 1 PA">-</button>
+                <button type="button" data-action="spend-pa" data-char-id="${escapeHtml(char.id)}" class="inline-flex items-center gap-1 hover:text-amber-100 transition px-1" title="Gastar 1 PA">
+                  <iconify-icon icon="game-icons:lightning-branches"></iconify-icon>
+                  <span>PA: ${char.pa}/${char.maxPa}</span>
+                </button>
+                <button type="button" data-action="adjust-pa" data-delta="1" data-char-id="${escapeHtml(char.id)}" class="w-4 h-4 rounded flex items-center justify-center hover:bg-amber-500/30 text-amber-200 transition font-black" title="Restaurar 1 PA">+</button>
+              </span>`
+            : `<span class="px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-amber-500/10 text-amber-300 border border-amber-500/25">
+                <iconify-icon icon="game-icons:lightning-branches"></iconify-icon> PA: ${char.pa}/${char.maxPa}
+              </span>`;
+
           tacticalHtml = `
             <div class="flex flex-wrap items-center gap-1.5 mt-2">
-              <span class="px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-amber-500/10 text-amber-300 border border-amber-500/25">
-                <iconify-icon icon="game-icons:lightning-branches"></iconify-icon> PA: ${char.pa}/${char.maxPa}
-              </span>
+              ${paInteractiveHtml}
               <span class="px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/25">
                 <iconify-icon icon="game-icons:dragon-shield"></iconify-icon> DEF: ${char.defense}
               </span>
+              ${combatStatHtml}
               <span class="px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-violet-500/10 text-violet-400 border border-violet-500/25">
                 <iconify-icon icon="game-icons:fairy-wand" class="icon-mana"></iconify-icon> REGEN: ${char.regen}%
               </span>
@@ -3073,6 +3299,24 @@
             }
           `;
         }
+
+        const activeBuffsNerfsCount = Array.isArray(char.buffsNerfs) ? char.buffsNerfs.length : 0;
+        const buffsNerfsBtnHtml = !isMasked
+          ? `<button
+              type="button"
+              data-action="open-buffs-nerfs"
+              data-char-id="${escapeHtml(char.id)}"
+              title="Buffs & Nerfs (Efeitos Ativos)"
+              class="relative w-9 h-9 rounded-lg flex items-center justify-center text-base app-icon-btn shrink-0 transition"
+            >
+              <iconify-icon icon="game-icons:arrows-shield"></iconify-icon>
+              ${
+                activeBuffsNerfsCount > 0
+                  ? `<span class="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-mono font-black flex items-center justify-center text-white bg-purple-600 shadow-sm animate-pulse">${activeBuffsNerfsCount}</span>`
+                  : ''
+              }
+            </button>`
+          : '';
 
         // Habilidades Gerais Banner para Inimigos Revelados
         let generalSkillsBannerHtml = '';
@@ -3219,8 +3463,11 @@
             </div>
 
             <!-- Botões de Ação no Canto Superior Direito -->
-            <div class="char-top-actions shrink-0 pt-0.5">
-              ${topButtonsHtml}
+            <div class="char-top-actions shrink-0 pt-0.5 flex flex-col items-end gap-1.5">
+              <div class="flex items-center gap-1">
+                ${topButtonsHtml}
+              </div>
+              ${buffsNerfsBtnHtml ? `<div class="flex items-center justify-end">${buffsNerfsBtnHtml}</div>` : ''}
             </div>
           </div>
 
@@ -3253,11 +3500,6 @@
                 <span class="flex items-center gap-1.5 text-sky-400 uppercase tracking-wider">
                   <iconify-icon icon="game-icons:breastplate" class="icon-armor"></iconify-icon>
                   <span>Armadura</span>
-                  ${
-                    !isMasked && char.armorDegradation > 0
-                      ? `<span class="px-1.5 py-0.2 rounded text-[9px] bg-rose-500/20 text-rose-300 border border-rose-500/40">-${char.armorDegradation} DEGRAD.</span>`
-                      : ''
-                  }
                   ${armorOverflow ? '<span class="px-1.5 py-0.2 rounded text-[9px] bg-amber-500/20 text-amber-300 border border-amber-400/40">OVERFLOW</span>' : ''}
                 </span>
                 <span class="font-mono font-extrabold text-sm ${armorOverflow ? 'text-amber-400' : 'app-title'}">
@@ -4067,6 +4309,7 @@
   function closeModal(id) {
     document.getElementById(id)?.classList.add('hidden');
     if (id === 'modal-resistances') state.activeResistanceCharId = null;
+    if (id === 'modal-buffs-nerfs') state.activeBuffsNerfsCharId = null;
     if (id === 'modal-char-sheet') state.activeSheetCharId = null;
     if (id === 'modal-char-inventory') state.activeInventoryCharId = null;
     refreshAllRemoteCursorsVisibility();
@@ -4080,6 +4323,11 @@
         closeModal('modal-single-resistance');
         closeModal('modal-resistances');
       }
+    }
+    if (state.activeBuffsNerfsCharId) {
+      const char = state.characters.find((c) => c.id === state.activeBuffsNerfsCharId);
+      if (char) renderBuffsNerfsModalContent(char);
+      else closeModal('modal-buffs-nerfs');
     }
     if (state.activeSheetCharId) {
       const char = state.characters.find((c) => c.id === state.activeSheetCharId);
@@ -4676,8 +4924,8 @@
       maxArmor: char.maxArmor,
       currentHp: char.hp,
     };
-    const overload = document.getElementById('pipe-overload-armor').checked;
-    const res = evaluateDamagePipelineClient(attacker, target, isTrue, overload);
+    const overload = false;
+    const res = evaluateDamagePipelineClient(attacker, target, isTrue);
 
     return {
       ...res,
@@ -4699,9 +4947,7 @@
       bdEl.textContent = outcome.breakdownText;
     }
     if (armorEl) {
-      armorEl.textContent = `${char.armor} → ${outcome.nextArmor} / ${char.maxArmor}${
-        outcome.armorDegradedBy > 0 ? ` (Sobrecarga: -${outcome.armorDegradedBy} Máx)` : ''
-      }`;
+      armorEl.textContent = `${char.armor} → ${outcome.nextArmor} / ${char.maxArmor}`;
     }
     if (hpEl) {
       hpEl.innerHTML = `${char.hp} → ${outcome.nextHp} / ${char.maxHp}${outcome.nextHp === 0 ? ' (<iconify-icon icon="game-icons:crowned-skull"></iconify-icon> MORTO)' : ''}`;
@@ -4716,7 +4962,8 @@
     document.getElementById('damage-char-name').textContent = `${char.name} (DEF: ${char.defense} • Res: ${char.resistancePercent || 0}%)`;
     document.getElementById('damage-amount-input').value = '';
     document.getElementById('damage-true-switch').checked = false;
-    document.getElementById('pipe-overload-armor').checked = Boolean(state.battle?.isActive);
+    const overloadEl = document.getElementById('pipe-overload-armor');
+    if (overloadEl) overloadEl.checked = false;
 
     setDamageModeUI('simple');
     openModal('modal-damage');
@@ -4737,13 +4984,11 @@
         if (!target) return false;
         target.armor = outcome.nextArmor;
         target.hp = outcome.nextHp;
-        if (outcome.armorDegradedBy > 0) {
-          target.armorDegradation = (target.armorDegradation || 0) + outcome.armorDegradedBy;
-        }
         if (target.hp === 0) {
           target.isDead = true;
           target.pa = 0;
           toasts.push(`${target.name} caiu em batalha (MORTO)!`);
+          syncBattleQueueAliveState(st, toasts);
         }
         return true;
       },
@@ -4802,7 +5047,7 @@
     const allowOverflow = document.getElementById('attr-overflow-switch').checked;
     const op = state.activeAttrOp;
 
-    commitMutation((st) => {
+    commitMutation((st, toasts) => {
       const target = st.characters.find((c) => c.id === charId);
       if (!target) return false;
       const cur = target[attrKey];
@@ -4822,6 +5067,11 @@
       target[attrKey] = Math.max(0, nextVal);
       if (attrKey === 'hp') {
         target.isDead = target.hp === 0;
+        if (target.isDead) {
+          target.pa = 0;
+          toasts.push(`${target.name} caiu em batalha (MORTO)!`);
+          syncBattleQueueAliveState(st, toasts);
+        }
       }
       return true;
     });
@@ -5042,12 +5292,209 @@
       entry.current = nextVal;
 
       if (maxVal > 0 && nextVal > oldVal && nextVal === maxVal) {
-        toasts.push(`${target.name} MAX ACÚMULO: ${resName.toUpperCase()}!`);
+        triggerMaxAccumulationEffect(target, resName, maxVal, toasts);
+        entry.current = 0;
       }
       return true;
     });
 
     closeModal('modal-single-resistance');
+  }
+
+  // ---------------------------------------------------------------------------
+  // Modal: Buffs e Nerfs (Efeitos Ativos)
+  // ---------------------------------------------------------------------------
+  function openBuffsNerfsModal(charId) {
+    const char = state.characters.find((c) => c.id === charId);
+    if (!char) return;
+    state.activeBuffsNerfsCharId = char.id;
+    renderBuffsNerfsModalContent(char);
+    openModal('modal-buffs-nerfs');
+  }
+
+  function renderBuffsNerfsModalContent(char) {
+    if (!char) return;
+    const idInput = document.getElementById('buffs-nerfs-char-id');
+    const nameEl = document.getElementById('buffs-nerfs-char-name');
+    if (idInput) idInput.value = char.id;
+    if (nameEl) nameEl.textContent = `${char.name} (Nível ${char.level || 1})`;
+
+    const allEffects = Array.isArray(char.buffsNerfs) ? char.buffsNerfs : [];
+    const buffs = allEffects.filter((e) => e.type === 'BUFF');
+    const nerfs = allEffects.filter((e) => e.type === 'NERF');
+
+    const buffsBadge = document.getElementById('buffs-count-badge');
+    if (buffsBadge) buffsBadge.textContent = String(buffs.length);
+
+    const nerfsBadge = document.getElementById('nerfs-count-badge');
+    if (nerfsBadge) nerfsBadge.textContent = String(nerfs.length);
+
+    const buffsContainer = document.getElementById('buffs-list-container');
+    const nerfsContainer = document.getElementById('nerfs-list-container');
+    const canManage = canEditCharacter(char) || isEffectiveMaster();
+
+    if (buffsContainer) {
+      if (buffs.length === 0) {
+        buffsContainer.innerHTML = `
+          <div class="py-2.5 px-3 rounded-lg bg-black/20 border border-emerald-500/15 text-emerald-400/50 text-[11px] italic font-mono text-center">
+            Nenhum Buff ativo neste combatente.
+          </div>
+        `;
+      } else {
+        buffsContainer.innerHTML = buffs
+          .map((b) => {
+            const durLabel = b.duration && b.duration > 0
+              ? `${b.duration} ${b.duration === 1 ? 'turno' : 'turnos'}`
+              : 'Permanente';
+            const paTag = b.paModifier > 0
+              ? `<span class="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">+${b.paModifier} PA</span>`
+              : '';
+            return `
+              <div class="p-2.5 rounded-xl bg-emerald-950/20 border border-emerald-500/30 flex items-center justify-between gap-2 buff-item-card transition hover:border-emerald-500/50">
+                <div class="min-w-0 flex-1">
+                  <div class="flex items-center gap-1.5 flex-wrap">
+                    <span class="font-bold text-emerald-300 text-xs">${escapeHtml(b.name || b.description)}</span>
+                    <span class="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">${durLabel}</span>
+                    ${paTag}
+                  </div>
+                  ${
+                    b.source
+                      ? `<div class="text-[10px] font-mono text-emerald-400/70 mt-0.5 truncate">${escapeHtml(b.source)}</div>`
+                      : ''
+                  }
+                </div>
+                ${
+                  canManage
+                    ? `<button
+                        type="button"
+                        data-action="delete-buff-nerf"
+                        data-char-id="${escapeHtml(char.id)}"
+                        data-effect-id="${escapeHtml(b.id)}"
+                        class="w-7 h-7 rounded-lg flex items-center justify-center text-emerald-400/70 hover:text-rose-400 hover:bg-rose-950/40 shrink-0 transition"
+                        title="Remover Buff"
+                      >
+                        <iconify-icon icon="game-icons:trash-can"></iconify-icon>
+                      </button>`
+                    : ''
+                }
+              </div>
+            `;
+          })
+          .join('');
+      }
+    }
+
+    if (nerfsContainer) {
+      if (nerfs.length === 0) {
+        nerfsContainer.innerHTML = `
+          <div class="py-2.5 px-3 rounded-lg bg-black/20 border border-rose-500/15 text-rose-400/50 text-[11px] italic font-mono text-center">
+            Nenhum Nerf ativo neste combatente.
+          </div>
+        `;
+      } else {
+        nerfsContainer.innerHTML = nerfs
+          .map((n) => {
+            const durLabel = n.duration && n.duration > 0
+              ? `${n.duration} ${n.duration === 1 ? 'turno' : 'turnos'}`
+              : 'Permanente';
+            const paTag = n.paModifier < 0
+              ? `<span class="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40">${n.paModifier} PA</span>`
+              : '';
+            return `
+              <div class="p-2.5 rounded-xl bg-rose-950/20 border border-rose-500/30 flex items-center justify-between gap-2 nerf-item-card transition hover:border-rose-500/50">
+                <div class="min-w-0 flex-1">
+                  <div class="flex items-center gap-1.5 flex-wrap">
+                    <span class="font-bold text-rose-300 text-xs">${escapeHtml(n.name || n.description)}</span>
+                    <span class="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-rose-500/15 text-rose-300 border border-rose-500/30">${durLabel}</span>
+                    ${paTag}
+                  </div>
+                  ${
+                    n.source
+                      ? `<div class="text-[10px] font-mono text-rose-400/70 mt-0.5 truncate">${escapeHtml(n.source)}</div>`
+                      : ''
+                  }
+                </div>
+                ${
+                  canManage
+                    ? `<button
+                        type="button"
+                        data-action="delete-buff-nerf"
+                        data-char-id="${escapeHtml(char.id)}"
+                        data-effect-id="${escapeHtml(n.id)}"
+                        class="w-7 h-7 rounded-lg flex items-center justify-center text-rose-400/70 hover:text-rose-300 hover:bg-rose-950/40 shrink-0 transition"
+                        title="Remover Nerf"
+                      >
+                        <iconify-icon icon="game-icons:trash-can"></iconify-icon>
+                      </button>`
+                    : ''
+                }
+              </div>
+            `;
+          })
+          .join('');
+      }
+    }
+  }
+
+  function removeBuffNerf(charId, effectId) {
+    commitMutation((st, toasts) => {
+      const char = st.characters.find((c) => c.id === charId);
+      if (!char || !Array.isArray(char.buffsNerfs)) return false;
+      const eff = char.buffsNerfs.find((e) => e.id === effectId);
+      char.buffsNerfs = char.buffsNerfs.filter((e) => e.id !== effectId);
+      if (eff) {
+        toasts.push(`Efeito "${eff.name || eff.description}" removido de ${char.name}.`);
+      }
+      return true;
+    });
+  }
+
+  function handleAddBuffNerfSubmit(e) {
+    e.preventDefault();
+    const charId = document.getElementById('buffs-nerfs-char-id')?.value;
+    const char = state.characters.find((c) => c.id === charId);
+    if (!char) return;
+
+    const desc = document.getElementById('bn-effect-desc')?.value.trim();
+    if (!desc) return;
+    const type = document.getElementById('bn-effect-type')?.value || 'BUFF';
+    const durRaw = document.getElementById('bn-effect-duration')?.value;
+    const durNum = durRaw !== '' && !isNaN(Number(durRaw)) ? Number(durRaw) : null;
+    const duration = durNum && durNum > 0 ? Math.round(durNum) : null;
+    const paMod = Number(document.getElementById('bn-effect-pa-mod')?.value || 0);
+
+    commitMutation((st, toasts) => {
+      const target = st.characters.find((c) => c.id === charId);
+      if (!target) return false;
+      if (!Array.isArray(target.buffsNerfs)) target.buffsNerfs = [];
+
+      target.buffsNerfs.push({
+        id: `bn_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+        type,
+        name: desc,
+        description: desc,
+        duration,
+        source: 'Manual (Mestre/Jogador)',
+        paModifier: paMod,
+        createdAt: Date.now(),
+      });
+
+      if (paMod < 0) {
+        const penalty = calculateCombatantPaPenalty(target);
+        const maxAvail = Math.max(0, (target.baseMaxPa || 3) - penalty);
+        if (target.pa > maxAvail) target.pa = maxAvail;
+      }
+
+      toasts.push(`${type === 'BUFF' ? 'Buff' : 'Nerf'} "${desc}" aplicado a ${target.name}.`);
+      return true;
+    });
+
+    const descInput = document.getElementById('bn-effect-desc');
+    const durInput = document.getElementById('bn-effect-duration');
+    const paInput = document.getElementById('bn-effect-pa-mod');
+    if (descInput) descInput.value = '';
+    if (durInput) durInput.value = '';
+    if (paInput) paInput.value = '0';
   }
 
   // ---------------------------------------------------------------------------
@@ -6698,7 +7145,6 @@
       'pipe-lethality-pct',
       'pipe-penetration-pct',
       'pipe-rupture-pct',
-      'pipe-overload-armor',
     ].forEach((id) => {
       document.getElementById(id)?.addEventListener('input', updateDamagePreview);
       document.getElementById(id)?.addEventListener('change', updateDamagePreview);
@@ -6719,6 +7165,17 @@
     document.getElementById('form-single-resistance')?.addEventListener('submit', handleSingleResistanceSubmit);
     document.querySelectorAll('#single-res-op-group .res-op-btn').forEach((btn) => {
       btn.addEventListener('click', () => setSingleResOpSelection(btn.getAttribute('data-res-op')));
+    });
+
+    // Modal de Buffs e Nerfs
+    document.getElementById('form-add-buff-nerf')?.addEventListener('submit', handleAddBuffNerfSubmit);
+    document.getElementById('modal-buffs-nerfs')?.addEventListener('click', (e) => {
+      const delBtn = e.target.closest('[data-action="delete-buff-nerf"]');
+      if (delBtn) {
+        const charId = delBtn.getAttribute('data-char-id');
+        const effectId = delBtn.getAttribute('data-effect-id');
+        if (charId && effectId) removeBuffNerf(charId, effectId);
+      }
     });
 
     // Modal de Ressurreição (100%, 50%, Personalizado)
@@ -6999,6 +7456,7 @@
 
       if (action === 'open-edit') openEditCharacterModal(charId);
       else if (action === 'open-resistances') openResistancesPanelModal(charId);
+      else if (action === 'open-buffs-nerfs') openBuffsNerfsModal(charId);
       else if (action === 'open-sheet') openCharacterSheetModal(charId);
       else if (action === 'open-inventory') openCharacterInventoryModal(charId);
       else if (action === 'open-revive') {
@@ -7011,6 +7469,11 @@
       else if (action === 'pill-attr') openAttributeModal(charId, btn.getAttribute('data-attr'));
       else if (action === 'pill-regen') triggerInstantManaRegen(charId);
       else if (action === 'pill-reset') requestResetCharacter(charId);
+      else if (action === 'spend-pa') adjustCharacterPa(charId, -1);
+      else if (action === 'adjust-pa') {
+        const delta = Number(btn.getAttribute('data-delta') || 0);
+        if (delta !== 0) adjustCharacterPa(charId, delta);
+      }
       else if (action === 'open-general-skills') openGeneralSkillsModal(charId, 'instance');
       else if (action === 'dismiss-enemy') dismissEnemyInstance(charId);
     };
@@ -7090,6 +7553,10 @@
       document.getElementById('cat-item-desc').value = '';
       document.getElementById('cat-item-weight').value = '1.0';
       document.getElementById('cat-item-price').value = '100';
+      const atkInput = document.getElementById('cat-item-attack');
+      if (atkInput) atkInput.value = '0';
+      const arcInput = document.getElementById('cat-item-arcana');
+      if (arcInput) arcInput.value = '0';
       document.getElementById('cat-item-equipable').checked = true;
       document.getElementById('cat-item-non-tradable').checked = false;
       document.getElementById('cat-item-visible').checked = true;
@@ -7116,6 +7583,10 @@
         document.getElementById('cat-item-desc').value = it.descricao || '';
         document.getElementById('cat-item-weight').value = String(it.peso ?? 0);
         document.getElementById('cat-item-price').value = String(it.preco ?? 0);
+        const atkInput = document.getElementById('cat-item-attack');
+        if (atkInput) atkInput.value = String(it.attack ?? it.ataque ?? 0);
+        const arcInput = document.getElementById('cat-item-arcana');
+        if (arcInput) arcInput.value = String(it.arcana ?? 0);
         document.getElementById('cat-item-equipable').checked = Boolean(it.equipavel);
         document.getElementById('cat-item-non-tradable').checked = Boolean(it.naoNegociavel);
         document.getElementById('cat-item-visible').checked = it.visivelParaJogadores !== false;
@@ -7144,6 +7615,8 @@
       const descricao = document.getElementById('cat-item-desc').value ?? '';
       const peso = Math.max(0, Number(document.getElementById('cat-item-weight').value || 0));
       const preco = Math.max(0, Math.round(Number(document.getElementById('cat-item-price').value || 0)));
+      const attack = Math.max(0, Math.round(Number(document.getElementById('cat-item-attack')?.value || 0)));
+      const arcana = Math.max(0, Math.round(Number(document.getElementById('cat-item-arcana')?.value || 0)));
       const durationTurns = null;
       const equipavel = tipo === 'OUTRO' || tipo === 'CONSUMIVEL' ? false : document.getElementById('cat-item-equipable').checked;
       const naoNegociavel = document.getElementById('cat-item-non-tradable').checked;
@@ -7171,6 +7644,9 @@
               descricao,
               peso,
               preco,
+              attack,
+              ataque: attack,
+              arcana,
               durationTurns,
               equipavel,
               naoNegociavel,
@@ -7187,6 +7663,9 @@
               descricao,
               peso,
               preco,
+              attack,
+              ataque: attack,
+              arcana,
               durationTurns,
               equipavel,
               naoNegociavel,

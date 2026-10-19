@@ -228,6 +228,12 @@ def compute_character_derived_stats(
             continue
         if item_tpl.get("equipavel", False):
             total_weight += float(item_tpl.get("peso", 0.0))
+            direct_atk = float(item_tpl.get("ataque", item_tpl.get("attack", 0.0)) or 0.0)
+            if direct_atk:
+                flat_mods["ATAQUE"] += direct_atk
+            direct_arc = float(item_tpl.get("arcana", 0.0) or 0.0)
+            if direct_arc:
+                flat_mods["ARCANA"] += direct_arc
             for eff in item_tpl.get("effects") or []:
                 target = eff.get("targetStat")
                 if target not in flat_mods:
@@ -290,8 +296,7 @@ def compute_character_derived_stats(
 
     eff_max_hp = max(1, compute_stat_with_modifiers(base_max_hp, flat_mods["VIDA"], pct_mods["VIDA"], precedence, rounding_mode))
     eff_max_armor_raw = max(0, compute_stat_with_modifiers(base_max_armor, flat_mods["ARMADURA"], pct_mods["ARMADURA"], precedence, rounding_mode))
-    armor_degradation = max(0, int(char.get("armorDegradation", 0)))
-    eff_max_armor = max(0, eff_max_armor_raw - armor_degradation)
+    eff_max_armor = eff_max_armor_raw
 
     eff_max_mana = max(0, compute_stat_with_modifiers(base_max_mana, flat_mods["MANA"], pct_mods["MANA"], precedence, rounding_mode))
     eff_max_pa = max(0, compute_stat_with_modifiers(base_max_pa, flat_mods["PA"], pct_mods["PA"], precedence, rounding_mode))
@@ -398,8 +403,7 @@ def evaluate_damage_pipeline(
         if final_damage > current_armor:
             overflow_damage = final_damage - current_armor
             next_armor = 0
-            # Se D > A e havia armadura ou sobrecarga ativa, degrada temporariamente a Armadura Máxima
-            armor_degraded_by = min(max_armor, overflow_damage) if (degrade_armor_on_overload and max_armor > 0) else 0
+            armor_degraded_by = 0
             next_hp = max(0, current_hp - overflow_damage)
         else:
             next_armor = current_armor - final_damage

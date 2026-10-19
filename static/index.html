@@ -1251,11 +1251,6 @@
               <input id="pipe-rupture-pct" type="number" min="0" max="100" value="0" class="w-full px-2.5 py-1.5 font-mono font-bold app-input" />
             </div>
           </div>
-
-          <label class="flex items-center gap-2 pt-1 cursor-pointer">
-            <input type="checkbox" id="pipe-overload-armor" class="rounded" />
-            <span class="text-[11px] app-muted">Aplicar <strong>Sobrecarga de Armadura Máxima</strong> se o dano superar a armadura atual (Seção 6).</span>
-          </label>
         </div>
 
         <!-- Switch DANO REAL -->
@@ -1457,6 +1452,121 @@
   </div>
 
   <!-- ========================================================================= -->
+  <!-- MODAL: BUFFS E NERFS (Dark Fantasy Modal)                                  -->
+  <!-- ========================================================================= -->
+  <div id="modal-buffs-nerfs" class="modal-backdrop hidden fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
+    <div class="modal-panel w-full max-w-lg rounded-2xl overflow-hidden flex flex-col max-h-[92vh] bg-[var(--bg-modal,#111318)] border border-amber-500/30 shadow-2xl">
+      <!-- Cabeçalho -->
+      <div class="px-5 py-4 border-b flex items-center justify-between app-modal-header border-app-divider-border bg-black/40">
+        <div class="flex items-center gap-2.5">
+          <span class="w-8 h-8 rounded-lg flex items-center justify-center bg-amber-500/10 border border-amber-500/30 text-amber-400 text-lg">
+            <iconify-icon icon="game-icons:arrows-shield"></iconify-icon>
+          </span>
+          <div>
+            <h3 class="font-serif-fantasy text-sm sm:text-base font-black tracking-wider gold-title uppercase">
+              Buffs e Nerfs
+            </h3>
+            <p id="buffs-nerfs-char-name" class="text-xs app-muted font-bold truncate">Guerreiro</p>
+          </div>
+        </div>
+        <button type="button" data-close-modal="modal-buffs-nerfs" class="w-8 h-8 rounded-lg flex items-center justify-center app-icon-btn hover:text-amber-400 transition">✕</button>
+      </div>
+
+      <!-- Conteúdo com Scroll -->
+      <div class="p-5 overflow-y-auto space-y-5 flex-1 text-xs app-scroll">
+        <input type="hidden" id="buffs-nerfs-char-id" value="" />
+
+        <!-- Seção 1: Buffs (Verde #22c55e) -->
+        <div class="space-y-2">
+          <div class="flex items-center justify-between pb-1 border-b border-emerald-500/20">
+            <h4 class="font-bold text-sm uppercase tracking-wide flex items-center gap-1.5" style="color: #22c55e;">
+              <iconify-icon icon="game-icons:upgrade"></iconify-icon>
+              <span>Buff</span>
+            </h4>
+            <span id="buffs-count-badge" class="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">0</span>
+          </div>
+          <div id="buffs-list-container" class="space-y-1.5">
+            <!-- Renderizado dinamicamente -->
+          </div>
+        </div>
+
+        <!-- Seção 2: Nerfs (Vermelho #ef4444) -->
+        <div class="space-y-2 pt-2">
+          <div class="flex items-center justify-between pb-1 border-b border-rose-500/20">
+            <h4 class="font-bold text-sm uppercase tracking-wide flex items-center gap-1.5" style="color: #ef4444;">
+              <iconify-icon icon="game-icons:decapitation"></iconify-icon>
+              <span>Nerf</span>
+            </h4>
+            <span id="nerfs-count-badge" class="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-rose-500/15 text-rose-400 border border-rose-500/30">0</span>
+          </div>
+          <div id="nerfs-list-container" class="space-y-1.5">
+            <!-- Renderizado dinamicamente -->
+          </div>
+        </div>
+
+        <!-- Formulário para Adicionar Buff / Nerf Manualmente -->
+        <div class="p-3.5 rounded-xl bg-black/40 border app-divider-border space-y-3 mt-4">
+          <h5 class="font-serif-fantasy font-black text-xs gold-title uppercase flex items-center gap-1.5">
+            <iconify-icon icon="game-icons:quill-ink"></iconify-icon>
+            <span>Adicionar Novo Efeito</span>
+          </h5>
+
+          <form id="form-add-buff-nerf" class="space-y-2.5">
+            <div>
+              <label class="block font-bold uppercase mb-1 text-[10px] app-label">Descrição do Efeito</label>
+              <input
+                id="bn-effect-desc"
+                type="text"
+                required
+                placeholder="Ex: Bônus de dano +15% ou -1 PA"
+                class="w-full px-3 py-1.5 app-input font-bold text-xs"
+              />
+            </div>
+
+            <div class="grid grid-cols-3 gap-2">
+              <div>
+                <label class="block font-bold uppercase mb-1 text-[10px] app-label">Tipo</label>
+                <select id="bn-effect-type" class="w-full px-2 py-1.5 app-input font-bold text-xs">
+                  <option value="BUFF">Buff (Positivo)</option>
+                  <option value="NERF">Nerf (Negativo)</option>
+                </select>
+              </div>
+              <div>
+                <label class="block font-bold uppercase mb-1 text-[10px] app-label" title="0 para permanente">Duração (Turnos)</label>
+                <input
+                  id="bn-effect-duration"
+                  type="number"
+                  min="0"
+                  step="1"
+                  placeholder="Ex: 2 (0=perm)"
+                  class="w-full px-2 py-1.5 app-input font-mono font-bold text-xs"
+                />
+              </div>
+              <div>
+                <label class="block font-bold uppercase mb-1 text-[10px] app-label">Modificador PA</label>
+                <select id="bn-effect-pa-mod" class="w-full px-2 py-1.5 app-input font-bold text-xs">
+                  <option value="0">Nenhum (0)</option>
+                  <option value="-1">-1 PA</option>
+                  <option value="-2">-2 PA</option>
+                  <option value="+1">+1 PA</option>
+                </select>
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              class="w-full py-2 px-3 rounded-lg font-serif-fantasy text-xs tracking-wider uppercase font-black btn-gold flex items-center justify-center gap-1.5 shadow-md hover:scale-[1.01] transition"
+            >
+              <iconify-icon icon="game-icons:sparkles"></iconify-icon>
+              <span>+ Adicionar Efeito</span>
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
   <!-- MODAL 5: FICHA COMPLETA, 5 ATRIBUTOS, TALENTOS & INVENTÁRIO P2P           -->
   <!-- ========================================================================= -->
   <div id="modal-char-sheet" class="modal-backdrop hidden fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
@@ -1596,6 +1706,22 @@
           <div>
             <label class="block font-bold uppercase mb-1 app-label">Preço (Ouro)</label>
             <input id="cat-item-price" type="number" min="0" step="1" value="100" class="w-full px-3 py-2 font-mono font-bold app-input" />
+          </div>
+        </div>
+
+        <!-- Bônus Diretos Opcionais de Ataque e Arcana -->
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-bold uppercase mb-1 app-label text-rose-400 flex items-center gap-1">
+              <iconify-icon icon="game-icons:gladius"></iconify-icon> <span>Bônus de Ataque (Opcional)</span>
+            </label>
+            <input id="cat-item-attack" type="number" step="1" value="0" placeholder="0" class="w-full px-3 py-2 font-mono font-bold app-input" />
+          </div>
+          <div>
+            <label class="block font-bold uppercase mb-1 app-label text-blue-400 flex items-center gap-1">
+              <iconify-icon icon="game-icons:crystal-ball"></iconify-icon> <span>Bônus de Arcana (Opcional)</span>
+            </label>
+            <input id="cat-item-arcana" type="number" step="1" value="0" placeholder="0" class="w-full px-3 py-2 font-mono font-bold app-input" />
           </div>
         </div>
 
