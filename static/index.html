@@ -2086,6 +2086,26 @@
         <div class="space-y-2">
           <div class="flex flex-wrap items-center justify-between gap-2">
             <label class="block font-bold uppercase app-label">Itens Vendidos pelo NPC &amp; Preço de Venda</label>
+            <!-- Barra de Busca de Itens no Modal de Mercador -->
+            <div class="relative flex items-center">
+              <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none text-xs flex items-center">
+                <iconify-icon icon="game-icons:magnifying-glass"></iconify-icon>
+              </span>
+              <input
+                type="text"
+                id="npc-item-search-input"
+                placeholder="Pesquisar item..."
+                class="pl-7 pr-6 py-1 text-xs rounded-lg app-input w-44 sm:w-56"
+              />
+              <button
+                type="button"
+                id="btn-npc-item-search-clear"
+                class="hidden absolute right-1.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-white px-1 text-xs"
+                title="Limpar pesquisa"
+              >✕</button>
+            </div>
+          </div>
+          <div class="flex items-center justify-between">
             <span class="text-[10px] app-muted">Deixe o preço em branco para usar o valor padrão do item</span>
           </div>
           <!-- Filtro por Tipo de Item no Modal do Mercador -->
@@ -2733,6 +2753,187 @@
     </div>
   </div>
 
-  <script src="app.js"></script>
+  <!-- ========================================================================= -->
+  <!-- MODAL: BLOCO DE NOTAS & DIÁRIO DA FICHA                                   -->
+  <!-- ========================================================================= -->
+  <div id="modal-notes" class="modal-backdrop hidden fixed inset-0 z-[65] flex items-center justify-center p-2 sm:p-4">
+    <div class="modal-panel w-full max-w-4xl max-h-[92vh] rounded-2xl overflow-hidden flex flex-col bg-[var(--bg-card,#12141a)] border border-emerald-500/30 shadow-2xl">
+      <!-- Modal Header -->
+      <div class="px-5 py-3.5 border-b flex items-center justify-between app-modal-header border-app-divider-border bg-black/40 shrink-0">
+        <div class="flex items-center gap-2.5 min-w-0">
+          <span class="w-8 h-8 rounded-lg flex items-center justify-center bg-emerald-950/60 border border-emerald-500/40 text-emerald-400 text-lg shrink-0">
+            <iconify-icon icon="game-icons:quill-ink"></iconify-icon>
+          </span>
+          <div class="truncate">
+            <h3 class="font-serif-fantasy font-black text-sm sm:text-base tracking-wide text-emerald-300 flex items-center gap-2 truncate">
+              <span>BLOCO DE NOTAS</span>
+              <span class="text-neutral-500 font-mono text-xs">•</span>
+              <span id="notes-char-name" class="gold-title truncate"></span>
+            </h3>
+            <p class="text-[11px] app-muted truncate">Anotações pessoais, crônicas, estratégias e diário de campanha</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-3 shrink-0 ml-2">
+          <span id="notes-permission-badge" class="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider"></span>
+          <button
+            type="button"
+            data-close-modal="modal-notes"
+            class="app-modal-close text-neutral-400 hover:text-white text-lg w-8 h-8 rounded-lg flex items-center justify-center hover:bg-neutral-800 transition"
+            title="Fechar Bloco de Notas"
+          >✕</button>
+        </div>
+      </div>
+
+      <!-- Barra de Abas / Páginas -->
+      <div class="px-4 pt-2.5 pb-0 border-b border-app-divider-border bg-black/20 flex items-center justify-between gap-2 overflow-x-auto shrink-0">
+        <div id="notes-tabs-container" class="flex items-center gap-1.5 overflow-x-auto py-1">
+          <!-- Renderizado dinamicamente: abas de páginas -->
+        </div>
+        <button
+          type="button"
+          id="btn-notes-new-page"
+          class="shrink-0 mb-1 px-3 py-1 rounded-lg text-xs font-bold border border-dashed border-emerald-500/40 text-emerald-400 hover:bg-emerald-950/50 hover:border-emerald-400 transition flex items-center gap-1"
+          title="Criar nova página de anotações"
+        >
+          <iconify-icon icon="game-icons:plus"></iconify-icon>
+          <span>Nova Página</span>
+        </button>
+      </div>
+
+      <!-- Barra de Ferramentas Rich Text (Visível apenas em modo edição) -->
+      <div id="notes-toolbar" class="px-3 py-2 border-b border-app-divider-border bg-black/30 flex items-center gap-1.5 shrink-0 text-xs overflow-x-auto">
+        <!-- Grupo 1: Estilos Básicos -->
+        <div class="flex items-center bg-black/30 rounded-lg p-0.5 border border-neutral-800 shrink-0">
+          <button type="button" data-cmd="bold" class="notes-tool-btn px-2 py-1 rounded font-bold hover:bg-neutral-800 hover:text-amber-300" title="Negrito (Ctrl+B)">B</button>
+          <button type="button" data-cmd="italic" class="notes-tool-btn px-2 py-1 rounded italic hover:bg-neutral-800 hover:text-amber-300" title="Itálico (Ctrl+I)">I</button>
+          <button type="button" data-cmd="underline" class="notes-tool-btn px-2 py-1 rounded underline hover:bg-neutral-800 hover:text-amber-300" title="Sublinhado (Ctrl+U)">U</button>
+          <button type="button" data-cmd="strikeThrough" class="notes-tool-btn px-2 py-1 rounded line-through hover:bg-neutral-800 hover:text-amber-300" title="Tachado">S</button>
+        </div>
+
+        <div class="w-px h-5 bg-neutral-800 mx-0.5 shrink-0"></div>
+
+        <!-- Grupo 2: Cabeçalhos / Estrutura -->
+        <div class="flex items-center bg-black/30 rounded-lg p-0.5 border border-neutral-800 shrink-0">
+          <button type="button" data-block="H1" class="notes-tool-btn px-2 py-1 rounded font-black hover:bg-neutral-800 hover:text-amber-300" title="Título Principal (H1)">H1</button>
+          <button type="button" data-block="H2" class="notes-tool-btn px-2 py-1 rounded font-bold hover:bg-neutral-800 hover:text-amber-300" title="Subtítulo (H2)">H2</button>
+          <button type="button" data-block="P" class="notes-tool-btn px-2 py-1 rounded hover:bg-neutral-800 hover:text-amber-300" title="Texto Normal / Parágrafo">P</button>
+          <button type="button" data-block="BLOCKQUOTE" class="notes-tool-btn px-2 py-1 rounded italic text-amber-400 hover:bg-neutral-800" title="Bloco de Citação">“ ”</button>
+          <button type="button" data-cmd="insertHorizontalRule" class="notes-tool-btn px-2 py-1 rounded hover:bg-neutral-800 hover:text-amber-300" title="Linha Divisória">—</button>
+        </div>
+
+        <div class="w-px h-5 bg-neutral-800 mx-0.5 shrink-0"></div>
+
+        <!-- Grupo 3: Listas e Checklist -->
+        <div class="flex items-center bg-black/30 rounded-lg p-0.5 border border-neutral-800 shrink-0">
+          <button type="button" data-cmd="insertUnorderedList" class="notes-tool-btn px-2 py-1 rounded hover:bg-neutral-800 hover:text-amber-300 flex items-center" title="Lista com Marcadores">
+            <iconify-icon icon="game-icons:bullet-bill" class="text-xs"></iconify-icon>
+          </button>
+          <button type="button" data-cmd="insertOrderedList" class="notes-tool-btn px-2 py-1 rounded hover:bg-neutral-800 hover:text-amber-300 font-mono text-[11px]" title="Lista Numerada">
+            1.
+          </button>
+          <button type="button" id="btn-notes-insert-task" class="notes-tool-btn px-2 py-1 rounded hover:bg-neutral-800 hover:text-amber-300 flex items-center gap-1 text-[11px] text-emerald-400 font-semibold" title="Inserir Tarefa / Checklist">
+            <iconify-icon icon="game-icons:check-mark" class="text-xs"></iconify-icon>
+            <span class="hidden sm:inline">Checklist</span>
+          </button>
+        </div>
+
+        <div class="w-px h-5 bg-neutral-800 mx-0.5 shrink-0"></div>
+
+        <!-- Grupo 4: Cores de Texto e Marca-texto -->
+        <div class="flex items-center gap-1 shrink-0">
+          <!-- Popover Seletor de Cor de Texto -->
+          <div class="relative">
+            <button type="button" id="btn-notes-color-menu" class="notes-tool-btn px-2 py-1 rounded bg-black/30 border border-neutral-800 hover:bg-neutral-800 flex items-center gap-1" title="Cor do Texto">
+              <span class="font-bold underline decoration-amber-400 decoration-2">A</span>
+              <span class="text-[9px]">▼</span>
+            </button>
+            <div id="notes-color-popover" class="hidden absolute top-full left-0 mt-1 z-30 p-2 rounded-xl bg-neutral-900 border border-neutral-700 shadow-xl grid grid-cols-4 gap-1.5 w-32">
+              <button type="button" data-color="#ffffff" class="w-6 h-6 rounded-full bg-white border border-neutral-500 hover:scale-110 transition" title="Branco"></button>
+              <button type="button" data-color="#f59e0b" class="w-6 h-6 rounded-full bg-amber-500 border border-amber-300 hover:scale-110 transition" title="Dourado"></button>
+              <button type="button" data-color="#ef4444" class="w-6 h-6 rounded-full bg-red-500 border border-red-300 hover:scale-110 transition" title="Vermelho"></button>
+              <button type="button" data-color="#10b981" class="w-6 h-6 rounded-full bg-emerald-500 border border-emerald-300 hover:scale-110 transition" title="Verde"></button>
+              <button type="button" data-color="#38bdf8" class="w-6 h-6 rounded-full bg-sky-400 border border-sky-200 hover:scale-110 transition" title="Azul"></button>
+              <button type="button" data-color="#c084fc" class="w-6 h-6 rounded-full bg-purple-400 border border-purple-200 hover:scale-110 transition" title="Roxo"></button>
+              <button type="button" data-color="#fb923c" class="w-6 h-6 rounded-full bg-orange-400 border border-orange-200 hover:scale-110 transition" title="Laranja"></button>
+              <button type="button" data-color="#a3a3a3" class="w-6 h-6 rounded-full bg-neutral-400 border border-neutral-200 hover:scale-110 transition" title="Cinza Claro"></button>
+            </div>
+          </div>
+
+          <!-- Popover Marca-texto / Destaque -->
+          <div class="relative">
+            <button type="button" id="btn-notes-hl-menu" class="notes-tool-btn px-2 py-1 rounded bg-black/30 border border-neutral-800 hover:bg-neutral-800 flex items-center gap-1" title="Cor de Destaque / Marca-texto">
+              <span class="bg-amber-500/40 px-1 rounded text-amber-200 font-bold text-[11px]">H</span>
+              <span class="text-[9px]">▼</span>
+            </button>
+            <div id="notes-hl-popover" class="hidden absolute top-full left-0 mt-1 z-30 p-2 rounded-xl bg-neutral-900 border border-neutral-700 shadow-xl grid grid-cols-3 gap-1.5 w-28">
+              <button type="button" data-hl="#854d0e" class="w-6 h-6 rounded bg-amber-900 border border-amber-600 hover:scale-110 transition" title="Dourado Escuro"></button>
+              <button type="button" data-hl="#064e3b" class="w-6 h-6 rounded bg-emerald-950 border border-emerald-600 hover:scale-110 transition" title="Verde Escuro"></button>
+              <button type="button" data-hl="#1e3a5f" class="w-6 h-6 rounded bg-sky-950 border border-sky-600 hover:scale-110 transition" title="Azul Escuro"></button>
+              <button type="button" data-hl="#4c1d95" class="w-6 h-6 rounded bg-purple-950 border border-purple-600 hover:scale-110 transition" title="Roxo Escuro"></button>
+              <button type="button" data-hl="#7f1d1d" class="w-6 h-6 rounded bg-red-950 border border-red-600 hover:scale-110 transition" title="Vermelho Escuro"></button>
+              <button type="button" data-hl="transparent" class="w-6 h-6 rounded bg-transparent border border-neutral-600 hover:scale-110 transition text-[9px] flex items-center justify-center text-neutral-400" title="Sem Destaque">✕</button>
+            </div>
+          </div>
+
+          <!-- Limpar Formatação -->
+          <button type="button" data-cmd="removeFormat" class="notes-tool-btn px-2 py-1 rounded bg-black/30 border border-neutral-800 hover:bg-neutral-800 text-neutral-400 hover:text-white" title="Limpar Formatação">
+            <span class="font-mono text-xs">Tx</span>
+          </button>
+        </div>
+
+        <div class="w-px h-5 bg-neutral-800 mx-0.5 shrink-0"></div>
+
+        <!-- Grupo 5: Desfazer e Refazer (Undo / Redo) -->
+        <div class="flex items-center bg-black/30 rounded-lg p-0.5 border border-neutral-800 shrink-0">
+          <button type="button" data-cmd="undo" class="notes-tool-btn px-2 py-1 rounded hover:bg-neutral-800 hover:text-amber-300 flex items-center justify-center text-xs" title="Desfazer (Ctrl+Z)">
+            <iconify-icon icon="game-icons:anticlockwise-rotation" class="text-xs"></iconify-icon>
+          </button>
+          <button type="button" data-cmd="redo" class="notes-tool-btn px-2 py-1 rounded hover:bg-neutral-800 hover:text-amber-300 flex items-center justify-center text-xs" title="Refazer (Ctrl+Y)">
+            <iconify-icon icon="game-icons:clockwise-rotation" class="text-xs"></iconify-icon>
+          </button>
+        </div>
+
+        <!-- Grupo 6: Busca Interna (à direita) -->
+        <div class="ml-auto flex items-center gap-1 bg-black/40 border border-neutral-800 rounded-lg px-2 py-0.5 shrink-0">
+          <iconify-icon icon="game-icons:magnifying-glass" class="text-neutral-400 text-xs"></iconify-icon>
+          <input
+            type="text"
+            id="notes-search-input"
+            placeholder="Pesquisar"
+            class="bg-transparent border-none text-xs text-neutral-200 outline-none w-20 sm:w-28 placeholder:text-neutral-500"
+          />
+          <button type="button" id="btn-notes-search-next" class="text-neutral-400 hover:text-amber-400 px-1 text-xs" title="Próxima ocorrência">↓</button>
+          <span id="notes-search-status" class="text-[10px] text-neutral-500 font-mono"></span>
+        </div>
+      </div>
+
+      <!-- Área de Edição / Leitura (ContentEditable) -->
+      <div class="p-4 flex-1 overflow-y-auto relative min-h-[360px] max-h-[58vh] bg-[#0c0d12]">
+        <div
+          id="notes-content-editor"
+          contenteditable="true"
+          class="notes-editor-body w-full min-h-[320px] outline-none text-neutral-200 text-sm leading-relaxed"
+          placeholder="Comece a escrever suas anotações aqui..."
+        ></div>
+      </div>
+
+      <!-- Rodapé: Contadores e Status de Salvamento Automático -->
+      <div class="px-5 py-2.5 border-t flex items-center justify-between gap-3 app-divider-border bg-black/40 shrink-0">
+        <div class="flex items-center gap-3 text-xs">
+          <span id="notes-word-char-counter" class="text-neutral-400 font-mono text-[11px]">0 palavras • 0 caracteres</span>
+          <span class="text-neutral-600 font-mono">•</span>
+          <span id="notes-save-status" class="text-[11px] font-bold flex items-center gap-1 text-emerald-400">
+            <iconify-icon icon="game-icons:check-mark"></iconify-icon> Salvo
+          </span>
+        </div>
+        <div class="text-[10px] app-muted font-mono flex items-center gap-1">
+          <iconify-icon icon="game-icons:save"></iconify-icon>
+          <span>Salvamento automático</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+    <script src="app.js"></script>
 </body>
 </html>

@@ -524,6 +524,20 @@ html[data-theme="light"] .room-hero-banner {
   color: #ddd6fe;
 }
 
+.action-pill-notes {
+  background: #064e3b;
+  border-color: #059669;
+  color: #a7f3d0;
+  box-shadow: none !important;
+}
+
+.action-pill-notes:hover {
+  background: #065f46;
+  border-color: #10b981;
+  color: #ecfdf5;
+  box-shadow: none !important;
+}
+
 /* Modais */
 .modal-backdrop {
   background-color: rgba(5, 4, 3, 0.78);
@@ -1116,4 +1130,157 @@ html[data-theme="light"] .battle-sidebar {
   border-radius: 8px !important;
 }
 
+/* ==========================================================================
+   Bloco de Notas — Abas, Toolbar e Editor Dark Fantasy
+   ========================================================================== */
+.notes-tool-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  color: #d1d5db;
+  transition: all 0.12s ease;
+  cursor: pointer;
+  user-select: none;
+}
 
+.notes-tool-btn:hover {
+  color: #fef08a;
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.notes-tool-btn:active {
+  transform: scale(0.95);
+}
+
+.notes-tab-btn-active {
+  background-color: #0c0d12 !important;
+  border-color: rgba(16, 185, 129, 0.5) !important;
+  color: #6ee7b7 !important;
+  font-weight: 700;
+  margin-bottom: -1px;
+  z-index: 10;
+}
+
+.notes-editor-body {
+  font-family: inherit;
+  word-break: break-word;
+}
+
+.notes-editor-body:empty:before {
+  content: attr(placeholder);
+  color: rgba(163, 163, 163, 0.4);
+  pointer-events: none;
+  display: block;
+}
+
+.notes-editor-body h1 {
+  font-size: 1.45rem;
+  font-weight: 800;
+  color: #fbbf24;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+  border-bottom: 1px solid rgba(251, 191, 36, 0.25);
+  padding-bottom: 0.25rem;
+  font-family: var(--font-fantasy, serif);
+}
+
+.notes-editor-body h2 {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #f3f4f6;
+  margin-top: 0.75rem;
+  margin-bottom: 0.35rem;
+}
+
+.notes-editor-body p {
+  margin-bottom: 0.55rem;
+  line-height: 1.6;
+}
+
+.notes-editor-body blockquote {
+  border-left: 3px solid #f59e0b;
+  background: rgba(245, 158, 11, 0.08);
+  padding: 0.5rem 0.85rem;
+  margin: 0.75rem 0;
+  font-style: italic;
+  color: #fef3c7;
+  border-radius: 0 0.375rem 0.375rem 0;
+}
+
+.notes-editor-body hr {
+  border: 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  margin: 1rem 0;
+}
+
+.notes-editor-body ul {
+  list-style-type: disc;
+  margin-left: 1.5rem;
+  margin-bottom: 0.6rem;
+}
+
+.notes-editor-body ol {
+  list-style-type: decimal;
+  margin-left: 1.5rem;
+  margin-bottom: 0.6rem;
+}
+
+.notes-editor-body li {
+  margin-bottom: 0.25rem;
+}
+
+/* Checklist Interativa */
+.notes-editor-body .note-task {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin: 0.35rem 0;
+}
+
+.notes-editor-body .note-task .note-checkbox {
+  appearance: auto;
+  accent-color: #f59e0b;
+  width: 1.05rem;
+  height: 1.05rem;
+  margin-top: 0.2rem;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.notes-editor-body .note-task.is-done .note-task-text {
+  text-decoration: line-through;
+  opacity: 0.5;
+  color: #9ca3af;
+}
+
+.notes-editor-body .note-task-text {
+  flex: 1;
+}
+
+/* Tabelas Editáveis no Bloco de Notas */
+.notes-editor-body table,
+.notes-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.75rem 0;
+}
+
+.notes-editor-body table td,
+.notes-editor-body table th,
+.notes-table td,
+.notes-table th {
+  border: 1px solid #3f3f46;
+  padding: 6px 10px;
+  min-width: 40px;
+  color: #e4e4e7;
+}
+
+.notes-editor-body table th,
+.notes-table th {
+  background-color: #1f1f23;
+  color: #fbbf24;
+  font-weight: 700;
+  text-align: left;
+}

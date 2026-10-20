@@ -4239,19 +4239,31 @@
           `;
         } else if (!canCombat) {
           bottomActionsHtml = `
-            <div class="p-2 rounded-lg bg-black/20 border app-divider-border text-center text-xs font-mono ${isEnemy ? 'text-emerald-300/80' : 'text-amber-200/80'} flex items-center justify-center gap-1.5">
-              <iconify-icon icon="${isEnemy ? 'game-icons:eyeball' : 'game-icons:tied-scroll'}" style="color: ${isEnemy ? '#4ade80' : '#f59e0b'};"></iconify-icon>
-              <span>${isEnemy ? 'Criatura Revelada (Controle do Mestre)' : 'Ficha de Aliado (Somente Visualização)'}</span>
+            <div class="flex items-center gap-2 pt-2 border-t app-divider-border">
+              <div class="flex-1 p-2 rounded-lg bg-black/20 border app-divider-border text-center text-xs font-mono ${isEnemy ? 'text-emerald-300/80' : 'text-amber-200/80'} flex items-center justify-center gap-1.5">
+                <iconify-icon icon="${isEnemy ? 'game-icons:eyeball' : 'game-icons:tied-scroll'}" style="color: ${isEnemy ? '#4ade80' : '#f59e0b'};"></iconify-icon>
+                <span>${isEnemy ? 'Criatura Revelada (Controle do Mestre)' : 'Ficha de Aliado (Somente Visualização)'}</span>
+              </div>
+              <button
+                type="button"
+                data-action="pill-notes"
+                data-char-id="${escapeHtml(char.id)}"
+                class="action-pill action-pill-notes py-2 px-3 rounded-lg font-extrabold text-[11px] tracking-tight flex items-center justify-center gap-1 shrink-0"
+                title="Anotações e Bloco de Notas"
+              >
+                <span>NOTAS</span>
+                <iconify-icon icon="game-icons:quill-ink" class="shrink-0"></iconify-icon>
+              </button>
             </div>
           `;
         } else {
           bottomActionsHtml = `
-            <div class="grid grid-cols-5 gap-1 sm:gap-1.5 pt-2 border-t app-divider-border">
+            <div class="grid grid-cols-3 gap-2 pt-2 border-t app-divider-border">
               <button
                 type="button"
                 data-action="pill-damage"
                 data-char-id="${escapeHtml(char.id)}"
-                class="action-pill action-pill-damage py-2 px-1 rounded-lg font-extrabold text-[10px] sm:text-[11px] tracking-tight flex items-center justify-center gap-0.5 sm:gap-1"
+                class="action-pill action-pill-damage py-2 px-1 rounded-lg font-extrabold text-[11px] tracking-tight flex items-center justify-center gap-1"
                 title="Aplicar Dano"
               >
                 <span>DANO</span>
@@ -4262,7 +4274,7 @@
                 data-action="pill-attr"
                 data-attr="hp"
                 data-char-id="${escapeHtml(char.id)}"
-                class="action-pill py-2 px-1 rounded-lg font-extrabold text-[10px] sm:text-[11px] tracking-tight flex items-center justify-center gap-0.5 sm:gap-1"
+                class="action-pill py-2 px-1 rounded-lg font-extrabold text-[11px] tracking-tight flex items-center justify-center gap-1"
                 title="Gerenciar Vida"
               >
                 <span>VIDA</span>
@@ -4273,10 +4285,10 @@
                 data-action="pill-attr"
                 data-attr="armor"
                 data-char-id="${escapeHtml(char.id)}"
-                class="action-pill py-2 px-1 rounded-lg font-extrabold text-[10px] sm:text-[11px] tracking-tight flex items-center justify-center gap-0.5 sm:gap-1"
+                class="action-pill py-2 px-1 rounded-lg font-extrabold text-[11px] tracking-tight flex items-center justify-center gap-1"
                 title="Gerenciar Armadura"
               >
-                <span class="truncate">ARMADURA</span>
+                <span>ARMADURA</span>
                 <iconify-icon icon="game-icons:breastplate" class="icon-armor shrink-0"></iconify-icon>
               </button>
               <button
@@ -4284,7 +4296,7 @@
                 data-action="pill-attr"
                 data-attr="mana"
                 data-char-id="${escapeHtml(char.id)}"
-                class="action-pill py-2 px-1 rounded-lg font-extrabold text-[10px] sm:text-[11px] tracking-tight flex items-center justify-center gap-0.5 sm:gap-1"
+                class="action-pill py-2 px-1 rounded-lg font-extrabold text-[11px] tracking-tight flex items-center justify-center gap-1"
                 title="Gerenciar Mana"
               >
                 <span>MANA</span>
@@ -4294,11 +4306,21 @@
                 type="button"
                 data-action="pill-reset"
                 data-char-id="${escapeHtml(char.id)}"
-                class="action-pill py-2 px-1 rounded-lg font-extrabold text-[10px] sm:text-[11px] tracking-tight flex items-center justify-center gap-0.5 sm:gap-1"
+                class="action-pill py-2 px-1 rounded-lg font-extrabold text-[11px] tracking-tight flex items-center justify-center gap-1"
                 title="Resetar Personagem"
               >
-                <span class="truncate">RESETAR</span>
+                <span>RESETAR</span>
                 <iconify-icon icon="game-icons:sands-of-time" class="shrink-0"></iconify-icon>
+              </button>
+              <button
+                type="button"
+                data-action="pill-notes"
+                data-char-id="${escapeHtml(char.id)}"
+                class="action-pill action-pill-notes py-2 px-1 rounded-lg font-extrabold text-[11px] tracking-tight flex items-center justify-center gap-1"
+                title="Anotações e Bloco de Notas"
+              >
+                <span>NOTAS</span>
+                <iconify-icon icon="game-icons:quill-ink" class="shrink-0"></iconify-icon>
               </button>
             </div>
           `;
@@ -5235,6 +5257,12 @@
   }
 
   function closeModal(id) {
+    if (id === 'modal-notes') {
+      if (typeof executeNotesAutoSave === 'function') executeNotesAutoSave();
+    }
+    if (id === 'modal-notes') {
+      if (typeof executeNotesAutoSave === 'function') executeNotesAutoSave();
+    }
     document.getElementById(id)?.classList.add('hidden');
     if (id === 'modal-resistances') state.activeResistanceCharId = null;
     if (id === 'modal-buffs-nerfs') state.activeBuffsNerfsCharId = null;
@@ -6735,6 +6763,551 @@
         <p class="app-muted whitespace-pre-line">${escapeHtml(char.history || 'Sem história registrada.')}</p>
       </div>
     `;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Modal: Bloco de Notas & Diário da Ficha (Auto-save + Undo/Redo + Múltiplas Abas)
+  // ---------------------------------------------------------------------------
+  let currentNotesCharId = null;
+  let currentNotesActivePageId = null;
+  let currentNotesPages = [];
+  let notesAutoSaveTimer = null;
+  let notesToolbarInitialized = false;
+
+  function updateNotesCounters() {
+    const editor = document.getElementById('notes-content-editor');
+    if (!editor) return;
+    const text = editor.innerText || '';
+    const trimmed = text.trim();
+    const wordCount = trimmed ? trimmed.split(/\s+/).length : 0;
+    const charCount = text.length;
+    const counterEl = document.getElementById('notes-word-char-counter');
+    if (counterEl) {
+      counterEl.textContent = `${wordCount} palavras • ${charCount} caracteres`;
+    }
+  }
+
+  function saveCurrentEditorToPage() {
+    if (!currentNotesActivePageId) return;
+    const page = currentNotesPages.find((p) => p.id === currentNotesActivePageId);
+    if (!page) return;
+    const editor = document.getElementById('notes-content-editor');
+    if (editor) {
+      page.content = editor.innerHTML;
+      page.updatedAt = new Date().toISOString();
+    }
+  }
+
+  function scheduleNotesAutoSave(delayMs = 600) {
+    const statusEl = document.getElementById('notes-save-status');
+    if (statusEl) {
+      statusEl.innerHTML = '<span class="text-amber-400 flex items-center gap-1 font-bold animate-pulse">● Salvando...</span>';
+    }
+    if (notesAutoSaveTimer) clearTimeout(notesAutoSaveTimer);
+    notesAutoSaveTimer = setTimeout(() => {
+      executeNotesAutoSave();
+    }, delayMs);
+  }
+
+  function executeNotesAutoSave() {
+    if (notesAutoSaveTimer) {
+      clearTimeout(notesAutoSaveTimer);
+      notesAutoSaveTimer = null;
+    }
+    if (!currentNotesCharId) return;
+    const char = state.characters.find((c) => c.id === currentNotesCharId);
+    if (!char) return;
+    const canEdit = isEffectiveMaster() || isCharacterOwner(char);
+    if (!canEdit) return;
+
+    saveCurrentEditorToPage();
+
+    commitMutation(
+      (st) => {
+        const target = st.characters.find((c) => c.id === currentNotesCharId);
+        if (!target) return false;
+        const permitted = isEffectiveMaster() || isCharacterOwner(target);
+        if (!permitted) return false;
+
+        target.notesPages = JSON.parse(JSON.stringify(currentNotesPages));
+        return true;
+      },
+      { action: 'AUTOSAVE_CHARACTER_NOTES', charId: currentNotesCharId }
+    );
+
+    const statusEl = document.getElementById('notes-save-status');
+    if (statusEl) {
+      statusEl.innerHTML = '<span class="text-emerald-400 flex items-center gap-1 font-bold"><iconify-icon icon="game-icons:check-mark"></iconify-icon> Salvo</span>';
+    }
+  }
+
+  function loadActiveNotePage(pageId, canEdit) {
+    currentNotesActivePageId = pageId;
+    const page = currentNotesPages.find((p) => p.id === pageId) || currentNotesPages[0];
+    if (!page) return;
+    const editor = document.getElementById('notes-content-editor');
+    if (!editor) return;
+    editor.innerHTML = page.content || '';
+
+    // Sincronizar checkboxes interativos no DOM
+    editor.querySelectorAll('.note-checkbox').forEach((cb) => {
+      cb.checked = cb.hasAttribute('checked');
+      cb.disabled = !canEdit;
+    });
+
+    updateNotesCounters();
+    renderNotesTabs(canEdit);
+  }
+
+  function renderNotesTabs(canEdit) {
+    const container = document.getElementById('notes-tabs-container');
+    if (!container) return;
+    container.innerHTML = currentNotesPages
+      .map((p) => {
+        const isActive = p.id === currentNotesActivePageId;
+        return `
+          <div class="notes-tab-item flex items-center rounded-t-lg transition border-t border-x ${
+            isActive
+              ? 'notes-tab-btn-active'
+              : 'bg-black/40 border-neutral-800 text-neutral-400 hover:text-neutral-200 hover:bg-neutral-900/60'
+          }">
+            <button
+              type="button"
+              data-notes-tab-id="${escapeHtml(p.id)}"
+              class="px-3 py-1.5 text-xs truncate max-w-[130px] sm:max-w-[180px] text-left"
+              title="${escapeHtml(p.title)}"
+            >
+              ${escapeHtml(p.title)}
+            </button>
+            ${
+              canEdit
+                ? `
+              <div class="flex items-center pr-1.5 gap-0.5">
+                <button
+                  type="button"
+                  data-rename-note-id="${escapeHtml(p.id)}"
+                  class="text-neutral-500 hover:text-amber-400 p-0.5 text-[11px] transition"
+                  title="Renomear página"
+                >
+                  <iconify-icon icon="game-icons:quill-ink"></iconify-icon>
+                </button>
+                ${
+                  currentNotesPages.length > 1
+                    ? `<button
+                        type="button"
+                        data-delete-note-id="${escapeHtml(p.id)}"
+                        class="text-neutral-500 hover:text-rose-400 p-0.5 text-[11px] transition"
+                        title="Excluir página"
+                      >✕</button>`
+                    : ''
+                }
+              </div>
+            `
+                : ''
+            }
+          </div>
+        `;
+      })
+      .join('');
+  }
+
+  function createNewNotePage() {
+    const char = state.characters.find((c) => c.id === currentNotesCharId);
+    const canEdit = isEffectiveMaster() || isCharacterOwner(char);
+    if (!canEdit) return;
+
+    saveCurrentEditorToPage();
+    const newNum = currentNotesPages.length + 1;
+    const newPage = {
+      id: `page_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      title: `Página ${newNum}`,
+      content: '',
+      updatedAt: new Date().toISOString(),
+    };
+    currentNotesPages.push(newPage);
+    currentNotesActivePageId = newPage.id;
+    executeNotesAutoSave();
+    renderNotesTabs(true);
+    loadActiveNotePage(newPage.id, true);
+    document.getElementById('notes-content-editor')?.focus();
+  }
+
+  function initNotesToolbar() {
+    // Comandos de estilo básicos, listas, desfazer e refazer
+    document.querySelectorAll('#notes-toolbar [data-cmd]').forEach((btn) => {
+      btn.addEventListener('mousedown', (e) => e.preventDefault());
+      btn.addEventListener('click', () => {
+        const cmd = btn.getAttribute('data-cmd');
+        if (cmd) {
+          document.execCommand(cmd, false, null);
+          scheduleNotesAutoSave(300);
+          updateNotesCounters();
+        }
+      });
+    });
+
+    // Comandos de blocos (H1, H2, P, BLOCKQUOTE)
+    document.querySelectorAll('#notes-toolbar [data-block]').forEach((btn) => {
+      btn.addEventListener('mousedown', (e) => e.preventDefault());
+      btn.addEventListener('click', () => {
+        const block = btn.getAttribute('data-block');
+        if (block) {
+          document.execCommand('formatBlock', false, `<${block}>`);
+          scheduleNotesAutoSave(300);
+          updateNotesCounters();
+        }
+      });
+    });
+
+    // Checklist interativa
+    const taskBtn = document.getElementById('btn-notes-insert-task');
+    taskBtn?.addEventListener('mousedown', (e) => e.preventDefault());
+    taskBtn?.addEventListener('click', () => {
+      const editor = document.getElementById('notes-content-editor');
+      if (!editor) return;
+      editor.focus();
+      const sel = window.getSelection();
+      if (!sel || !sel.rangeCount) return;
+      const range = sel.getRangeAt(0);
+
+      const taskDiv = document.createElement('div');
+      taskDiv.className = 'note-task flex items-start gap-2 my-1';
+      taskDiv.innerHTML = `<input type="checkbox" class="note-checkbox mt-1 w-4 h-4 rounded cursor-pointer accent-amber-500" /> <span class="note-task-text flex-1 outline-none" contenteditable="true">Nova tarefa</span>`;
+      range.deleteContents();
+      range.insertNode(taskDiv);
+
+      const span = taskDiv.querySelector('.note-task-text');
+      if (span && sel) {
+        const newRange = document.createRange();
+        newRange.selectNodeContents(span);
+        sel.removeAllRanges();
+        sel.addRange(newRange);
+      }
+
+      scheduleNotesAutoSave(200);
+      updateNotesCounters();
+    });
+
+    // Popover de Cor do Texto
+    const colorBtn = document.getElementById('btn-notes-color-menu');
+    const colorPopover = document.getElementById('notes-color-popover');
+    const hlBtn = document.getElementById('btn-notes-hl-menu');
+    const hlPopover = document.getElementById('notes-hl-popover');
+
+    colorBtn?.addEventListener('mousedown', (e) => e.preventDefault());
+    colorBtn?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      hlPopover?.classList.add('hidden');
+      colorPopover?.classList.toggle('hidden');
+    });
+
+    hlBtn?.addEventListener('mousedown', (e) => e.preventDefault());
+    hlBtn?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      colorPopover?.classList.add('hidden');
+      hlPopover?.classList.toggle('hidden');
+    });
+
+    document.querySelectorAll('#notes-color-popover [data-color]').forEach((btn) => {
+      btn.addEventListener('mousedown', (e) => e.preventDefault());
+      btn.addEventListener('click', () => {
+        const color = btn.getAttribute('data-color');
+        if (color) {
+          document.execCommand('foreColor', false, color);
+          colorPopover?.classList.add('hidden');
+          scheduleNotesAutoSave(300);
+        }
+      });
+    });
+
+    document.querySelectorAll('#notes-hl-popover [data-hl]').forEach((btn) => {
+      btn.addEventListener('mousedown', (e) => e.preventDefault());
+      btn.addEventListener('click', () => {
+        const hl = btn.getAttribute('data-hl');
+        if (hl) {
+          document.execCommand('hiliteColor', false, hl);
+          hlPopover?.classList.add('hidden');
+          scheduleNotesAutoSave(300);
+        }
+      });
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('#btn-notes-color-menu') && !e.target.closest('#notes-color-popover')) {
+        colorPopover?.classList.add('hidden');
+      }
+      if (!e.target.closest('#btn-notes-hl-menu') && !e.target.closest('#notes-hl-popover')) {
+        hlPopover?.classList.add('hidden');
+      }
+    });
+
+    // Busca Interna na Nota
+    const notesSearchInput = document.getElementById('notes-search-input');
+    const notesSearchNext = document.getElementById('btn-notes-search-next');
+    const doNotesSearch = (backwards = false) => {
+      const query = (notesSearchInput?.value || '').trim();
+      const statusEl = document.getElementById('notes-search-status');
+      if (!query) {
+        if (statusEl) statusEl.textContent = '';
+        return;
+      }
+      const editor = document.getElementById('notes-content-editor');
+      if (!editor) return;
+      if (typeof window.find === 'function') {
+        let found = window.find(query, false, backwards, true, false, false, false);
+        if (!found) {
+          const sel = window.getSelection();
+          if (sel) {
+            const r = document.createRange();
+            r.selectNodeContents(editor);
+            r.collapse(!backwards);
+            sel.removeAllRanges();
+            sel.addRange(r);
+          }
+          found = window.find(query, false, backwards, true, false, false, false);
+          if (statusEl) statusEl.textContent = found ? '' : '0/0';
+        } else {
+          if (statusEl) statusEl.textContent = '';
+        }
+
+        if (found) {
+          const sel = window.getSelection();
+          if (sel && sel.rangeCount > 0) {
+            const range = sel.getRangeAt(0);
+            const node = range.startContainer;
+            const el = node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement;
+            el?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          }
+        }
+      }
+    };
+
+    notesSearchInput?.addEventListener('input', () => {
+      const query = (notesSearchInput?.value || '').trim();
+      const statusEl = document.getElementById('notes-search-status');
+      if (!query && statusEl) statusEl.textContent = '';
+    });
+    notesSearchInput?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        doNotesSearch(e.shiftKey);
+        notesSearchInput.focus();
+      }
+    });
+    notesSearchNext?.addEventListener('mousedown', (e) => e.preventDefault());
+    notesSearchNext?.addEventListener('click', () => doNotesSearch(false));
+
+    // Editor: eventos de clique em checkbox, tecla Enter na checklist e digitação
+    const editor = document.getElementById('notes-content-editor');
+    editor?.addEventListener('click', (e) => {
+      if (e.target && e.target.classList.contains('note-checkbox')) {
+        const char = state.characters.find((c) => c.id === currentNotesCharId);
+        const canEdit = isEffectiveMaster() || isCharacterOwner(char);
+        if (!canEdit) {
+          e.preventDefault();
+          return;
+        }
+        if (e.target.checked) {
+          e.target.setAttribute('checked', 'checked');
+          e.target.closest('.note-task')?.classList.add('is-done');
+        } else {
+          e.target.removeAttribute('checked');
+          e.target.closest('.note-task')?.classList.remove('is-done');
+        }
+        scheduleNotesAutoSave(100);
+        updateNotesCounters();
+      }
+    });
+
+    editor?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        const sel = window.getSelection();
+        const task = sel?.anchorNode?.parentElement?.closest('.note-task');
+        if (task) {
+          e.preventDefault();
+          const newTask = document.createElement('div');
+          newTask.className = 'note-task flex items-start gap-2 my-1';
+          newTask.innerHTML = `<input type="checkbox" class="note-checkbox mt-1 w-4 h-4 rounded cursor-pointer accent-amber-500" /> <span class="note-task-text flex-1 outline-none" contenteditable="true">&nbsp;</span>`;
+          task.after(newTask);
+          const span = newTask.querySelector('.note-task-text');
+          if (span && sel) {
+            const r = document.createRange();
+            r.selectNodeContents(span);
+            r.collapse(false);
+            sel.removeAllRanges();
+            sel.addRange(r);
+          }
+          scheduleNotesAutoSave(200);
+          updateNotesCounters();
+        }
+      }
+    });
+
+    editor?.addEventListener('input', () => {
+      scheduleNotesAutoSave(600);
+      updateNotesCounters();
+    });
+
+    // Botão de nova página
+    document.getElementById('btn-notes-new-page')?.addEventListener('click', createNewNotePage);
+
+    // Delegação de eventos nas abas (troca, renomear, excluir)
+    const tabsContainer = document.getElementById('notes-tabs-container');
+    tabsContainer?.addEventListener('click', (e) => {
+      const char = state.characters.find((c) => c.id === currentNotesCharId);
+      const canEdit = isEffectiveMaster() || isCharacterOwner(char);
+
+      const tabBtn = e.target.closest('[data-notes-tab-id]');
+      if (tabBtn) {
+        const targetId = tabBtn.getAttribute('data-notes-tab-id');
+        if (targetId && targetId !== currentNotesActivePageId) {
+          if (canEdit) executeNotesAutoSave();
+          loadActiveNotePage(targetId, canEdit);
+        }
+        return;
+      }
+
+      const renameBtn = e.target.closest('[data-rename-note-id]');
+      if (renameBtn && canEdit) {
+        const pageId = renameBtn.getAttribute('data-rename-note-id');
+        const page = currentNotesPages.find((p) => p.id === pageId);
+        if (!page) return;
+
+        const tabItem = renameBtn.closest('.notes-tab-item');
+        if (tabItem) {
+          tabItem.innerHTML = `
+            <input
+              type="text"
+              id="inline-note-rename-input"
+              value="${escapeHtml(page.title)}"
+              class="px-2 py-1 text-xs bg-black/80 border border-amber-500/70 rounded text-amber-200 outline-none w-28 sm:w-36 font-bold"
+            />
+          `;
+          const input = document.getElementById('inline-note-rename-input');
+          if (input) {
+            input.focus();
+            input.select();
+            let finished = false;
+            const finishRename = () => {
+              if (finished) return;
+              finished = true;
+              const newTitle = input.value.trim();
+              if (newTitle) {
+                page.title = newTitle;
+                page.updatedAt = new Date().toISOString();
+                executeNotesAutoSave();
+              }
+              renderNotesTabs(canEdit);
+            };
+            input.addEventListener('blur', finishRename);
+            input.addEventListener('keydown', (ev) => {
+              if (ev.key === 'Enter') {
+                ev.preventDefault();
+                finishRename();
+              } else if (ev.key === 'Escape') {
+                finished = true;
+                renderNotesTabs(canEdit);
+              }
+            });
+          }
+        }
+        return;
+      }
+
+      const deleteBtn = e.target.closest('[data-delete-note-id]');
+      if (deleteBtn && canEdit) {
+        const pageId = deleteBtn.getAttribute('data-delete-note-id');
+        if (currentNotesPages.length <= 1) {
+          showToast('Você deve manter pelo menos uma página de anotações.', 'warning');
+          return;
+        }
+        const page = currentNotesPages.find((p) => p.id === pageId);
+        if (!page) return;
+        openConfirmModal({
+          icon: '<iconify-icon icon="game-icons:trash-can" class="text-rose-500"></iconify-icon>',
+          title: 'EXCLUIR PÁGINA DE NOTAS',
+          message: `Tem certeza que deseja excluir a página "${page.title}"? Todo o conteúdo dela será removido.`,
+          confirmText: 'Excluir Página',
+          onConfirm: () => {
+            currentNotesPages = currentNotesPages.filter((p) => p.id !== pageId);
+            if (currentNotesActivePageId === pageId) {
+              currentNotesActivePageId = currentNotesPages[0].id;
+            }
+            executeNotesAutoSave();
+            renderNotesTabs(canEdit);
+            loadActiveNotePage(currentNotesActivePageId, canEdit);
+          },
+        });
+      }
+    });
+  }
+
+  function openNotesModal(charId) {
+    const char = state.characters.find((c) => c.id === charId);
+    if (!char) return;
+
+    currentNotesCharId = charId;
+    const canEdit = isEffectiveMaster() || isCharacterOwner(char);
+
+    document.getElementById('notes-char-name').textContent = char.name;
+    const badge = document.getElementById('notes-permission-badge');
+    if (badge) {
+      if (canEdit) {
+        badge.className =
+          'px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-950/70 border border-emerald-500/40 text-emerald-300';
+        badge.textContent = isEffectiveMaster() ? 'Modo Mestre (Edição)' : 'Dono da Ficha (Edição)';
+      } else {
+        badge.className =
+          'px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-sky-950/70 border border-sky-500/40 text-sky-300';
+        badge.textContent = 'Modo Somente Leitura';
+      }
+    }
+
+    document.getElementById('notes-toolbar')?.classList.toggle('hidden', !canEdit);
+    document.getElementById('btn-notes-new-page')?.classList.toggle('hidden', !canEdit);
+
+    const editor = document.getElementById('notes-content-editor');
+    if (editor) {
+      editor.setAttribute('contenteditable', canEdit ? 'true' : 'false');
+    }
+
+    if (Array.isArray(char.notesPages) && char.notesPages.length > 0) {
+      currentNotesPages = JSON.parse(JSON.stringify(char.notesPages));
+    } else {
+      const legacy = (char.notes || '').trim();
+      currentNotesPages = [
+        {
+          id: `page_${Date.now()}_1`,
+          title: 'Geral',
+          content: legacy ? `<p>${escapeHtml(legacy).replace(/\n/g, '<br>')}</p>` : '',
+          updatedAt: new Date().toISOString(),
+        },
+      ];
+    }
+
+    if (!currentNotesActivePageId || !currentNotesPages.some((p) => p.id === currentNotesActivePageId)) {
+      currentNotesActivePageId = currentNotesPages[0].id;
+    }
+
+    const statusEl = document.getElementById('notes-save-status');
+    if (statusEl) {
+      statusEl.innerHTML = '<span class="text-emerald-400 flex items-center gap-1 font-bold"><iconify-icon icon="game-icons:check-mark"></iconify-icon> Salvo</span>';
+    }
+
+    const searchInput = document.getElementById('notes-search-input');
+    if (searchInput) searchInput.value = '';
+    const searchStatus = document.getElementById('notes-search-status');
+    if (searchStatus) searchStatus.textContent = '';
+
+    renderNotesTabs(canEdit);
+    loadActiveNotePage(currentNotesActivePageId, canEdit);
+
+    if (!notesToolbarInitialized) {
+      initNotesToolbar();
+      notesToolbarInitialized = true;
+    }
+
+    openModal('modal-notes');
   }
 
   // ---------------------------------------------------------------------------
@@ -8828,6 +9401,7 @@
       else if (action === 'pill-attr') openAttributeModal(charId, btn.getAttribute('data-attr'));
       else if (action === 'pill-regen') triggerInstantManaRegen(charId);
       else if (action === 'pill-reset') requestResetCharacter(charId);
+      else if (action === 'pill-notes') openNotesModal(charId);
       else if (action === 'spend-pa') adjustCharacterPa(charId, -1);
       else if (action === 'adjust-pa') {
         const delta = Number(btn.getAttribute('data-delta') || 0);
@@ -9125,24 +9699,42 @@
       );
     };
 
-    const applyNpcModalTypeFilter = (filterType = 'ALL') => {
-      state.npcModalTypeFilter = filterType;
+    const applyNpcModalFilters = () => {
+      const filterType = state.npcModalTypeFilter || 'ALL';
+      const searchInput = document.getElementById('npc-item-search-input');
+      const query = (searchInput?.value || '').trim().toLowerCase();
+      const clearBtn = document.getElementById('btn-npc-item-search-clear');
+      if (clearBtn) clearBtn.classList.toggle('hidden', !query);
+
       document.querySelectorAll('#npc-modal-type-filters [data-npc-filter]').forEach((btn) => {
         const isActive = btn.getAttribute('data-npc-filter') === filterType;
         btn.className = isActive
           ? 'px-2.5 py-1 rounded-lg text-[11px] font-bold btn-gold'
           : 'px-2.5 py-1 rounded-lg text-[11px] font-bold app-secondary-btn';
       });
+
       document.querySelectorAll('#npc-stock-checklist [data-npc-item-row-type]').forEach((row) => {
         const rowType = row.getAttribute('data-npc-item-row-type');
-        row.classList.toggle('hidden', filterType !== 'ALL' && rowType !== filterType);
+        const rowName = (row.getAttribute('data-npc-item-name') || '').toLowerCase();
+        const matchesType = filterType === 'ALL' || rowType === filterType;
+        const matchesSearch = !query || rowName.includes(query);
+        row.classList.toggle('hidden', !(matchesType && matchesSearch));
       });
     };
 
     document.querySelectorAll('#npc-modal-type-filters [data-npc-filter]').forEach((btn) => {
       btn.addEventListener('click', () => {
-        applyNpcModalTypeFilter(btn.getAttribute('data-npc-filter') || 'ALL');
+        state.npcModalTypeFilter = btn.getAttribute('data-npc-filter') || 'ALL';
+        applyNpcModalFilters();
       });
+    });
+
+    const npcItemSearchInput = document.getElementById('npc-item-search-input');
+    npcItemSearchInput?.addEventListener('input', applyNpcModalFilters);
+    document.getElementById('btn-npc-item-search-clear')?.addEventListener('click', () => {
+      if (npcItemSearchInput) npcItemSearchInput.value = '';
+      applyNpcModalFilters();
+      npcItemSearchInput?.focus();
     });
 
     const openNpcModal = (npc = null) => {
@@ -9163,7 +9755,7 @@
           const hasCustom =
             st && st.customPrice !== undefined && st.customPrice !== null && String(st.customPrice).trim() !== '';
           return `
-          <div data-npc-item-row-type="${escapeHtml(it.tipo)}" class="flex items-center justify-between gap-2 p-2 rounded bg-black/20 hover:bg-amber-500/10">
+          <div data-npc-item-row-type="${escapeHtml(it.tipo)}" data-npc-item-name="${escapeHtml((it.nome || '').toLowerCase())}" class="flex items-center justify-between gap-2 p-2 rounded bg-black/20 hover:bg-amber-500/10">
             <label class="flex items-center gap-2 cursor-pointer flex-1 min-w-0">
               <input type="checkbox" data-npc-item="${escapeHtml(it.id)}" ${st ? 'checked' : ''} />
               <span class="font-bold truncate flex items-center gap-1.5">${ITEM_TYPE_ICONS[it.tipo] || '<iconify-icon icon="game-icons:knapsack"></iconify-icon>'} <span>${escapeHtml(it.nome)}</span> <span class="text-[10px] font-mono app-muted">(Padrão: <iconify-icon icon="game-icons:two-coins" class="icon-gold"></iconify-icon> ${it.preco})</span></span>
@@ -9185,7 +9777,9 @@
         `;
         })
         .join('');
-      applyNpcModalTypeFilter('ALL');
+      state.npcModalTypeFilter = 'ALL';
+      if (npcItemSearchInput) npcItemSearchInput.value = '';
+      applyNpcModalFilters();
       openModal('modal-npc');
     };
 
