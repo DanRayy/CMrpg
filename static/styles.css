@@ -1284,3 +1284,11 @@ html[data-theme="light"] .battle-sidebar {
   font-weight: 700;
   text-align: left;
 }
+
+/* Utilitário de linha truncada para descrições de itens */
+.line-clamp-1 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+}

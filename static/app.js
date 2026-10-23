@@ -2871,6 +2871,22 @@
     return { hpLoss, finalHp: char.hp };
   }
 
+  function checkPendingFreezeTrigger(char, toasts = [], st = null) {
+    if (!char || !char.resistances || !char.resistances['Congelamento']) return;
+    const freezeEntry = char.resistances['Congelamento'];
+    const maxVal = Number(freezeEntry.max || 100);
+    const isImmune = (char.buffsNerfs || []).some(
+      (b) => b.statusKey === 'IMUNIDADE_CONGELAMENTO' || b.name?.includes('Imunidade a Congelamento')
+    );
+    if (!isImmune && maxVal > 0 && Number(freezeEntry.current || 0) >= maxVal) {
+      freezeEntry.current = 0;
+      applyAccumulationTrigger(char, 'Congelamento', maxVal, toasts, st);
+      toasts.push(
+        `A imunidade de ${char.name} cessou e o Congelamento reprimido (${maxVal}/${maxVal}) foi ATIVADO IMEDIATAMENTE!`
+      );
+    }
+  }
+
   function applyAccumulationTrigger(target, resName, maxVal, toasts = [], st = null) {
     if (!target) return;
     if (!Array.isArray(target.buffsNerfs)) target.buffsNerfs = [];
@@ -2884,12 +2900,14 @@
       );
 
       if (existingChamas) {
-        existingChamas.duration = 3;
-        const currentAmp = Number(existingChamas.ampMultiplier || 1);
-        const immediateDmg = Math.round(baseDmg * currentAmp);
-        applyDirectDamageToCombatant(target, immediateDmg, toasts, 'Chamas (Reaplicação)');
+        // Sofrer chamas novamente: avança o dano para o próximo turno e renova a duração para 4 turnos sem dano imediato
+        const prevDmg = Number(existingChamas.currentDmg || baseDmg);
+        const nextDmg = Math.floor((prevDmg + 10) * 1.2);
+        existingChamas.currentDmg = nextDmg;
+        existingChamas.duration = 4;
+        existingChamas.description = `Sofre ${nextDmg} de dano de fogo no fim do turno (+10 e +20% a cada ativação)`;
         toasts.push(
-          `${target.name} sofreu nova ativação de CHAMAS! Duração renovada (3 turnos) e ${immediateDmg} de dano imediato.`
+          `${target.name} sofreu nova ativação de CHAMAS! Duração renovada (4 turnos) e próximo dano aumentado para ${nextDmg} (sem dano imediato).`
         );
       } else {
         target.buffsNerfs.push({
@@ -2897,13 +2915,13 @@
           statusKey: 'CHAMAS',
           type: 'NERF',
           name: 'Chamas (Combustão)',
-          description: `Sofre ${baseDmg} de dano de fogo no fim do turno (+20% a cada ativação)`,
-          duration: 3,
+          description: `Sofre ${baseDmg} de dano de fogo no fim do turno (+10 e +20% a cada ativação)`,
+          duration: 4,
+          currentDmg: baseDmg,
           source: '[Máx] acúmulos de chamas',
-          ampMultiplier: 1.0,
           createdAt: Date.now(),
         });
-        toasts.push(`${target.name} entrou em combustão (CHAMAS)! 3 turnos, dano no fim do turno.`);
+        toasts.push(`${target.name} entrou em combustão (CHAMAS)! 4 turnos, ${baseDmg} de dano inicial no fim do turno.`);
       }
     } else if (resName === 'Congelamento') {
       target.buffsNerfs.push({
@@ -2941,37 +2959,53 @@
         `${target.name} sofreu Hemorragia de SANGRAMENTO! ${bleedDmg} de dano direto na vida (${Math.round(pct * 100)}% do HP Máx).`
       );
     } else if (resName === 'Veneno') {
-      target.buffsNerfs.push({
-        id: `bn_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
-        statusKey: 'VENENO',
-        type: 'NERF',
-        name: 'Veneno Letal',
-        description: `Sofre ${isEnemy ? '5%' : '10%'} do HP Máx direto na Vida no início do turno por 3 turnos`,
-        duration: 3,
-        source: '[Máx] acúmulos de veneno',
-        createdAt: Date.now(),
-      });
-      toasts.push(
-        `${target.name} foi INTOXICADO por Veneno! Sofrerá ${isEnemy ? '5%' : '10%'} de dano na Vida no início dos próximos 3 turnos.`
+      const existingVeneno = target.buffsNerfs.find(
+        (e) => e.statusKey === 'VENENO' || e.name?.includes('Veneno')
       );
+      if (existingVeneno) {
+        existingVeneno.duration = 3;
+        toasts.push(`${target.name} sofreu nova intoxicação por Veneno! Duração renovada para 3 turnos.`);
+      } else {
+        target.buffsNerfs.push({
+          id: `bn_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+          statusKey: 'VENENO',
+          type: 'NERF',
+          name: 'Veneno Letal',
+          description: `Sofre ${isEnemy ? '5%' : '10%'} do HP Máx direto na Vida no início do turno por 3 turnos`,
+          duration: 3,
+          source: '[Máx] acúmulos de veneno',
+          createdAt: Date.now(),
+        });
+        toasts.push(
+          `${target.name} foi INTOXICADO por Veneno! Sofrerá ${isEnemy ? '5%' : '10%'} de dano na Vida no início dos próximos 3 turnos.`
+        );
+      }
     } else if (resName === 'Atordoamento') {
-      target.buffsNerfs.push({
-        id: `bn_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
-        statusKey: 'ATORDOAMENTO',
-        type: 'NERF',
-        name: 'Atordoamento',
-        description: '-1 PA por 2 turnos',
-        duration: 2,
-        paModifier: -1,
-        source: '[Máx] acúmulos de atordoamento',
-        createdAt: Date.now(),
-      });
+      const existingAtordoamento = target.buffsNerfs.find(
+        (e) => e.statusKey === 'ATORDOAMENTO' || e.name?.includes('Atordoamento')
+      );
+      if (existingAtordoamento) {
+        existingAtordoamento.duration = 2;
+        toasts.push(`${target.name} sofreu novo Atordoamento! Duração renovada para 2 turnos.`);
+      } else {
+        target.buffsNerfs.push({
+          id: `bn_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+          statusKey: 'ATORDOAMENTO',
+          type: 'NERF',
+          name: 'Atordoamento',
+          description: '-1 PA por 2 turnos',
+          duration: 2,
+          paModifier: -1,
+          source: '[Máx] acúmulos de atordoamento',
+          createdAt: Date.now(),
+        });
+        toasts.push(`${target.name} está ATORDOADO! -1 PA por 2 turnos.`);
+      }
       const penalty = calculateCombatantPaPenalty(target);
       const maxAvailable = Math.max(0, (target.baseMaxPa || 3) - penalty);
       if (target.pa > maxAvailable) {
         target.pa = maxAvailable;
       }
-      toasts.push(`${target.name} está ATORDOADO! -1 PA por 2 turnos.`);
     } else {
       target.buffsNerfs.push({
         id: `bn_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
@@ -3111,25 +3145,44 @@
       );
     }
 
-    // 2. Reduz em 1 a duração de todos os Buffs e Nerfs temporários do combatente NO INÍCIO DO TURNO
-    if (Array.isArray(actingChar.buffsNerfs)) {
-      actingChar.buffsNerfs.forEach((eff) => {
-        if (Number.isFinite(Number(eff.duration)) && Number(eff.duration) > 0) {
-          eff.duration = Number(eff.duration) - 1;
-        }
-      });
-      const prevCount = actingChar.buffsNerfs.length;
-      actingChar.buffsNerfs = actingChar.buffsNerfs.filter(
-        (eff) => !Number.isFinite(Number(eff.duration)) || Number(eff.duration) > 0
-      );
-      if (actingChar.buffsNerfs.length < prevCount) {
-        toasts.push(`Efeitos temporários de ${actingChar.name} expiraram no início do turno.`);
-      }
-    }
-
-    // 3. Se ainda estiver vivo após Veneno/expirações:
+    // 2. Se ainda estiver vivo após Veneno/expirações:
     if (Number(actingChar.hp || 0) > 0 && !actingChar.isDead) {
-      // Regeneração Automática de Mana no início do turno: Math.round(Mana_Max * (Regen_Percent / 100))
+      // 2.1 Reset Automático de PA no Início do Turno (descontando penalidades ativas, ex: Atordoamento)
+      resetTurnCombatantPa(actingChar);
+
+      // 2.2 Reduz em 1 a duração dos Buffs e Nerfs temporários no INÍCIO DO TURNO
+      // (EXCETO efeitos de fim de turno como CHAMAS, que reduzem no fim do turno após aplicar dano)
+      if (Array.isArray(actingChar.buffsNerfs)) {
+        const hadFreezeImmunity = actingChar.buffsNerfs.some(
+          (eff) => eff.statusKey === 'IMUNIDADE_CONGELAMENTO' || eff.name?.includes('Imunidade a Congelamento')
+        );
+
+        actingChar.buffsNerfs.forEach((eff) => {
+          if (eff.statusKey === 'CHAMAS') return; // Chamas é deduzido no fim do turno
+          if (Number.isFinite(Number(eff.duration)) && Number(eff.duration) > 0) {
+            eff.duration = Number(eff.duration) - 1;
+          }
+        });
+
+        const prevCount = actingChar.buffsNerfs.length;
+        actingChar.buffsNerfs = actingChar.buffsNerfs.filter(
+          (eff) => !Number.isFinite(Number(eff.duration)) || Number(eff.duration) > 0
+        );
+
+        if (actingChar.buffsNerfs.length < prevCount) {
+          toasts.push(`Efeitos temporários de ${actingChar.name} expiraram no início do turno.`);
+        }
+
+        // Se a imunidade a congelamento acabou de expirar, checa se havia Congelamento reprimido
+        const stillImmune = actingChar.buffsNerfs.some(
+          (eff) => eff.statusKey === 'IMUNIDADE_CONGELAMENTO' || eff.name?.includes('Imunidade a Congelamento')
+        );
+        if (hadFreezeImmunity && !stillImmune) {
+          checkPendingFreezeTrigger(actingChar, toasts, st);
+        }
+      }
+
+      // 2.3 Regeneração Automática de Mana no início do turno: Math.round(Mana_Max * (Regen_Percent / 100))
       recalculateCharacterDerived(actingChar);
       const maxMana = Number(actingChar.maxMana || 0);
       const regenPct = Number(actingChar.regen || 0);
@@ -3148,9 +3201,6 @@
       if (regenArmadura > 0 && actingChar.armor < actingChar.maxArmor) {
         actingChar.armor = Math.min(actingChar.maxArmor, actingChar.armor + regenArmadura);
       }
-
-      // 4. Reset Automático de PA no Início do Turno (descontando nerfs de PA, ex: Atordoamento)
-      resetTurnCombatantPa(actingChar);
     } else {
       actingChar.isDead = true;
       actingChar.pa = 0;
@@ -3181,21 +3231,32 @@
       // 1. Efeitos de FIM DE TURNO de finishingChar:
       if (finishingChar && Number(finishingChar.hp || 0) > 0 && !finishingChar.isDead) {
         // Dano de Chamas no fim do turno: 15 + (2 * Nivel), reduz armadura primeiro, depois vida.
-        // Amplificação progressiva: +20% a cada dano de fim de turno sofrido.
+        // A cada dano sofrido, o próximo aumenta em 10 + 20%.
         const chamasEff = (finishingChar.buffsNerfs || []).find(
           (e) => e.statusKey === 'CHAMAS' || e.name?.includes('Chamas')
         );
         if (chamasEff) {
           const lvl = Math.max(1, Number(finishingChar.level || 1));
           const baseDmg = 15 + 2 * lvl;
-          const amp = Number(chamasEff.ampMultiplier || 1);
-          const finalDmg = Math.round(baseDmg * amp);
-          applyDirectDamageToCombatant(finishingChar, finalDmg, toasts, 'Chamas (Fim de Turno)');
-          chamasEff.ampMultiplier = Number((amp + 0.20).toFixed(2));
-          chamasEff.description = `Sofre ${Math.round(baseDmg * chamasEff.ampMultiplier)} de dano de fogo no fim do turno (+20% acumulado)`;
-          toasts.push(
-            `${finishingChar.name} sofreu ${finalDmg} de dano por Chamas no fim do turno! Próximo dano amplificado em +20% (x${chamasEff.ampMultiplier}).`
-          );
+          const currentDmg = Math.max(1, Number(chamasEff.currentDmg || baseDmg));
+
+          applyDirectDamageToCombatant(finishingChar, currentDmg, toasts, 'Chamas (Fim de Turno)');
+
+          const nextDmg = Math.floor((currentDmg + 10) * 1.2);
+          chamasEff.currentDmg = nextDmg;
+          chamasEff.duration = Math.max(0, Number(chamasEff.duration || 1) - 1);
+          chamasEff.description = `Sofre ${nextDmg} de dano de fogo no fim do turno (+10 e +20% a cada ativação)`;
+
+          if (chamasEff.duration <= 0) {
+            finishingChar.buffsNerfs = finishingChar.buffsNerfs.filter((e) => e !== chamasEff);
+            toasts.push(
+              `${finishingChar.name} sofreu ${currentDmg} de dano por Chamas no fim do turno! As chamas se extinguiram.`
+            );
+          } else {
+            toasts.push(
+              `${finishingChar.name} sofreu ${currentDmg} de dano por Chamas no fim do turno! Próximo dano aumentado para ${nextDmg} (${chamasEff.duration} turno(s) restante(s)).`
+            );
+          }
         }
       }
 
@@ -3241,7 +3302,7 @@
             statusKey: 'IMUNIDADE_CONGELAMENTO',
             type: 'BUFF',
             name: 'Imunidade a Congelamento',
-            description: 'Imune ao ganho de acúmulos de Congelamento por 1 turno.',
+            description: 'Imune a Congelamento por 1 turno (acúmulos são retidos no máximo até o término da imunidade).',
             duration: 1,
             source: 'Pós-Congelamento',
             createdAt: Date.now(),
@@ -4519,7 +4580,18 @@
               </span>
             </div>
 
-            <p class="text-xs app-muted leading-relaxed item-description">${escapeHtml(it.descricao || 'Sem descrição.')}</p>
+            ${
+              it.descricao
+                ? (it.descricao.length > 70
+                    ? `<div class="mt-1">
+                        <p id="cat-desc-${escapeHtml(it.id)}" class="text-xs app-muted leading-relaxed item-description line-clamp-1">${escapeHtml(it.descricao)}</p>
+                        <button type="button" data-toggle-desc="cat-desc-${escapeHtml(it.id)}" class="text-[10px] font-bold text-amber-400 hover:text-amber-300 flex items-center gap-1 mt-0.5" title="Ver descrição completa">
+                          <iconify-icon icon="game-icons:magnifying-glass" class="text-xs"></iconify-icon> <span>Ver descrição</span>
+                        </button>
+                      </div>`
+                    : `<p class="text-xs app-muted leading-relaxed item-description">${escapeHtml(it.descricao)}</p>`)
+                : '<p class="text-xs app-muted italic">Sem descrição.</p>'
+            }
 
             ${effectsHtml}
 
@@ -4702,7 +4774,18 @@
                 }
               </div>
             </div>
-            <p class="text-xs app-muted mt-2 item-description">${escapeHtml(item.descricao || '')}</p>
+            ${
+              item.descricao
+                ? (item.descricao.length > 70
+                    ? `<div class="mt-2">
+                        <p id="shop-desc-${escapeHtml(item.id)}" class="text-xs app-muted item-description line-clamp-1 leading-relaxed">${escapeHtml(item.descricao)}</p>
+                        <button type="button" data-toggle-desc="shop-desc-${escapeHtml(item.id)}" class="text-[10px] font-bold text-amber-400 hover:text-amber-300 flex items-center gap-1 mt-0.5" title="Ver descrição completa">
+                          <iconify-icon icon="game-icons:magnifying-glass" class="text-xs"></iconify-icon> <span>Ver descrição</span>
+                        </button>
+                      </div>`
+                    : `<p class="text-xs app-muted mt-2 item-description leading-relaxed">${escapeHtml(item.descricao)}</p>`)
+                : ''
+            }
           </div>
 
           <div class="space-y-2 pt-2 border-t app-divider-border">
@@ -6278,17 +6361,6 @@
       const target = st.characters.find((c) => c.id === charId);
       if (!target || !target.resistances?.[resName]) return false;
 
-      // 1. Checagem de Imunidade a Congelamento
-      if (resName === 'Congelamento' && (op === 'add' || op === 'set') && val > 0) {
-        const isImmune = (target.buffsNerfs || []).some(
-          (b) => b.statusKey === 'IMUNIDADE_CONGELAMENTO' || b.name?.includes('Imunidade a Congelamento')
-        );
-        if (isImmune) {
-          toasts.push(`${target.name} está IMUNE a Congelamento por 1 turno! Nenhum acúmulo adicionado.`);
-          return true;
-        }
-      }
-
       const entry = target.resistances[resName];
       const oldVal = Number(entry.current || 0);
       const maxVal = Number(entry.max || 100);
@@ -6297,6 +6369,26 @@
       if (op === 'add') nextVal = oldVal + val;
       else if (op === 'sub') nextVal = Math.max(0, oldVal - val);
       else if (op === 'set') nextVal = Math.max(0, val);
+
+      // Checagem de Imunidade a Congelamento:
+      // Enquanto imune, pode receber acúmulos normalmente, mas eles travam no máximo até a imunidade cessar
+      const isImmuneToFreeze =
+        resName === 'Congelamento' &&
+        (target.buffsNerfs || []).some(
+          (b) => b.statusKey === 'IMUNIDADE_CONGELAMENTO' || b.name?.includes('Imunidade a Congelamento')
+        );
+
+      if (isImmuneToFreeze) {
+        if (maxVal > 0 && nextVal >= maxVal) {
+          entry.current = maxVal;
+          toasts.push(
+            `${target.name} atingiu o limite de acúmulos de Congelamento (${maxVal}/${maxVal}), mas está IMUNE! O efeito será ativado assim que a imunidade expirar.`
+          );
+        } else {
+          entry.current = nextVal;
+        }
+        return true;
+      }
 
       // Rollover / Overflow: dispara efeito se atingir ou ultrapassar o teto e mantém o resto
       if (maxVal > 0 && nextVal >= maxVal) {
@@ -6459,6 +6551,9 @@
       char.buffsNerfs = char.buffsNerfs.filter((e) => e.id !== effectId);
       if (eff) {
         toasts.push(`Efeito "${eff.name || eff.description}" removido de ${char.name}.`);
+        if (eff.statusKey === 'IMUNIDADE_CONGELAMENTO' || eff.name?.includes('Imunidade a Congelamento')) {
+          checkPendingFreezeTrigger(char, toasts, st);
+        }
       }
       return true;
     });
@@ -7569,7 +7664,14 @@
 
               ${
                 tpl.descricao
-                  ? `<p class="text-[11px] app-muted item-description">${escapeHtml(tpl.descricao)}</p>`
+                  ? (tpl.descricao.length > 60
+                      ? `<div class="mt-1">
+                          <p id="inv-desc-${escapeHtml(inv.id)}" class="text-[11px] app-muted item-description line-clamp-1 leading-relaxed">${escapeHtml(tpl.descricao)}</p>
+                          <button type="button" data-toggle-desc="inv-desc-${escapeHtml(inv.id)}" class="text-[10px] font-bold text-amber-400 hover:text-amber-300 flex items-center gap-1 mt-0.5" title="Ver descrição completa">
+                            <iconify-icon icon="game-icons:magnifying-glass" class="text-xs"></iconify-icon> <span>Ver descrição</span>
+                          </button>
+                        </div>`
+                      : `<p class="text-[11px] app-muted item-description leading-relaxed">${escapeHtml(tpl.descricao)}</p>`)
                   : ''
               }
 
@@ -8550,6 +8652,23 @@
 
     // Alternar Tema
     document.getElementById('btn-theme-toggle')?.addEventListener('click', toggleTheme);
+
+    // Toggle de Descrições Longas de Itens
+    document.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-toggle-desc]');
+      if (!btn) return;
+      const targetId = btn.getAttribute('data-toggle-desc');
+      const p = document.getElementById(targetId);
+      if (!p) return;
+      const isClamped = p.classList.contains('line-clamp-1');
+      if (isClamped) {
+        p.classList.remove('line-clamp-1');
+        btn.innerHTML = '<iconify-icon icon="game-icons:plain-arrow" class="text-xs rotate-180"></iconify-icon> <span>Ocultar descrição</span>';
+      } else {
+        p.classList.add('line-clamp-1');
+        btn.innerHTML = '<iconify-icon icon="game-icons:magnifying-glass" class="text-xs"></iconify-icon> <span>Ver descrição</span>';
+      }
+    });
 
     // Alternar Simulação Mestre / Jogador (apenas para o Host)
     document.getElementById('btn-role-badge')?.addEventListener('click', () => {
