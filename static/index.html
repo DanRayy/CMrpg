@@ -2485,6 +2485,24 @@
           </div>
         </div>
 
+        <!-- Resistências Visuais da Ficha em Porcentagem (%) -->
+        <div class="p-3.5 rounded-xl bg-black/25 border app-divider-border space-y-2.5">
+          <div class="flex items-center justify-between">
+            <div>
+              <h4 class="font-serif-fantasy font-extrabold uppercase tracking-wider gold-title">
+                <iconify-icon icon="game-icons:breastplate" class="icon-armor"></iconify-icon> <span>Resistências da Ficha (% Visual: Físico, Mágico, Pyro, Cryo, Elétrico, Profano, Sacro)</span>
+              </h4>
+              <p class="text-[11px] app-muted">
+                Valores visuais em porcentagem (%) exibidos diretamente na Ficha Completa do personagem.
+              </p>
+            </div>
+            <button type="button" id="btn-reset-enemy-elem-res-defaults" class="text-[11px] font-bold gold-title hover:underline">
+              Zerar (0%)
+            </button>
+          </div>
+          <div id="enemy-form-elem-resistances-grid" class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2"></div>
+        </div>
+
         <!-- Limites Máximos dos 7 Acúmulos de Status -->
         <div>
           <h4 class="font-serif-fantasy font-extrabold uppercase tracking-wider app-muted mb-2">
@@ -2801,7 +2819,7 @@
       </div>
 
       <!-- Barra de Ferramentas Rich Text (Visível apenas em modo edição) -->
-      <div id="notes-toolbar" class="px-3 py-2 border-b border-app-divider-border bg-black/30 flex items-center gap-1.5 shrink-0 text-xs overflow-x-auto">
+      <div id="notes-toolbar" class="px-3 py-2 border-b border-app-divider-border bg-black/30 flex flex-wrap items-center gap-1.5 gap-y-2 shrink-0 text-xs relative z-30 !overflow-visible">
         <!-- Grupo 1: Estilos Básicos -->
         <div class="flex items-center bg-black/30 rounded-lg p-0.5 border border-neutral-800 shrink-0">
           <button type="button" data-cmd="bold" class="notes-tool-btn px-2 py-1 rounded font-bold hover:bg-neutral-800 hover:text-amber-300" title="Negrito (Ctrl+B)">B</button>
@@ -2842,12 +2860,12 @@
         <!-- Grupo 4: Cores de Texto e Marca-texto -->
         <div class="flex items-center gap-1 shrink-0">
           <!-- Popover Seletor de Cor de Texto -->
-          <div class="relative">
+          <div class="relative notes-dropdown-container">
             <button type="button" id="btn-notes-color-menu" class="notes-tool-btn px-2 py-1 rounded bg-black/30 border border-neutral-800 hover:bg-neutral-800 flex items-center gap-1" title="Cor do Texto">
               <span class="font-bold underline decoration-amber-400 decoration-2">A</span>
               <span class="text-[9px]">▼</span>
             </button>
-            <div id="notes-color-popover" class="hidden absolute top-full left-0 mt-1 z-30 p-2 rounded-xl bg-neutral-900 border border-neutral-700 shadow-xl grid grid-cols-4 gap-1.5 w-32">
+            <div id="notes-color-popover" class="hidden absolute grid grid-cols-4 gap-1.5 w-[136px]">
               <button type="button" data-color="#ffffff" class="w-6 h-6 rounded-full bg-white border border-neutral-500 hover:scale-110 transition" title="Branco"></button>
               <button type="button" data-color="#f59e0b" class="w-6 h-6 rounded-full bg-amber-500 border border-amber-300 hover:scale-110 transition" title="Dourado"></button>
               <button type="button" data-color="#ef4444" class="w-6 h-6 rounded-full bg-red-500 border border-red-300 hover:scale-110 transition" title="Vermelho"></button>
@@ -2860,12 +2878,12 @@
           </div>
 
           <!-- Popover Marca-texto / Destaque -->
-          <div class="relative">
+          <div class="relative notes-dropdown-container">
             <button type="button" id="btn-notes-hl-menu" class="notes-tool-btn px-2 py-1 rounded bg-black/30 border border-neutral-800 hover:bg-neutral-800 flex items-center gap-1" title="Cor de Destaque / Marca-texto">
               <span class="bg-amber-500/40 px-1 rounded text-amber-200 font-bold text-[11px]">H</span>
               <span class="text-[9px]">▼</span>
             </button>
-            <div id="notes-hl-popover" class="hidden absolute top-full left-0 mt-1 z-30 p-2 rounded-xl bg-neutral-900 border border-neutral-700 shadow-xl grid grid-cols-3 gap-1.5 w-28">
+            <div id="notes-hl-popover" class="hidden absolute grid grid-cols-3 gap-1.5 w-[108px]">
               <button type="button" data-hl="#854d0e" class="w-6 h-6 rounded bg-amber-900 border border-amber-600 hover:scale-110 transition" title="Dourado Escuro"></button>
               <button type="button" data-hl="#064e3b" class="w-6 h-6 rounded bg-emerald-950 border border-emerald-600 hover:scale-110 transition" title="Verde Escuro"></button>
               <button type="button" data-hl="#1e3a5f" class="w-6 h-6 rounded bg-sky-950 border border-sky-600 hover:scale-110 transition" title="Azul Escuro"></button>

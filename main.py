@@ -745,7 +745,7 @@ def build_default_campaign_state() -> Dict[str, Any]:
                     "atordoamento": {"current": 0, "max": 120},
                     "cegueira": {"current": 0, "max": 100},
                 },
-                "elementalResistances": {"Físico": 20, "Mágico": 0, "Pyro": 50, "Cryo": -20, "Elétrico": 0, "Profano": 0, "Sacro": 0},
+                "elementalResistances": {"FISICO": 20, "MAGICO": 0, "PYRO": 50, "CRYO": -20, "ELETRICO": 0, "PROFANO": 0, "SACRO": 0},
             },
             {
                 "id": "bestiary_lobo_cinzento",
@@ -771,7 +771,7 @@ def build_default_campaign_state() -> Dict[str, Any]:
                     "atordoamento": {"current": 0, "max": 100},
                     "cegueira": {"current": 0, "max": 100},
                 },
-                "elementalResistances": {"Físico": 0, "Mágico": 0, "Pyro": -10, "Cryo": 20, "Elétrico": 0, "Profano": 0, "Sacro": 0},
+                "elementalResistances": {"FISICO": 0, "MAGICO": 0, "PYRO": -10, "CRYO": 20, "ELETRICO": 0, "PROFANO": 0, "SACRO": 0},
             }
         ],
         "battle": {
@@ -942,7 +942,13 @@ def normalize_character(
     raw_elem = char.get("elementalResistances") or {}
     norm_elem: Dict[str, float] = {}
     for ek in elem_keys:
-        val_f = float(raw_elem.get(ek, 0))
+        val_raw = raw_elem.get(ek)
+        if val_raw is None:
+            for k, v in raw_elem.items():
+                if str(k).upper().replace("Í", "I").replace("É", "E") == ek:
+                    val_raw = v
+                    break
+        val_f = float(val_raw or 0)
         norm_elem[ek] = int(val_f) if val_f.is_integer() else round(val_f, 1)
     char["elementalResistances"] = norm_elem
 
@@ -1217,6 +1223,20 @@ class StateManager:
                 it["effects"] = [{"targetStat": "REGEN_MANA", "modifierType": "PERCENT", "value": 20, "durationTurns": None}]
         chars = self.state.get("characters") or []
         self.state["characters"] = [normalize_character(c, catalog, room) for c in chars]
+        for b in self.state.get("bestiary") or []:
+            if isinstance(b, dict):
+                raw_elem = b.get("elementalResistances") or {}
+                norm_elem: Dict[str, float] = {}
+                for ek in elem_keys:
+                    val_raw = raw_elem.get(ek)
+                    if val_raw is None:
+                        for k, v in raw_elem.items():
+                            if str(k).upper().replace("Í", "I").replace("É", "E") == ek:
+                                val_raw = v
+                                break
+                    val_f = float(val_raw or 0)
+                    norm_elem[ek] = int(val_f) if val_f.is_integer() else round(val_f, 1)
+                b["elementalResistances"] = norm_elem
         self.state["members"] = normalize_members_list(self.state.get("members") or [])
         self._apply_live_connections_to_members()
 

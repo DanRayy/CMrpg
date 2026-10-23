@@ -512,7 +512,11 @@
     let effRedPct = Math.max(0, Math.min(100, applyRounding(char.baseDamageReductionPercent)));
 
     const isFrozen = (char.buffsNerfs || []).some(
-      (b) => b.statusKey === 'CONGELAMENTO' || b.name?.includes('Congelamento')
+      (b) =>
+        b.statusKey === 'CONGELAMENTO' ||
+        (b.name?.includes('Congelamento') &&
+          b.statusKey !== 'IMUNIDADE_CONGELAMENTO' &&
+          !b.name?.toLowerCase().includes('imunidade'))
     );
     if (isFrozen) {
       effResPct = Math.min(100, effResPct + 25);
@@ -2876,7 +2880,7 @@
     const freezeEntry = char.resistances['Congelamento'];
     const maxVal = Number(freezeEntry.max || 100);
     const isImmune = (char.buffsNerfs || []).some(
-      (b) => b.statusKey === 'IMUNIDADE_CONGELAMENTO' || b.name?.includes('Imunidade a Congelamento')
+      (b) => b.statusKey === 'IMUNIDADE_CONGELAMENTO' || b.name?.toLowerCase().includes('imunidade a congelamento')
     );
     if (!isImmune && maxVal > 0 && Number(freezeEntry.current || 0) >= maxVal) {
       freezeEntry.current = 0;
@@ -2900,14 +2904,14 @@
       );
 
       if (existingChamas) {
-        // Sofrer chamas novamente: avança o dano para o próximo turno e renova a duração para 4 turnos sem dano imediato
+        // Sofrer chamas novamente: avança o dano para o próximo turno e renova a duração para 3 turnos sem dano imediato
         const prevDmg = Number(existingChamas.currentDmg || baseDmg);
         const nextDmg = Math.floor((prevDmg + 10) * 1.2);
         existingChamas.currentDmg = nextDmg;
-        existingChamas.duration = 4;
+        existingChamas.duration = 3;
         existingChamas.description = `Sofre ${nextDmg} de dano de fogo no fim do turno (+10 e +20% a cada ativação)`;
         toasts.push(
-          `${target.name} sofreu nova ativação de CHAMAS! Duração renovada (4 turnos) e próximo dano aumentado para ${nextDmg} (sem dano imediato).`
+          `${target.name} sofreu nova ativação de CHAMAS! Duração renovada (3 turnos) e próximo dano aumentado para ${nextDmg} (sem dano imediato).`
         );
       } else {
         target.buffsNerfs.push({
@@ -2916,12 +2920,12 @@
           type: 'NERF',
           name: 'Chamas (Combustão)',
           description: `Sofre ${baseDmg} de dano de fogo no fim do turno (+10 e +20% a cada ativação)`,
-          duration: 4,
+          duration: 3,
           currentDmg: baseDmg,
           source: '[Máx] acúmulos de chamas',
           createdAt: Date.now(),
         });
-        toasts.push(`${target.name} entrou em combustão (CHAMAS)! 4 turnos, ${baseDmg} de dano inicial no fim do turno.`);
+        toasts.push(`${target.name} entrou em combustão (CHAMAS)! 3 turnos, ${baseDmg} de dano inicial no fim do turno.`);
       }
     } else if (resName === 'Congelamento') {
       target.buffsNerfs.push({
@@ -3154,11 +3158,11 @@
       // (EXCETO efeitos de fim de turno como CHAMAS, que reduzem no fim do turno após aplicar dano)
       if (Array.isArray(actingChar.buffsNerfs)) {
         const hadFreezeImmunity = actingChar.buffsNerfs.some(
-          (eff) => eff.statusKey === 'IMUNIDADE_CONGELAMENTO' || eff.name?.includes('Imunidade a Congelamento')
+          (eff) => eff.statusKey === 'IMUNIDADE_CONGELAMENTO' || eff.name?.toLowerCase().includes('imunidade a congelamento')
         );
 
         actingChar.buffsNerfs.forEach((eff) => {
-          if (eff.statusKey === 'CHAMAS') return; // Chamas é deduzido no fim do turno
+          if (eff.statusKey === 'CHAMAS' || eff.name?.includes('Chamas')) return; // Chamas é deduzido no fim do turno
           if (Number.isFinite(Number(eff.duration)) && Number(eff.duration) > 0) {
             eff.duration = Number(eff.duration) - 1;
           }
@@ -3175,10 +3179,34 @@
 
         // Se a imunidade a congelamento acabou de expirar, checa se havia Congelamento reprimido
         const stillImmune = actingChar.buffsNerfs.some(
-          (eff) => eff.statusKey === 'IMUNIDADE_CONGELAMENTO' || eff.name?.includes('Imunidade a Congelamento')
+          (eff) => eff.statusKey === 'IMUNIDADE_CONGELAMENTO' || eff.name?.toLowerCase().includes('imunidade a congelamento')
         );
         if (hadFreezeImmunity && !stillImmune) {
           checkPendingFreezeTrigger(actingChar, toasts, st);
+          // Se foi congelado imediatamente após expirar a imunidade, perde este turno
+          const justFrozen = (actingChar.buffsNerfs || []).find(
+            (eff) =>
+              eff.statusKey === 'CONGELAMENTO' ||
+              (eff.name?.includes('Congelamento') &&
+                eff.statusKey !== 'IMUNIDADE_CONGELAMENTO' &&
+                !eff.name?.toLowerCase().includes('imunidade'))
+          );
+          if (justFrozen) {
+            actingChar.buffsNerfs = actingChar.buffsNerfs.filter((e) => e !== justFrozen);
+            actingChar.buffsNerfs.push({
+              id: `bn_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+              statusKey: 'IMUNIDADE_CONGELAMENTO',
+              type: 'BUFF',
+              name: 'Imunidade a Congelamento',
+              description: 'Imune a Congelamento por 1 turno (acúmulos são retidos no máximo até o término da imunidade).',
+              duration: 1,
+              source: 'Pós-Congelamento',
+              createdAt: Date.now(),
+            });
+            actingChar.pa = 0;
+            recalculateCharacterDerived(actingChar);
+            toasts.push(`${actingChar.name} está CONGELADO e perdeu o turno! Ganhou Imunidade a Congelamento por 1 turno.`);
+          }
         }
       }
 
@@ -3272,6 +3300,7 @@
       let foundActingChar = null;
       let loops = 0;
       const maxLoops = len + 1;
+      const skippedInThisAdvance = new Set();
 
       while (loops < maxLoops) {
         nextIdx = (nextIdx + 1) % len;
@@ -3290,9 +3319,45 @@
           continue;
         }
 
+        if (skippedInThisAdvance.has(candidate.id)) {
+          continue;
+        }
+
+        // Se o combatente tem imunidade a congelamento e acúmulos de Congelamento represados no máximo:
+        // A imunidade cessa agora no início do turno dele, o congelamento ativa e o turno é pulado!
+        const hadImmunity = (candidate.buffsNerfs || []).some(
+          (b) => b.statusKey === 'IMUNIDADE_CONGELAMENTO' || b.name?.toLowerCase().includes('imunidade a congelamento')
+        );
+        const freezeEntry = candidate.resistances?.['Congelamento'];
+        const freezeMax = Number(freezeEntry?.max || 100);
+        if (hadImmunity && freezeMax > 0 && Number(freezeEntry?.current || 0) >= freezeMax) {
+          candidate.buffsNerfs = (candidate.buffsNerfs || []).filter(
+            (b) => b.statusKey !== 'IMUNIDADE_CONGELAMENTO' && !b.name?.toLowerCase().includes('imunidade a congelamento')
+          );
+          freezeEntry.current = 0;
+          candidate.buffsNerfs.push({
+            id: `bn_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+            statusKey: 'IMUNIDADE_CONGELAMENTO',
+            type: 'BUFF',
+            name: 'Imunidade a Congelamento',
+            description: 'Imune a Congelamento por 1 turno (acúmulos são retidos no máximo até o término da imunidade).',
+            duration: 1,
+            source: 'Pós-Congelamento',
+            createdAt: Date.now(),
+          });
+          recalculateCharacterDerived(candidate);
+          toasts.push(`A imunidade de ${candidate.name} cessou e o Congelamento reprimido (${freezeMax}/${freezeMax}) foi ativado! Turno pulado.`);
+          skippedInThisAdvance.add(candidate.id);
+          continue;
+        }
+
         // Combatente vivo: checa se está Congelado
         const frozenIdx = (candidate.buffsNerfs || []).findIndex(
-          (eff) => eff.statusKey === 'CONGELAMENTO' || eff.name?.includes('Congelamento')
+          (eff) =>
+            eff.statusKey === 'CONGELAMENTO' ||
+            (eff.name?.includes('Congelamento') &&
+              eff.statusKey !== 'IMUNIDADE_CONGELAMENTO' &&
+              !eff.name?.toLowerCase().includes('imunidade'))
         );
         if (frozenIdx !== -1) {
           candidate.buffsNerfs.splice(frozenIdx, 1);
@@ -3309,6 +3374,7 @@
           });
           recalculateCharacterDerived(candidate);
           toasts.push(`${candidate.name} está CONGELADO e perdeu o turno! Ganhou Imunidade a Congelamento por 1 turno.`);
+          skippedInThisAdvance.add(candidate.id);
           continue;
         }
 
@@ -4166,6 +4232,15 @@
             topButtonsHtml = `
               <button
                 type="button"
+                data-action="open-sheet"
+                data-char-id="${escapeHtml(char.id)}"
+                title="Abrir Ficha Completa do Inimigo (Atributos, Resistências e Habilidades)"
+                class="w-9 h-9 rounded-lg flex items-center justify-center text-base app-icon-btn shrink-0 transition"
+              >
+                <iconify-icon icon="game-icons:tied-scroll"></iconify-icon>
+              </button>
+              <button
+                type="button"
                 data-action="open-resistances"
                 data-char-id="${escapeHtml(char.id)}"
                 title="Painel de Acúmulos"
@@ -4936,6 +5011,16 @@
         .map((e) => {
           const isRevealed = Boolean(e.reveladoParaJogadores);
 
+          const normElemRes = normalizeElementalResistances(e.elementalResistances);
+          const elemResChips = ELEMENTAL_RESISTANCE_TYPES.map((er) => {
+            const val = normElemRes[er.key];
+            return `
+              <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono font-bold ${er.bgClass} ${er.textClass}" title="Resistência a Dano ${escapeHtml(er.label)}: ${val}%">
+                ${er.icon} <span>${escapeHtml(er.label)}: ${val}%</span>
+              </span>
+            `;
+          }).join('');
+
           const resChips = RESISTANCE_TYPES.map((r) => {
             const resVal = e.resistances?.[r.name]?.max ?? 100;
             return `
@@ -5018,9 +5103,24 @@
               </div>
             </div>
 
+            <!-- 7 Resistências a Dano Visuais (%) -->
+            <div class="space-y-1">
+              <span class="text-[10px] uppercase font-bold tracking-wider gold-title flex items-center gap-1">
+                <iconify-icon icon="game-icons:breastplate" class="icon-armor"></iconify-icon> <span>Resistências a Dano (%)</span>
+              </span>
+              <div class="flex flex-wrap gap-1">
+                ${elemResChips}
+              </div>
+            </div>
+
             <!-- 7 Resistências de Status -->
-            <div class="flex flex-wrap gap-1">
-              ${resChips}
+            <div class="space-y-1">
+              <span class="text-[10px] uppercase font-bold tracking-wider app-muted flex items-center gap-1">
+                <iconify-icon icon="game-icons:round-bottom-flask"></iconify-icon> <span>Limites de Acúmulo</span>
+              </span>
+              <div class="flex flex-wrap gap-1">
+                ${resChips}
+              </div>
             </div>
 
             <!-- Botão HABILIDADES GERAIS -->
@@ -5567,11 +5667,24 @@
     }).join('');
   }
 
+  function normalizeElementalResistances(elemResObj) {
+    const res = {};
+    for (const er of ELEMENTAL_RESISTANCE_TYPES) res[er.key] = 0;
+    if (!elemResObj || typeof elemResObj !== 'object') return res;
+    for (const er of ELEMENTAL_RESISTANCE_TYPES) {
+      const rawVal = elemResObj[er.key] ?? elemResObj[er.label] ?? elemResObj[er.key.toLowerCase()] ?? 0;
+      const num = Number(rawVal);
+      res[er.key] = Number.isFinite(num) ? Number(num.toFixed(1)) : 0;
+    }
+    return res;
+  }
+
   function renderCharFormElementalResistanceInputs(elemResObj) {
     const container = document.getElementById('char-form-elem-resistances-grid');
     if (!container) return;
+    const norm = normalizeElementalResistances(elemResObj);
     container.innerHTML = ELEMENTAL_RESISTANCE_TYPES.map((er) => {
-      const val = Number.isFinite(Number(elemResObj?.[er.key])) ? Number(elemResObj[er.key]) : 0;
+      const val = norm[er.key];
       return `
         <div>
           <label class="block text-[11px] font-bold mb-1 ${er.textClass}">${er.icon} ${escapeHtml(er.label)} (%)</label>
@@ -5580,6 +5693,31 @@
               type="number"
               step="any"
               data-elem-res-input="${escapeHtml(er.key)}"
+              value="${val}"
+              required
+              class="w-full px-2.5 py-1.5 pr-6 text-xs font-mono font-bold app-input"
+            />
+            <span class="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-mono app-muted pointer-events-none">%</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function renderEnemyFormElementalResistanceInputs(elemResObj) {
+    const container = document.getElementById('enemy-form-elem-resistances-grid');
+    if (!container) return;
+    const norm = normalizeElementalResistances(elemResObj);
+    container.innerHTML = ELEMENTAL_RESISTANCE_TYPES.map((er) => {
+      const val = norm[er.key];
+      return `
+        <div>
+          <label class="block text-[11px] font-bold mb-1 ${er.textClass}">${er.icon} ${escapeHtml(er.label)} (%)</label>
+          <div class="relative">
+            <input
+              type="number"
+              step="any"
+              data-enemy-elem-res-input="${escapeHtml(er.key)}"
               value="${val}"
               required
               class="w-full px-2.5 py-1.5 pr-6 text-xs font-mono font-bold app-input"
@@ -6285,7 +6423,7 @@
       const pct = calcPercentage(entry.current, entry.max);
       const isMax = entry.max > 0 && entry.current >= entry.max;
       const isImmune = r.name === 'Congelamento' && (char.buffsNerfs || []).some(
-        (b) => b.statusKey === 'IMUNIDADE_CONGELAMENTO' || b.name?.includes('Imunidade a Congelamento')
+        (b) => b.statusKey === 'IMUNIDADE_CONGELAMENTO' || b.name?.toLowerCase().includes('imunidade a congelamento')
       );
 
       return `
@@ -6335,7 +6473,7 @@
 
     const entry = char.resistances?.[resName] || { current: 0, max: 100 };
     const isImmune = resName === 'Congelamento' && (char.buffsNerfs || []).some(
-      (b) => b.statusKey === 'IMUNIDADE_CONGELAMENTO' || b.name?.includes('Imunidade a Congelamento')
+      (b) => b.statusKey === 'IMUNIDADE_CONGELAMENTO' || b.name?.toLowerCase().includes('imunidade a congelamento')
     );
 
     document.getElementById('single-res-char-id').value = char.id;
@@ -6375,7 +6513,7 @@
       const isImmuneToFreeze =
         resName === 'Congelamento' &&
         (target.buffsNerfs || []).some(
-          (b) => b.statusKey === 'IMUNIDADE_CONGELAMENTO' || b.name?.includes('Imunidade a Congelamento')
+          (b) => b.statusKey === 'IMUNIDADE_CONGELAMENTO' || b.name?.toLowerCase().includes('imunidade a congelamento')
         );
 
       if (isImmuneToFreeze) {
@@ -6551,7 +6689,7 @@
       char.buffsNerfs = char.buffsNerfs.filter((e) => e.id !== effectId);
       if (eff) {
         toasts.push(`Efeito "${eff.name || eff.description}" removido de ${char.name}.`);
-        if (eff.statusKey === 'IMUNIDADE_CONGELAMENTO' || eff.name?.includes('Imunidade a Congelamento')) {
+        if (eff.statusKey === 'IMUNIDADE_CONGELAMENTO' || eff.name?.toLowerCase().includes('imunidade a congelamento')) {
           checkPendingFreezeTrigger(char, toasts, st);
         }
       }
@@ -6623,10 +6761,11 @@
   }
 
   function renderCharacterSheetModalContent(char) {
+    const isEnemy = Boolean(char.isEnemy);
     const canEdit = canEditCharacter(char);
     const weight = char.derived?.totalWeight ?? 0;
     const maxWeight = Number.isFinite(Number(char.maxWeight)) ? Number(char.maxWeight) : 27;
-    const isOverweight = weight > maxWeight;
+    const isOverweight = !isEnemy && weight > maxWeight;
     const ownerMem =
       (state.members || []).find(
         (m) => m.id === char.ownerMemberId || (char.ownerIp && m.ip === char.ownerIp) || m.characterId === char.id
@@ -6636,13 +6775,17 @@
       : char.ownerIp || 'Mestre';
 
     document.getElementById('sheet-char-name').textContent = `${char.name} — Nível ${char.level || 1}${
-      !canEdit ? ' (Somente Visualização)' : ''
+      isEnemy ? ' (Ficha da Criatura)' : !canEdit ? ' (Somente Visualização)' : ''
     }`;
-    document.getElementById('sheet-char-meta').innerHTML = `XP: ${char.xp || 0} / ${
-      char.xpNext || 80
-    } • <iconify-icon icon="game-icons:hooded-figure"></iconify-icon> Vinculado a: ${escapeHtml(ownerLabel)} • <iconify-icon icon="game-icons:weight"></iconify-icon> Carga: ${weight} / ${maxWeight} kg • ${escapeHtml(char.age || 'Idade n/d')} • ${
-      escapeHtml(char.height || 'Altura n/d')
-    }`;
+    if (isEnemy) {
+      document.getElementById('sheet-char-meta').innerHTML = `<iconify-icon icon="game-icons:monster-grasp" class="text-rose-400"></iconify-icon> Criatura Hostil • Modelo do Bestiário • <iconify-icon icon="game-icons:heart-bottle" class="icon-hp"></iconify-icon> ${char.hp}/${char.maxHp} HP • <iconify-icon icon="game-icons:breastplate" class="icon-armor"></iconify-icon> ${char.armor}/${char.maxArmor} ARM • <iconify-icon icon="game-icons:crystal-bars" class="icon-mana"></iconify-icon> ${char.mana}/${char.maxMana} MP`;
+    } else {
+      document.getElementById('sheet-char-meta').innerHTML = `XP: ${char.xp || 0} / ${
+        char.xpNext || 80
+      } • <iconify-icon icon="game-icons:hooded-figure"></iconify-icon> Vinculado a: ${escapeHtml(ownerLabel)} • <iconify-icon icon="game-icons:weight"></iconify-icon> Carga: ${weight} / ${maxWeight} kg • ${escapeHtml(char.age || 'Idade n/d')} • ${
+        escapeHtml(char.height || 'Altura n/d')
+      }`;
+    }
 
     const body = document.getElementById('sheet-modal-body');
     if (!body) return;
@@ -6675,7 +6818,7 @@
             }
           </div>
           ${
-            canEdit && (pendingPts > 0 || isEffectiveMaster())
+            !isEnemy && canEdit && (pendingPts > 0 || isEffectiveMaster())
               ? `<div class="flex items-center justify-center gap-1 pt-1">
                   ${
                     isEffectiveMaster()
@@ -6697,7 +6840,7 @@
       const val = Number.isFinite(effRaw) ? Number(effRaw.toFixed(1)) : baseVal;
       const bonus = Number((val - baseVal).toFixed(1));
       return `
-        <div class="p-2.5 rounded-xl bg-black/30 border ${er.borderClass} text-center">
+        <div class="p-2.5 rounded-xl ${er.bgClass} border text-center">
           <span class="block text-[10px] font-bold uppercase ${er.textClass}">${er.icon} ${escapeHtml(er.label)}</span>
           <strong class="block text-sm font-mono font-black app-title mt-0.5">${val}%</strong>
           ${
@@ -6708,6 +6851,66 @@
         </div>
       `;
     }).join('');
+
+    if (isEnemy) {
+      body.innerHTML = `
+        <!-- 5 Atributos Canônicos -->
+        <div class="space-y-2">
+          <div class="flex items-center justify-between">
+            <h4 class="font-serif-fantasy font-extrabold uppercase gold-title">
+              <iconify-icon icon="game-icons:dna1"></iconify-icon> <span>5 Atributos Canônicos, Modificadores &amp; Sucesso Passivo</span>
+            </h4>
+          </div>
+          <div class="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+            ${attrsCardsHtml}
+          </div>
+        </div>
+
+        <!-- Status Secundários de Combate -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 p-3 rounded-xl bg-black/20 border app-divider-border text-center font-mono">
+          <div><span class="block text-[10px] app-muted flex items-center justify-center gap-1"><iconify-icon icon="game-icons:gladius" class="icon-dmg"></iconify-icon> <span>ATAQUE</span></span><strong class="text-sm text-orange-400">${char.attack || 0}</strong></div>
+          <div><span class="block text-[10px] app-muted flex items-center justify-center gap-1"><iconify-icon icon="game-icons:dragon-shield"></iconify-icon> <span>DEFESA</span></span><strong class="text-sm text-emerald-400">${char.defense || 0}</strong></div>
+          <div><span class="block text-[10px] app-muted flex items-center justify-center gap-1"><iconify-icon icon="game-icons:crystal-ball"></iconify-icon> <span>ARCANA</span></span><strong class="text-sm text-purple-400">${char.arcana || 0}</strong></div>
+          <div><span class="block text-[10px] app-muted flex items-center justify-center gap-1"><iconify-icon icon="game-icons:sparkles"></iconify-icon> <span>SANTIDADE</span></span><strong class="text-sm text-amber-300">${char.santidade || 0}</strong></div>
+        </div>
+
+        <!-- Resistências Visuais em Porcentagem (Físico, Mágico, Pyro, Cryo, Elétrico, Profano, Sacro) -->
+        <div class="p-3.5 rounded-xl bg-black/25 border app-divider-border space-y-2">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <h4 class="font-serif-fantasy font-extrabold uppercase gold-title">
+              <iconify-icon icon="game-icons:breastplate" class="icon-armor"></iconify-icon> <span>Resistências da Ficha (%)</span>
+            </h4>
+            <span class="text-[11px] app-muted">Físico • Mágico • Pyro • Cryo • Elétrico • Profano • Sacro</span>
+          </div>
+          <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2">
+            ${elemResCardsHtml}
+          </div>
+        </div>
+
+        <!-- HABILIDADES GERAIS -->
+        <div class="p-3.5 rounded-xl bg-purple-950/25 border border-purple-500/40 space-y-2">
+          <div class="flex items-center justify-between">
+            <h4 class="font-serif-fantasy font-extrabold uppercase text-purple-300 flex items-center gap-1.5 text-xs">
+              <iconify-icon icon="game-icons:scroll-unfurled"></iconify-icon>
+              <span>HABILIDADES GERAIS</span>
+            </h4>
+            <button
+              type="button"
+              data-open-general-skills="${escapeHtml(char.id)}"
+              data-target-type="character"
+              class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-purple-500/20 text-purple-200 border border-purple-500/40 hover:bg-purple-500/30 transition flex items-center gap-1"
+            >
+              <iconify-icon icon="game-icons:quill-ink"></iconify-icon>
+              <span>${isEffectiveMaster() ? 'Editar Habilidades' : 'Visualizar Detalhes'}</span>
+            </button>
+          </div>
+          <div class="p-3 rounded-lg bg-black/40 border border-purple-500/20 font-mono text-xs text-purple-200/90 whitespace-pre-wrap leading-relaxed">
+            ${escapeHtml(char.generalSkills || 'Nenhuma habilidade cadastrada para esta criatura.')}
+          </div>
+        </div>
+      `;
+      return;
+    }
 
     const totalInvEntries = (char.inventory || []).length;
     const totalInvUnits = (char.inventory || []).reduce((acc, i) => acc + Math.max(1, Number(i.quantity || 1)), 0);
@@ -8118,6 +8321,7 @@
       }).join('');
     }
 
+    renderEnemyFormElementalResistanceInputs(enemy ? enemy.elementalResistances : {});
     document.getElementById('enemy-general-skills').value = enemy ? (enemy.generalSkills || '') : '';
     openModal('modal-enemy-form');
   }
@@ -8314,7 +8518,7 @@
           santidade: Number(bestiaryEnemy.santidade || 0),
           generalSkills: String(bestiaryEnemy.generalSkills || ''),
           attributes: JSON.parse(JSON.stringify(bestiaryEnemy.attributes || { FORCA: 10, DESTREZA: 10, INTELIGENCIA: 10, SABEDORIA: 10, LABIA: 10 })),
-          elementalResistances: JSON.parse(JSON.stringify(bestiaryEnemy.elementalResistances || {})),
+          elementalResistances: normalizeElementalResistances(bestiaryEnemy.elementalResistances),
           resistances: JSON.parse(JSON.stringify(bestiaryEnemy.resistances || {
             congelamento: { current: 0, max: 100 },
             choque: { current: 0, max: 100 },
@@ -8328,6 +8532,26 @@
           isDead: false,
           armorDegradation: 0,
         };
+
+        newInst.initial = {
+          hp: newInst.baseMaxHp,
+          maxHp: newInst.baseMaxHp,
+          armor: newInst.baseMaxArmor,
+          maxArmor: newInst.baseMaxArmor,
+          mana: newInst.baseMaxMana,
+          maxMana: newInst.baseMaxMana,
+          pa: 3,
+          maxPa: 3,
+          regen: newInst.baseRegen,
+          defense: newInst.baseDefense,
+          attack: newInst.attack,
+          arcana: newInst.arcana,
+          santidade: newInst.santidade,
+          maxWeight: 999,
+          resistances: JSON.parse(JSON.stringify(newInst.resistances)),
+          elementalResistances: JSON.parse(JSON.stringify(newInst.elementalResistances)),
+        };
+        recalculateCharacterDerived(newInst);
 
         st.characters.push(newInst);
         toasts.push(`Inimigo "${newName}" trazido para a mesa de combate!`);
@@ -9162,6 +9386,9 @@
     });
     document.getElementById('btn-reset-elem-res-defaults')?.addEventListener('click', () => {
       document.querySelectorAll('[data-elem-res-input]').forEach((inp) => (inp.value = '0'));
+    });
+    document.getElementById('btn-reset-enemy-elem-res-defaults')?.addEventListener('click', () => {
+      document.querySelectorAll('[data-enemy-elem-res-input]').forEach((inp) => (inp.value = '0'));
     });
     document.querySelectorAll('[data-open-form-skill]').forEach((btn) => {
       btn.addEventListener('click', () => {
@@ -10412,6 +10639,14 @@
         resistances[rName] = { current: 0, max: rMax };
       });
 
+      const elementalResistances = {};
+      for (const er of ELEMENTAL_RESISTANCE_TYPES) elementalResistances[er.key] = 0;
+      document.querySelectorAll('#enemy-form-elem-resistances-grid [data-enemy-elem-res-input]').forEach((input) => {
+        const k = input.getAttribute('data-enemy-elem-res-input');
+        const v = Number(input.value);
+        elementalResistances[k] = Number.isFinite(v) ? Number(v.toFixed(1)) : 0;
+      });
+
       const generalSkills = document.getElementById('enemy-general-skills').value.trim();
 
       commitMutation(
@@ -10436,13 +10671,16 @@
               santidade,
               attributes,
               resistances,
+              elementalResistances,
               generalSkills,
             };
-            // Sincroniza reveladoParaJogadores e generalSkills para instâncias ativas na mesa
+            // Sincroniza reveladoParaJogadores, generalSkills e elementalResistances para instâncias ativas na mesa
             (st.characters || []).forEach((c) => {
               if (c.bestiaryId === enemyId) {
                 c.reveladoParaJogadores = reveladoParaJogadores;
                 c.generalSkills = generalSkills;
+                c.elementalResistances = { ...elementalResistances };
+                recalculateCharacterDerived(c);
               }
             });
             toasts.push(`Inimigo "${name}" atualizado no Bestiário.`);
@@ -10462,6 +10700,7 @@
               santidade,
               attributes,
               resistances,
+              elementalResistances,
               generalSkills,
             };
             st.bestiary.push(newEnemy);
