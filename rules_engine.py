@@ -24,6 +24,17 @@ STATUS_RESISTANCE_TYPES: List[str] = [
     "Cegueira",
 ]
 
+# 7 Resistências Elementais / Tipos de Dano em Porcentagem (%)
+ELEMENTAL_RESISTANCE_TYPES: Tuple[str, ...] = (
+    "FISICO",
+    "MAGICO",
+    "PYRO",
+    "CRYO",
+    "ELETRICO",
+    "PROFANO",
+    "SACRO",
+)
+
 # 5 Tipos de Itens (03-itens-e-inventario.md)
 ITEM_TYPES: List[str] = [
     "ARMADURA",
@@ -310,10 +321,9 @@ def compute_character_derived_stats(
     eff_res_dmg = max(0, min(100, apply_rounding(base_res_dmg, rounding_mode)))
     eff_red_dmg = max(0, min(100, apply_rounding(base_red_dmg, rounding_mode)))
 
-    elem_keys = ("FISICO", "MAGICO", "PYRO", "CRYO", "ELETRICO", "PROFANO", "SACRO")
     base_elem_res = char.get("elementalResistances") or {}
     effective_elem_res: Dict[str, float] = {}
-    for ek in elem_keys:
+    for ek in ELEMENTAL_RESISTANCE_TYPES:
         b_er = float(base_elem_res.get(ek, 0.0))
         t_key = f"RES_{ek}"
         eff_er = b_er + float(flat_mods.get(t_key, 0.0)) + float(pct_mods.get(t_key, 0.0))

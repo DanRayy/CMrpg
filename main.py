@@ -17,6 +17,7 @@ from fastapi.staticfiles import StaticFiles
 
 from rules_engine import (
     CANONICAL_ATTRIBUTES,
+    ELEMENTAL_RESISTANCE_TYPES,
     STATUS_RESISTANCE_TYPES,
     calculate_xp_required_for_level,
     compute_character_derived_stats,
@@ -28,6 +29,7 @@ STATE_FILE = BASE_DIR / "state.json"
 STATIC_DIR = BASE_DIR / "static"
 
 HISTORY_LIMIT = 6
+elem_keys = ELEMENTAL_RESISTANCE_TYPES
 
 
 def get_host_ips() -> Dict[str, Any]:
@@ -938,10 +940,9 @@ def normalize_character(
         norm_res[res_name] = {"current": r_cur, "max": r_max}
     char["resistances"] = norm_res
 
-    elem_keys = ("FISICO", "MAGICO", "PYRO", "CRYO", "ELETRICO", "PROFANO", "SACRO")
     raw_elem = char.get("elementalResistances") or {}
     norm_elem: Dict[str, float] = {}
-    for ek in elem_keys:
+    for ek in ELEMENTAL_RESISTANCE_TYPES:
         val_raw = raw_elem.get(ek)
         if val_raw is None:
             for k, v in raw_elem.items():
@@ -1227,7 +1228,7 @@ class StateManager:
             if isinstance(b, dict):
                 raw_elem = b.get("elementalResistances") or {}
                 norm_elem: Dict[str, float] = {}
-                for ek in elem_keys:
+                for ek in ELEMENTAL_RESISTANCE_TYPES:
                     val_raw = raw_elem.get(ek)
                     if val_raw is None:
                         for k, v in raw_elem.items():
