@@ -277,7 +277,7 @@ def compute_character_derived_stats(
             continue
         if bn.get("enabled") is False:
             continue
-        is_perm = bool(bn.get("isPermanent", False))
+        is_perm = bool(bn.get("isPermanent", False)) or bool(bn.get("permanent", False)) or bn.get("duration") is None
         dur = bn.get("duration")
         if not is_perm and dur is not None:
             try:

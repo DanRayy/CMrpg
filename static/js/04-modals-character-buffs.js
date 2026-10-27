@@ -802,18 +802,42 @@
   function requestResetCharacter(charId) {
     const char = state.characters.find((c) => c.id === charId);
     if (!char) return;
+    if (!isEffectiveMaster() && !isCharacterOwner(char) && !hasPermission('char_combat_adjust_others')) {
+      showToast('Você não possui permissão para resetar este personagem!', 'warning');
+      return;
+    }
 
     openConfirmModal({
       icon: '<iconify-icon icon="game-icons:sands-of-time"></iconify-icon>',
       title: `RESETAR ${char.name.toUpperCase()}?`,
       message:
-        'Todos os atributos (Vida, Armadura, Mana, limites máximos, Defesa e Regen%) voltarão ao estado inicial configurado e todos os 7 acúmulos serão zerados.',
+        'Todos os atributos (Vida, Armadura, Mana, limites máximos, Defesa e Regen%) voltarão ao estado inicial configurado e todos os 7 acúmulos serão zerados. Buffs e Nerfs permanentes serão mantidos.',
       confirmText: '<iconify-icon icon="game-icons:sands-of-time"></iconify-icon> <span>Resetar</span>',
       onConfirm: () => {
         commitMutation(
           (st) => {
             const target = st.characters.find((c) => c.id === charId);
-            if (!target || !target.initial) return false;
+            if (!target) return false;
+            if (!target.initial) {
+              target.initial = {
+                hp: target.baseMaxHp ?? target.maxHp ?? 80,
+                maxHp: target.baseMaxHp ?? target.maxHp ?? 80,
+                armor: target.baseMaxArmor ?? target.maxArmor ?? 0,
+                maxArmor: target.baseMaxArmor ?? target.maxArmor ?? 0,
+                mana: target.baseMaxMana ?? target.maxMana ?? 100,
+                maxMana: target.baseMaxMana ?? target.maxMana ?? 100,
+                pa: target.baseMaxPa ?? target.maxPa ?? 3,
+                maxPa: target.baseMaxPa ?? target.maxPa ?? 3,
+                regen: target.baseRegen ?? target.regen ?? 20,
+                defense: target.baseDefense ?? target.defense ?? 0,
+                attack: target.baseAttack ?? target.attack ?? 0,
+                arcana: target.baseArcana ?? target.arcana ?? 0,
+                santidade: target.baseSantidade ?? target.santidade ?? 0,
+                maxWeight: target.maxWeight ?? 27,
+                resistances: deepClone(target.resistances || {}),
+                elementalResistances: deepClone(target.elementalResistances || {}),
+              };
+            }
             const init = deepClone(target.initial);
 
             target.baseMaxHp = init.maxHp;
@@ -821,9 +845,18 @@
             target.baseMaxMana = init.maxMana;
             target.baseRegen = init.regen;
             target.baseDefense = init.defense;
+            if (init.attack !== undefined) target.baseAttack = init.attack;
+            if (init.arcana !== undefined) target.baseArcana = init.arcana;
+            if (init.santidade !== undefined) target.baseSantidade = init.santidade;
+            if (init.maxPa !== undefined) target.baseMaxPa = init.maxPa;
+            else if (init.pa !== undefined) target.baseMaxPa = init.pa;
             target.armorDegradation = 0;
-            target.activeBuffs = [];
-            target.buffsNerfs = (target.buffsNerfs || []).filter((b) => Boolean(b.isPermanent));
+            target.activeBuffs = (target.activeBuffs || []).filter(isBuffEffectPermanent);
+            target.buffsNerfs = (target.buffsNerfs || []).filter(isBuffEffectPermanent);
+            target.buffsNerfs.forEach((b) => {
+              b.isPermanent = true;
+              b.duration = null;
+            });
             target.isDead = false;
             if (init.elementalResistances) {
               target.elementalResistances = deepClone(init.elementalResistances);
@@ -844,7 +877,7 @@
           {
             actionType: 'CHAR_RESET',
             targetEntity: `Personagem: ${char.name}`,
-            summary: `${char.name} foi resetado para seus valores iniciais.`,
+            summary: `${char.name} foi resetado para seus valores iniciais, preservando efeitos permanentes.`,
           }
         );
       },
@@ -1120,7 +1153,7 @@
     if (editingInput) editingInput.value = eff.id;
     if (descInput) descInput.value = eff.name || eff.description || '';
     if (typeSelect) typeSelect.value = eff.type || 'BUFF';
-    const isPerm = Boolean(eff.isPermanent || (!eff.duration && eff.duration !== 0));
+    const isPerm = isBuffEffectPermanent(eff);
     if (permCheck) permCheck.checked = isPerm;
     if (durInput) {
       durInput.value = isPerm ? '' : (eff.duration ?? '');
@@ -1190,7 +1223,7 @@
 
     const renderEffectCard = (eff, isNerf) => {
       const isEnabled = eff.enabled !== false;
-      const isPerm = Boolean(eff.isPermanent || (!eff.duration && eff.duration !== 0));
+      const isPerm = isBuffEffectPermanent(eff);
       const durLabel = isPerm
         ? 'Permanente'
         : `${eff.duration} ${eff.duration === 1 ? 'turno' : 'turnos'}`;
@@ -1358,10 +1391,11 @@
     const desc = document.getElementById('bn-effect-desc')?.value.trim();
     if (!desc) return;
     const type = document.getElementById('bn-effect-type')?.value || 'BUFF';
-    const isPermanent = Boolean(document.getElementById('bn-effect-is-permanent')?.checked);
+    const permChecked = Boolean(document.getElementById('bn-effect-is-permanent')?.checked);
     const durRaw = document.getElementById('bn-effect-duration')?.value;
     const durNum = durRaw !== '' && !isNaN(Number(durRaw)) ? Number(durRaw) : null;
-    const duration = isPermanent ? null : durNum && durNum > 0 ? Math.round(durNum) : null;
+    const isPermanent = permChecked || !durNum || durNum <= 0;
+    const duration = isPermanent ? null : Math.round(durNum);
 
     const modifiers = [];
     document.querySelectorAll('#bn-modifiers-list .bn-modifier-row').forEach((row) => {
@@ -1482,6 +1516,22 @@
       } • <iconify-icon icon="game-icons:hooded-figure"></iconify-icon> Vinculado a: ${escapeHtml(ownerLabel)} • <iconify-icon icon="game-icons:weight"></iconify-icon> Carga: ${weight} / ${maxWeight} kg • ${escapeHtml(char.age || 'Idade n/d')} • ${
         escapeHtml(char.height || 'Altura n/d')
       }`;
+    }
+
+    const sheetActions = document.getElementById('sheet-header-actions');
+    if (sheetActions) {
+      sheetActions.innerHTML = canEdit ? `
+        <button
+          type="button"
+          data-action="sheet-reset-char"
+          data-char-id="${escapeHtml(char.id)}"
+          class="px-2.5 py-1 rounded-lg text-xs font-serif-fantasy font-bold border border-amber-500/40 bg-amber-500/10 text-amber-300 hover:bg-amber-500/25 transition flex items-center gap-1.5"
+          title="Resetar Personagem (mantendo buffs permanentes)"
+        >
+          <iconify-icon icon="game-icons:sands-of-time"></iconify-icon>
+          <span class="hidden sm:inline">Resetar</span>
+        </button>
+      ` : '';
     }
 
     const body = document.getElementById('sheet-modal-body');

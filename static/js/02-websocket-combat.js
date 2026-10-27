@@ -1418,7 +1418,7 @@
 
         actingChar.buffsNerfs.forEach((eff) => {
           if (eff.statusKey === 'CHAMAS' || eff.name?.includes('Chamas')) return; // Chamas é deduzido no fim do turno
-          if (eff.isPermanent) return; // Efeitos permanentes não perdem duração por turnos
+          if (isBuffEffectPermanent(eff)) return; // Efeitos permanentes não perdem duração por turnos
           if (Number.isFinite(Number(eff.duration)) && Number(eff.duration) > 0) {
             eff.duration = Number(eff.duration) - 1;
           }
@@ -1426,7 +1426,7 @@
 
         const prevCount = actingChar.buffsNerfs.length;
         actingChar.buffsNerfs = actingChar.buffsNerfs.filter(
-          (eff) => eff.isPermanent || !Number.isFinite(Number(eff.duration)) || Number(eff.duration) > 0
+          (eff) => isBuffEffectPermanent(eff) || !Number.isFinite(Number(eff.duration)) || Number(eff.duration) > 0
         );
 
         if (actingChar.buffsNerfs.length < prevCount) {

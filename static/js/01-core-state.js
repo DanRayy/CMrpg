@@ -332,6 +332,29 @@
     return levelsGained;
   }
 
+  /**
+   * Determina de forma unificada se um efeito (buff ou nerf) é permanente.
+   * Considera permanente se:
+   * 1. Possui isPermanent === true (ou 'true') ou permanent === true (ou 'true'); OU
+   * 2. Não possui duração definida (duration é null, undefined, vazio '' ou não-numérico).
+   * Efeitos temporários com turnos positivos restantes (ex: 3) retornam false.
+   * Efeitos com duração zerada (0) e sem flag de permanência retornam false (expirados).
+   */
+  function isBuffEffectPermanent(eff) {
+    if (!eff || typeof eff !== 'object') return false;
+    if (eff.isPermanent === true || eff.isPermanent === 'true' || eff.permanent === true || eff.permanent === 'true') {
+      return true;
+    }
+    if (eff.duration === null || eff.duration === undefined || eff.duration === '' || eff.duration === 'null') {
+      return true;
+    }
+    const durNum = Number(eff.duration);
+    if (!Number.isFinite(durNum)) {
+      return true;
+    }
+    return false;
+  }
+
   function computeStatWithModifiers(baseVal, flatSum, pctSum) {
     const precedence = state.room?.statModifierPrecedence || 'FLAT_FIRST';
     const rounding = state.room?.roundingMode || 'ROUND_DOWN';
@@ -455,7 +478,7 @@
     // Buffs e Nerfs manuais do combatente (com modificadores, permanência e toggle habilitado)
     for (const bn of char.buffsNerfs || []) {
       if (bn.enabled === false) continue;
-      const isPerm = Boolean(bn.isPermanent);
+      const isPerm = isBuffEffectPermanent(bn);
       const dur = bn.duration;
       if (!isPerm && dur !== null && dur !== undefined && Number(dur) <= 0) continue;
 

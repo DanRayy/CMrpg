@@ -935,7 +935,7 @@
       } else if (action === 'pill-damage') openDamageModal(charId);
       else if (action === 'pill-attr') openAttributeModal(charId, btn.getAttribute('data-attr'));
       else if (action === 'pill-regen') triggerInstantManaRegen(charId);
-      else if (action === 'pill-reset') requestResetCharacter(charId);
+      else if (action === 'pill-reset' || action === 'sheet-reset-char') requestResetCharacter(charId);
       else if (action === 'pill-notes') openNotesModal(charId);
       else if (action === 'spend-pa') adjustCharacterPa(charId, -1);
       else if (action === 'adjust-pa') {
