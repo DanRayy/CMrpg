@@ -1085,6 +1085,23 @@ html[data-theme="light"] .battle-sidebar {
   outline-offset: 2px;
 }
 
+/* Compact Fantasy Toggle para listas densas (Buffs / Nerfs) */
+.fantasy-toggle-sm {
+  width: 32px !important;
+  height: 18px !important;
+}
+
+.fantasy-toggle-sm .fantasy-toggle-slider::before {
+  height: 12px !important;
+  width: 12px !important;
+  left: 2px !important;
+  bottom: 2px !important;
+}
+
+.fantasy-toggle-sm input:checked + .fantasy-toggle-slider::before {
+  transform: translateX(14px) !important;
+}
+
 .perm-cat-btn {
   display: flex;
   flex-direction: column;

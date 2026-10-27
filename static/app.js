@@ -449,6 +449,34 @@
       }
     }
 
+    // Buffs e Nerfs manuais do combatente (com modificadores, permanência e toggle habilitado)
+    for (const bn of char.buffsNerfs || []) {
+      if (bn.enabled === false) continue;
+      const isPerm = Boolean(bn.isPermanent);
+      const dur = bn.duration;
+      if (!isPerm && dur !== null && dur !== undefined && Number(dur) <= 0) continue;
+
+      for (const mod of bn.modifiers || []) {
+        const stat = mod.targetStat || mod.stat;
+        if (!(stat in flatMods)) continue;
+        const val = Number(mod.value || 0);
+        const mode = String(mod.modifierType || mod.mode || 'FLAT').toUpperCase();
+        if (mode === 'PERCENT' || mode === 'PERCENTUAL' || mode === '%') {
+          pctMods[stat] += val;
+        } else {
+          flatMods[stat] += val;
+        }
+      }
+
+      // Suporte legado a paModifier se não houver modifiers para PA
+      if (
+        Number(bn.paModifier || 0) !== 0 &&
+        (!bn.modifiers || !bn.modifiers.some((m) => (m.targetStat || m.stat) === 'PA'))
+      ) {
+        flatMods.PA += Number(bn.paModifier || 0);
+      }
+    }
+
     const effectiveAttributes = {};
     char.attributes = char.attributes || {};
     for (const attr of CANONICAL_ATTRIBUTES) {
@@ -2827,8 +2855,19 @@
   function calculateCombatantPaPenalty(char) {
     if (!char || !Array.isArray(char.buffsNerfs)) return 0;
     return char.buffsNerfs
-      .filter((e) => e.type === 'NERF' && Number(e.paModifier || 0) < 0)
-      .reduce((acc, e) => acc + Math.abs(Number(e.paModifier)), 0);
+      .filter((e) => e.enabled !== false && e.type === 'NERF')
+      .reduce((acc, e) => {
+        let pen = 0;
+        if (Number(e.paModifier || 0) < 0) {
+          pen += Math.abs(Number(e.paModifier));
+        }
+        for (const m of e.modifiers || []) {
+          if ((m.targetStat || m.stat) === 'PA' && Number(m.value || 0) < 0) {
+            pen += Math.abs(Number(m.value));
+          }
+        }
+        return acc + pen;
+      }, 0);
   }
 
   function resetTurnCombatantPa(char) {
@@ -3163,6 +3202,7 @@
 
         actingChar.buffsNerfs.forEach((eff) => {
           if (eff.statusKey === 'CHAMAS' || eff.name?.includes('Chamas')) return; // Chamas é deduzido no fim do turno
+          if (eff.isPermanent) return; // Efeitos permanentes não perdem duração por turnos
           if (Number.isFinite(Number(eff.duration)) && Number(eff.duration) > 0) {
             eff.duration = Number(eff.duration) - 1;
           }
@@ -3170,7 +3210,7 @@
 
         const prevCount = actingChar.buffsNerfs.length;
         actingChar.buffsNerfs = actingChar.buffsNerfs.filter(
-          (eff) => !Number.isFinite(Number(eff.duration)) || Number(eff.duration) > 0
+          (eff) => eff.isPermanent || !Number.isFinite(Number(eff.duration)) || Number(eff.duration) > 0
         );
 
         if (actingChar.buffsNerfs.length < prevCount) {
@@ -5441,14 +5481,15 @@
 
   function closeModal(id) {
     if (id === 'modal-notes') {
-      if (typeof executeNotesAutoSave === 'function') executeNotesAutoSave();
-    }
-    if (id === 'modal-notes') {
+      if (typeof flushCurrentTabContent === 'function') flushCurrentTabContent();
       if (typeof executeNotesAutoSave === 'function') executeNotesAutoSave();
     }
     document.getElementById(id)?.classList.add('hidden');
     if (id === 'modal-resistances') state.activeResistanceCharId = null;
-    if (id === 'modal-buffs-nerfs') state.activeBuffsNerfsCharId = null;
+    if (id === 'modal-buffs-nerfs') {
+      state.activeBuffsNerfsCharId = null;
+      if (typeof resetBnForm === 'function') resetBnForm();
+    }
     if (id === 'modal-char-sheet') state.activeSheetCharId = null;
     if (id === 'modal-char-inventory') state.activeInventoryCharId = null;
     refreshAllRemoteCursorsVisibility();
@@ -6334,7 +6375,7 @@
             target.baseDefense = init.defense;
             target.armorDegradation = 0;
             target.activeBuffs = [];
-            target.buffsNerfs = [];
+            target.buffsNerfs = (target.buffsNerfs || []).filter((b) => Boolean(b.isPermanent));
             target.isDead = false;
             if (init.elementalResistances) {
               target.elementalResistances = deepClone(init.elementalResistances);
@@ -6547,14 +6588,130 @@
   }
 
   // ---------------------------------------------------------------------------
-  // Modal: Buffs e Nerfs (Efeitos Ativos)
+  // ---------------------------------------------------------------------------
+  // Modal: Buffs e Nerfs (Efeitos Ativos, Modificadores, Permanência e Toggle)
   // ---------------------------------------------------------------------------
   function openBuffsNerfsModal(charId) {
     const char = state.characters.find((c) => c.id === charId);
     if (!char) return;
     state.activeBuffsNerfsCharId = char.id;
+    resetBnForm();
     renderBuffsNerfsModalContent(char);
     openModal('modal-buffs-nerfs');
+  }
+
+  function addBnModifierRow(mod = { targetStat: 'VIDA', modifierType: 'FLAT', value: 10 }) {
+    const list = document.getElementById('bn-modifiers-list');
+    if (!list) return;
+    const row = document.createElement('div');
+    row.className = 'grid grid-cols-12 gap-1.5 items-center bn-modifier-row';
+    const currentTarget = mod.targetStat || mod.stat || 'VIDA';
+    const currentType = String(mod.modifierType || mod.mode || 'FLAT').toUpperCase() === 'PERCENT' ? 'PERCENT' : 'FLAT';
+    row.innerHTML = `
+      <select data-mod-target class="col-span-6 px-2 py-1.5 app-input font-bold text-xs">
+        ${EFFECT_TARGET_OPTIONS.map(
+          (o) => `<option value="${o.value}" ${currentTarget === o.value ? 'selected' : ''}>${escapeHtml(o.label)}</option>`
+        ).join('')}
+      </select>
+      <select data-mod-type class="col-span-3 px-2 py-1.5 app-input font-bold text-xs">
+        <option value="FLAT" ${currentType === 'FLAT' ? 'selected' : ''}>Fixo (+/-)</option>
+        <option value="PERCENT" ${currentType === 'PERCENT' ? 'selected' : ''}>Porcento (%)</option>
+      </select>
+      <input data-mod-val type="number" step="any" value="${mod.value ?? 10}" class="col-span-2 px-2 py-1.5 font-mono font-bold app-input text-xs" />
+      <button type="button" class="col-span-1 py-1.5 rounded app-secondary-btn text-rose-400 hover:text-rose-300 text-xs flex items-center justify-center font-bold" title="Remover modificador">✕</button>
+    `;
+    row.querySelector('button')?.addEventListener('click', () => row.remove());
+    list.appendChild(row);
+  }
+
+  function resetBnForm() {
+    const editingInput = document.getElementById('bn-editing-id');
+    const descInput = document.getElementById('bn-effect-desc');
+    const typeSelect = document.getElementById('bn-effect-type');
+    const permCheck = document.getElementById('bn-effect-is-permanent');
+    const durInput = document.getElementById('bn-effect-duration');
+    const durContainer = document.getElementById('bn-duration-container');
+    const modifiersList = document.getElementById('bn-modifiers-list');
+    const formTitle = document.getElementById('bn-form-title');
+    const cancelBtn = document.getElementById('btn-cancel-edit-bn');
+    const submitBtnText = document.getElementById('btn-bn-submit-text');
+
+    if (editingInput) editingInput.value = '';
+    if (descInput) descInput.value = '';
+    if (typeSelect) typeSelect.value = 'BUFF';
+    if (permCheck) permCheck.checked = false;
+    if (durInput) {
+      durInput.value = '';
+      durInput.disabled = false;
+      durInput.placeholder = 'Ex: 3';
+    }
+    if (durContainer) durContainer.classList.remove('opacity-40');
+    if (modifiersList) modifiersList.innerHTML = '';
+    if (formTitle) formTitle.innerHTML = '<iconify-icon icon="game-icons:quill-ink"></iconify-icon> <span>Adicionar Novo Efeito</span>';
+    if (cancelBtn) cancelBtn.classList.add('hidden');
+    if (submitBtnText) submitBtnText.textContent = '+ Adicionar Efeito';
+  }
+
+  function editBuffNerf(charId, effectId) {
+    const char = state.characters.find((c) => c.id === charId);
+    if (!char || !Array.isArray(char.buffsNerfs)) return;
+    const eff = char.buffsNerfs.find((e) => e.id === effectId);
+    if (!eff) return;
+
+    const editingInput = document.getElementById('bn-editing-id');
+    const descInput = document.getElementById('bn-effect-desc');
+    const typeSelect = document.getElementById('bn-effect-type');
+    const permCheck = document.getElementById('bn-effect-is-permanent');
+    const durInput = document.getElementById('bn-effect-duration');
+    const durContainer = document.getElementById('bn-duration-container');
+    const modifiersList = document.getElementById('bn-modifiers-list');
+    const formTitle = document.getElementById('bn-form-title');
+    const cancelBtn = document.getElementById('btn-cancel-edit-bn');
+    const submitBtnText = document.getElementById('btn-bn-submit-text');
+
+    if (editingInput) editingInput.value = eff.id;
+    if (descInput) descInput.value = eff.name || eff.description || '';
+    if (typeSelect) typeSelect.value = eff.type || 'BUFF';
+    const isPerm = Boolean(eff.isPermanent || (!eff.duration && eff.duration !== 0));
+    if (permCheck) permCheck.checked = isPerm;
+    if (durInput) {
+      durInput.value = isPerm ? '' : (eff.duration ?? '');
+      durInput.disabled = isPerm;
+      durInput.placeholder = isPerm ? 'Permanente' : 'Ex: 3';
+    }
+    if (durContainer) {
+      durContainer.classList.toggle('opacity-40', isPerm);
+    }
+    if (modifiersList) {
+      modifiersList.innerHTML = '';
+      if (Array.isArray(eff.modifiers) && eff.modifiers.length > 0) {
+        eff.modifiers.forEach((m) => addBnModifierRow(m));
+      } else if (eff.paModifier) {
+        addBnModifierRow({ targetStat: 'PA', modifierType: 'FLAT', value: eff.paModifier });
+      }
+    }
+    if (formTitle) {
+      formTitle.innerHTML = `<iconify-icon icon="game-icons:quill-ink"></iconify-icon> <span>Editar Efeito: ${escapeHtml(eff.name || eff.description)}</span>`;
+    }
+    if (cancelBtn) cancelBtn.classList.remove('hidden');
+    if (submitBtnText) submitBtnText.textContent = '✓ Salvar Alterações';
+
+    document.getElementById('container-form-buff-nerf')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  function toggleBuffNerf(charId, effectId) {
+    commitMutation((st, toasts) => {
+      const char = st.characters.find((c) => c.id === charId);
+      if (!char || !Array.isArray(char.buffsNerfs)) return false;
+      const eff = char.buffsNerfs.find((e) => e.id === effectId);
+      if (!eff) return false;
+      eff.enabled = eff.enabled === false ? true : false;
+      recalculateCharacterDerived(char);
+      toasts.push(`Efeito "${eff.name || eff.description}" foi ${eff.enabled ? 'ativado' : 'desativado'}.`);
+      return true;
+    });
+    const char = state.characters.find((c) => c.id === charId);
+    if (char) renderBuffsNerfsModalContent(char);
   }
 
   function renderBuffsNerfsModalContent(char) {
@@ -6576,7 +6733,130 @@
 
     const buffsContainer = document.getElementById('buffs-list-container');
     const nerfsContainer = document.getElementById('nerfs-list-container');
-    const canManage = canEditCharacter(char) || isEffectiveMaster();
+    const canManage = isEffectiveMaster() || isCharacterOwner(char) || hasPermission('combat_manage_accumulations_others') || canEditCharacter(char);
+
+    const formContainer = document.getElementById('container-form-buff-nerf');
+    if (formContainer) {
+      formContainer.classList.toggle('hidden', !canManage);
+    }
+
+    const renderEffectCard = (eff, isNerf) => {
+      const isEnabled = eff.enabled !== false;
+      const isPerm = Boolean(eff.isPermanent || (!eff.duration && eff.duration !== 0));
+      const durLabel = isPerm
+        ? 'Permanente'
+        : `${eff.duration} ${eff.duration === 1 ? 'turno' : 'turnos'}`;
+
+      const durBadgeClass = isPerm
+        ? 'bg-purple-500/20 text-purple-300 border-purple-500/40'
+        : isNerf
+        ? 'bg-rose-500/15 text-rose-300 border-rose-500/30'
+        : 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30';
+
+      const statusBadge = !isEnabled
+        ? `<span class="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-neutral-800 text-neutral-400 border border-neutral-700">DESATIVADO</span>`
+        : '';
+
+      const mods = Array.isArray(eff.modifiers) ? eff.modifiers : [];
+      let modsHtml = mods
+        .map((m) => {
+          const isPct = String(m.modifierType || m.mode || 'FLAT').toUpperCase() === 'PERCENT';
+          const valNum = Number(m.value || 0);
+          const sign = valNum > 0 ? '+' : '';
+          const statLabel = formatEffectTargetLabel(m.targetStat || m.stat);
+          const pillColor = isNerf
+            ? 'bg-rose-500/10 text-rose-300 border-rose-500/30'
+            : 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30';
+          return `<span class="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold border ${pillColor}">${sign}${valNum}${isPct ? '%' : ''} ${statLabel}</span>`;
+        })
+        .join(' ');
+
+      if (!modsHtml && eff.paModifier) {
+        const sign = eff.paModifier > 0 ? '+' : '';
+        const pillColor = isNerf
+          ? 'bg-rose-500/20 text-rose-300 border-rose-500/40'
+          : 'bg-amber-500/20 text-amber-300 border-amber-500/30';
+        modsHtml = `<span class="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold border ${pillColor}">${sign}${eff.paModifier} PA</span>`;
+      }
+
+      const cardBg = !isEnabled
+        ? 'bg-neutral-900/50 border-neutral-800 opacity-60'
+        : isNerf
+        ? 'bg-rose-950/20 border-rose-500/30 hover:border-rose-500/50'
+        : 'bg-emerald-950/20 border-emerald-500/30 hover:border-emerald-500/50';
+
+      const textColor = !isEnabled
+        ? 'text-neutral-400'
+        : isNerf
+        ? 'text-rose-300'
+        : 'text-emerald-300';
+
+      const toggleHtml = canManage
+        ? `
+          <label class="fantasy-toggle fantasy-toggle-sm" title="${isEnabled ? 'Desativar este efeito' : 'Ativar este efeito'}">
+            <input type="checkbox" data-action="toggle-buff-nerf" data-char-id="${escapeHtml(char.id)}" data-effect-id="${escapeHtml(eff.id)}" ${isEnabled ? 'checked' : ''} />
+            <span class="fantasy-toggle-slider"></span>
+          </label>
+        `
+        : `
+          <span class="text-[9px] font-mono font-bold ${isEnabled ? 'text-emerald-400' : 'text-neutral-500'}">
+            ${isEnabled ? 'ATIVO' : 'DESAT.'}
+          </span>
+        `;
+
+      const actionsHtml = canManage
+        ? `
+          <div class="flex items-center gap-1 shrink-0">
+            <button
+              type="button"
+              data-action="edit-buff-nerf"
+              data-char-id="${escapeHtml(char.id)}"
+              data-effect-id="${escapeHtml(eff.id)}"
+              class="w-7 h-7 rounded-lg flex items-center justify-center text-amber-400/80 hover:text-amber-300 hover:bg-amber-950/40 shrink-0 transition"
+              title="Editar Efeito"
+            >
+              <iconify-icon icon="game-icons:quill-ink"></iconify-icon>
+            </button>
+            <button
+              type="button"
+              data-action="delete-buff-nerf"
+              data-char-id="${escapeHtml(char.id)}"
+              data-effect-id="${escapeHtml(eff.id)}"
+              class="w-7 h-7 rounded-lg flex items-center justify-center text-rose-400/80 hover:text-rose-300 hover:bg-rose-950/40 shrink-0 transition"
+              title="Remover Efeito"
+            >
+              <iconify-icon icon="game-icons:trash-can"></iconify-icon>
+            </button>
+          </div>
+        `
+        : '';
+
+      return `
+        <div class="p-2.5 rounded-xl border flex items-center justify-between gap-3 buff-item-card transition ${cardBg}">
+          <div class="flex items-center gap-2.5 min-w-0 flex-1">
+            ${toggleHtml}
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center gap-1.5 flex-wrap">
+                <span class="font-bold ${textColor} text-xs">${escapeHtml(eff.name || eff.description)}</span>
+                <span class="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold border ${durBadgeClass}">${durLabel}</span>
+                ${statusBadge}
+              </div>
+              ${
+                modsHtml
+                  ? `<div class="flex items-center gap-1 flex-wrap mt-1">${modsHtml}</div>`
+                  : ''
+              }
+              ${
+                eff.source
+                  ? `<div class="text-[10px] font-mono text-neutral-500 mt-0.5 truncate">${escapeHtml(eff.source)}</div>`
+                  : ''
+              }
+            </div>
+          </div>
+          ${actionsHtml}
+        </div>
+      `;
+    };
 
     if (buffsContainer) {
       if (buffs.length === 0) {
@@ -6586,46 +6866,7 @@
           </div>
         `;
       } else {
-        buffsContainer.innerHTML = buffs
-          .map((b) => {
-            const durLabel = b.duration && b.duration > 0
-              ? `${b.duration} ${b.duration === 1 ? 'turno' : 'turnos'}`
-              : 'Permanente';
-            const paTag = b.paModifier > 0
-              ? `<span class="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">+${b.paModifier} PA</span>`
-              : '';
-            return `
-              <div class="p-2.5 rounded-xl bg-emerald-950/20 border border-emerald-500/30 flex items-center justify-between gap-2 buff-item-card transition hover:border-emerald-500/50">
-                <div class="min-w-0 flex-1">
-                  <div class="flex items-center gap-1.5 flex-wrap">
-                    <span class="font-bold text-emerald-300 text-xs">${escapeHtml(b.name || b.description)}</span>
-                    <span class="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">${durLabel}</span>
-                    ${paTag}
-                  </div>
-                  ${
-                    b.source
-                      ? `<div class="text-[10px] font-mono text-emerald-400/70 mt-0.5 truncate">${escapeHtml(b.source)}</div>`
-                      : ''
-                  }
-                </div>
-                ${
-                  canManage
-                    ? `<button
-                        type="button"
-                        data-action="delete-buff-nerf"
-                        data-char-id="${escapeHtml(char.id)}"
-                        data-effect-id="${escapeHtml(b.id)}"
-                        class="w-7 h-7 rounded-lg flex items-center justify-center text-emerald-400/70 hover:text-rose-400 hover:bg-rose-950/40 shrink-0 transition"
-                        title="Remover Buff"
-                      >
-                        <iconify-icon icon="game-icons:trash-can"></iconify-icon>
-                      </button>`
-                    : ''
-                }
-              </div>
-            `;
-          })
-          .join('');
+        buffsContainer.innerHTML = buffs.map((b) => renderEffectCard(b, false)).join('');
       }
     }
 
@@ -6637,46 +6878,7 @@
           </div>
         `;
       } else {
-        nerfsContainer.innerHTML = nerfs
-          .map((n) => {
-            const durLabel = n.duration && n.duration > 0
-              ? `${n.duration} ${n.duration === 1 ? 'turno' : 'turnos'}`
-              : 'Permanente';
-            const paTag = n.paModifier < 0
-              ? `<span class="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40">${n.paModifier} PA</span>`
-              : '';
-            return `
-              <div class="p-2.5 rounded-xl bg-rose-950/20 border border-rose-500/30 flex items-center justify-between gap-2 nerf-item-card transition hover:border-rose-500/50">
-                <div class="min-w-0 flex-1">
-                  <div class="flex items-center gap-1.5 flex-wrap">
-                    <span class="font-bold text-rose-300 text-xs">${escapeHtml(n.name || n.description)}</span>
-                    <span class="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-rose-500/15 text-rose-300 border border-rose-500/30">${durLabel}</span>
-                    ${paTag}
-                  </div>
-                  ${
-                    n.source
-                      ? `<div class="text-[10px] font-mono text-rose-400/70 mt-0.5 truncate">${escapeHtml(n.source)}</div>`
-                      : ''
-                  }
-                </div>
-                ${
-                  canManage
-                    ? `<button
-                        type="button"
-                        data-action="delete-buff-nerf"
-                        data-char-id="${escapeHtml(char.id)}"
-                        data-effect-id="${escapeHtml(n.id)}"
-                        class="w-7 h-7 rounded-lg flex items-center justify-center text-rose-400/70 hover:text-rose-300 hover:bg-rose-950/40 shrink-0 transition"
-                        title="Remover Nerf"
-                      >
-                        <iconify-icon icon="game-icons:trash-can"></iconify-icon>
-                      </button>`
-                    : ''
-                }
-              </div>
-            `;
-          })
-          .join('');
+        nerfsContainer.innerHTML = nerfs.map((n) => renderEffectCard(n, true)).join('');
       }
     }
   }
@@ -6687,6 +6889,7 @@
       if (!char || !Array.isArray(char.buffsNerfs)) return false;
       const eff = char.buffsNerfs.find((e) => e.id === effectId);
       char.buffsNerfs = char.buffsNerfs.filter((e) => e.id !== effectId);
+      recalculateCharacterDerived(char);
       if (eff) {
         toasts.push(`Efeito "${eff.name || eff.description}" removido de ${char.name}.`);
         if (eff.statusKey === 'IMUNIDADE_CONGELAMENTO' || eff.name?.toLowerCase().includes('imunidade a congelamento')) {
@@ -6703,29 +6906,79 @@
     const char = state.characters.find((c) => c.id === charId);
     if (!char) return;
 
+    const editingId = document.getElementById('bn-editing-id')?.value.trim();
     const desc = document.getElementById('bn-effect-desc')?.value.trim();
     if (!desc) return;
     const type = document.getElementById('bn-effect-type')?.value || 'BUFF';
+    const isPermanent = Boolean(document.getElementById('bn-effect-is-permanent')?.checked);
     const durRaw = document.getElementById('bn-effect-duration')?.value;
     const durNum = durRaw !== '' && !isNaN(Number(durRaw)) ? Number(durRaw) : null;
-    const duration = durNum && durNum > 0 ? Math.round(durNum) : null;
-    const paMod = Number(document.getElementById('bn-effect-pa-mod')?.value || 0);
+    const duration = isPermanent ? null : durNum && durNum > 0 ? Math.round(durNum) : null;
+
+    const modifiers = [];
+    document.querySelectorAll('#bn-modifiers-list .bn-modifier-row').forEach((row) => {
+      const targetStat = row.querySelector('[data-mod-target]')?.value;
+      const modifierType = row.querySelector('[data-mod-type]')?.value || 'FLAT';
+      const valRaw = row.querySelector('[data-mod-val]')?.value;
+      const value = Number(valRaw || 0);
+      if (targetStat && !isNaN(value)) {
+        modifiers.push({ targetStat, modifierType, value });
+      }
+    });
+
+    const paModEntry = modifiers.find((m) => (m.targetStat || m.stat) === 'PA');
+    const paMod = paModEntry ? Number(paModEntry.value || 0) : 0;
 
     commitMutation((st, toasts) => {
       const target = st.characters.find((c) => c.id === charId);
       if (!target) return false;
       if (!Array.isArray(target.buffsNerfs)) target.buffsNerfs = [];
 
-      target.buffsNerfs.push({
-        id: `bn_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
-        type,
-        name: desc,
-        description: desc,
-        duration,
-        source: 'Manual (Mestre/Jogador)',
-        paModifier: paMod,
-        createdAt: Date.now(),
-      });
+      if (editingId) {
+        const existing = target.buffsNerfs.find((b) => b.id === editingId);
+        if (existing) {
+          existing.type = type;
+          existing.name = desc;
+          existing.description = desc;
+          existing.duration = duration;
+          existing.isPermanent = isPermanent;
+          existing.modifiers = modifiers;
+          existing.paModifier = paMod;
+          toasts.push(`Efeito "${desc}" atualizado em ${target.name}.`);
+        } else {
+          target.buffsNerfs.push({
+            id: editingId,
+            type,
+            name: desc,
+            description: desc,
+            duration,
+            isPermanent,
+            enabled: true,
+            modifiers,
+            paModifier: paMod,
+            source: 'Manual (Mestre/Jogador)',
+            createdAt: Date.now(),
+          });
+          toasts.push(`${type === 'BUFF' ? 'Buff' : 'Nerf'} "${desc}" salvo em ${target.name}.`);
+        }
+      } else {
+        target.buffsNerfs.push({
+          id: `bn_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+          type,
+          name: desc,
+          description: desc,
+          duration,
+          isPermanent,
+          enabled: true,
+          modifiers,
+          paModifier: paMod,
+          source: 'Manual (Mestre/Jogador)',
+          createdAt: Date.now(),
+        });
+        toasts.push(`${type === 'BUFF' ? 'Buff' : 'Nerf'} "${desc}" aplicado a ${target.name}.`);
+      }
+
+      recalculateCharacterDerived(target);
 
       if (paMod < 0) {
         const penalty = calculateCombatantPaPenalty(target);
@@ -6733,16 +6986,12 @@
         if (target.pa > maxAvail) target.pa = maxAvail;
       }
 
-      toasts.push(`${type === 'BUFF' ? 'Buff' : 'Nerf'} "${desc}" aplicado a ${target.name}.`);
       return true;
     });
 
-    const descInput = document.getElementById('bn-effect-desc');
-    const durInput = document.getElementById('bn-effect-duration');
-    const paInput = document.getElementById('bn-effect-pa-mod');
-    if (descInput) descInput.value = '';
-    if (durInput) durInput.value = '';
-    if (paInput) paInput.value = '0';
+    resetBnForm();
+    const updatedChar = state.characters.find((c) => c.id === charId);
+    if (updatedChar) renderBuffsNerfsModalContent(updatedChar);
   }
 
   // ---------------------------------------------------------------------------
@@ -7072,6 +7321,10 @@
   let notesAutoSaveTimer = null;
   let notesToolbarInitialized = false;
 
+  function generateNotePageId() {
+    return 'note_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
+  }
+
   function updateNotesCounters() {
     const editor = document.getElementById('notes-content-editor');
     if (!editor) return;
@@ -7085,7 +7338,7 @@
     }
   }
 
-  function saveCurrentEditorToPage() {
+  function flushCurrentTabContent() {
     if (!currentNotesActivePageId) return;
     const page = currentNotesPages.find((p) => p.id === currentNotesActivePageId);
     if (!page) return;
@@ -7094,6 +7347,10 @@
       page.content = editor.innerHTML;
       page.updatedAt = new Date().toISOString();
     }
+  }
+
+  function saveCurrentEditorToPage() {
+    flushCurrentTabContent();
   }
 
   function scheduleNotesAutoSave(delayMs = 600) {
@@ -7118,7 +7375,7 @@
     const canEdit = isEffectiveMaster() || isCharacterOwner(char);
     if (!canEdit) return;
 
-    saveCurrentEditorToPage();
+    flushCurrentTabContent();
 
     commitMutation(
       (st) => {
@@ -7140,9 +7397,9 @@
   }
 
   function loadActiveNotePage(pageId, canEdit) {
-    currentNotesActivePageId = pageId;
     const page = currentNotesPages.find((p) => p.id === pageId) || currentNotesPages[0];
     if (!page) return;
+    currentNotesActivePageId = page.id;
     const editor = document.getElementById('notes-content-editor');
     if (!editor) return;
     editor.innerHTML = page.content || '';
@@ -7209,16 +7466,81 @@
       .join('');
   }
 
-  function createNewNotePage() {
+  function openNewNotePageModal() {
     const char = state.characters.find((c) => c.id === currentNotesCharId);
     const canEdit = isEffectiveMaster() || isCharacterOwner(char);
     if (!canEdit) return;
 
-    saveCurrentEditorToPage();
-    const newNum = currentNotesPages.length + 1;
+    flushCurrentTabContent();
+
+    const input = document.getElementById('new-note-page-name-input');
+    const errorEl = document.getElementById('new-note-page-error');
+    if (errorEl) {
+      errorEl.textContent = '';
+      errorEl.classList.add('hidden');
+    }
+
+    if (input) {
+      let count = currentNotesPages.length + 1;
+      while (currentNotesPages.some((p) => (p.title || '').trim().toLowerCase() === `página ${count}`.toLowerCase())) {
+        count++;
+      }
+      input.value = `Página ${count}`;
+    }
+
+    openModal('modal-new-note-page');
+    setTimeout(() => {
+      if (input) {
+        input.focus();
+        input.select();
+      }
+    }, 60);
+  }
+
+  function handleNewNotePageSubmit(e) {
+    if (e) e.preventDefault();
+    const char = state.characters.find((c) => c.id === currentNotesCharId);
+    const canEdit = isEffectiveMaster() || isCharacterOwner(char);
+    if (!canEdit) return;
+
+    const input = document.getElementById('new-note-page-name-input');
+    const errorEl = document.getElementById('new-note-page-error');
+    const title = (input?.value || '').trim();
+
+    if (!title) {
+      if (errorEl) {
+        errorEl.innerHTML = '<iconify-icon icon="game-icons:cancel"></iconify-icon> <span>O título da página não pode ficar em branco.</span>';
+        errorEl.classList.remove('hidden');
+      }
+      input?.focus();
+      return;
+    }
+
+    const exists = currentNotesPages.some(
+      (p) => (p.title || '').trim().toLowerCase() === title.toLowerCase()
+    );
+
+    if (exists) {
+      if (errorEl) {
+        errorEl.innerHTML = `<iconify-icon icon="game-icons:cancel"></iconify-icon> <span>Já existe uma página chamada "${escapeHtml(title)}". Escolha outro nome.</span>`;
+        errorEl.classList.remove('hidden');
+      }
+      input?.focus();
+      input?.select();
+      return;
+    }
+
+    if (errorEl) {
+      errorEl.textContent = '';
+      errorEl.classList.add('hidden');
+    }
+
+    closeModal('modal-new-note-page');
+
+    flushCurrentTabContent();
     const newPage = {
-      id: `page_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-      title: `Página ${newNum}`,
+      id: generateNotePageId(),
+      title,
       content: '',
       updatedAt: new Date().toISOString(),
     };
@@ -7228,6 +7550,11 @@
     renderNotesTabs(true);
     loadActiveNotePage(newPage.id, true);
     document.getElementById('notes-content-editor')?.focus();
+    showToast(`Página "${title}" criada com sucesso!`);
+  }
+
+  function createNewNotePage() {
+    openNewNotePageModal();
   }
 
   function initNotesToolbar() {
@@ -7412,6 +7739,7 @@
           e.target.removeAttribute('checked');
           e.target.closest('.note-task')?.classList.remove('is-done');
         }
+        flushCurrentTabContent();
         scheduleNotesAutoSave(100);
         updateNotesCounters();
       }
@@ -7435,6 +7763,7 @@
             sel.removeAllRanges();
             sel.addRange(r);
           }
+          flushCurrentTabContent();
           scheduleNotesAutoSave(200);
           updateNotesCounters();
         }
@@ -7442,12 +7771,27 @@
     });
 
     editor?.addEventListener('input', () => {
+      flushCurrentTabContent();
       scheduleNotesAutoSave(600);
       updateNotesCounters();
     });
 
+    editor?.addEventListener('keyup', () => {
+      flushCurrentTabContent();
+    });
+
+    // Formulário de Nova Página de Notas (Modal)
+    document.getElementById('form-new-note-page')?.addEventListener('submit', handleNewNotePageSubmit);
+    document.getElementById('new-note-page-name-input')?.addEventListener('input', () => {
+      const errorEl = document.getElementById('new-note-page-error');
+      if (errorEl && !errorEl.classList.contains('hidden')) {
+        errorEl.textContent = '';
+        errorEl.classList.add('hidden');
+      }
+    });
+
     // Botão de nova página
-    document.getElementById('btn-notes-new-page')?.addEventListener('click', createNewNotePage);
+    document.getElementById('btn-notes-new-page')?.addEventListener('click', openNewNotePageModal);
 
     // Delegação de eventos nas abas (troca, renomear, excluir)
     const tabsContainer = document.getElementById('notes-tabs-container');
@@ -7459,6 +7803,7 @@
       if (tabBtn) {
         const targetId = tabBtn.getAttribute('data-notes-tab-id');
         if (targetId && targetId !== currentNotesActivePageId) {
+          flushCurrentTabContent();
           if (canEdit) executeNotesAutoSave();
           loadActiveNotePage(targetId, canEdit);
         }
@@ -7467,6 +7812,7 @@
 
       const renameBtn = e.target.closest('[data-rename-note-id]');
       if (renameBtn && canEdit) {
+        flushCurrentTabContent();
         const pageId = renameBtn.getAttribute('data-rename-note-id');
         const page = currentNotesPages.find((p) => p.id === pageId);
         if (!page) return;
@@ -7490,7 +7836,15 @@
               if (finished) return;
               finished = true;
               const newTitle = input.value.trim();
-              if (newTitle) {
+              if (newTitle && newTitle !== page.title) {
+                const duplicate = currentNotesPages.some(
+                  (p) => p.id !== page.id && (p.title || '').trim().toLowerCase() === newTitle.toLowerCase()
+                );
+                if (duplicate) {
+                  showToast(`Já existe uma página chamada "${newTitle}".`, 'warning');
+                  renderNotesTabs(canEdit);
+                  return;
+                }
                 page.title = newTitle;
                 page.updatedAt = new Date().toISOString();
                 executeNotesAutoSave();
@@ -7519,6 +7873,7 @@
           showToast('Você deve manter pelo menos uma página de anotações.', 'warning');
           return;
         }
+        flushCurrentTabContent();
         const page = currentNotesPages.find((p) => p.id === pageId);
         if (!page) return;
         openConfirmModal({
@@ -7527,9 +7882,11 @@
           message: `Tem certeza que deseja excluir a página "${page.title}"? Todo o conteúdo dela será removido.`,
           confirmText: 'Excluir Página',
           onConfirm: () => {
+            const delIdx = currentNotesPages.findIndex((p) => p.id === pageId);
             currentNotesPages = currentNotesPages.filter((p) => p.id !== pageId);
             if (currentNotesActivePageId === pageId) {
-              currentNotesActivePageId = currentNotesPages[0].id;
+              const nextIdx = Math.max(0, delIdx - 1);
+              currentNotesActivePageId = currentNotesPages[nextIdx]?.id || currentNotesPages[0].id;
             }
             executeNotesAutoSave();
             renderNotesTabs(canEdit);
@@ -7570,12 +7927,17 @@
     }
 
     if (Array.isArray(char.notesPages) && char.notesPages.length > 0) {
-      currentNotesPages = JSON.parse(JSON.stringify(char.notesPages));
+      currentNotesPages = JSON.parse(JSON.stringify(char.notesPages)).map((p, idx) => ({
+        id: p.id || generateNotePageId(),
+        title: p.title || `Página ${idx + 1}`,
+        content: p.content || '',
+        updatedAt: p.updatedAt || new Date().toISOString(),
+      }));
     } else {
       const legacy = (char.notes || '').trim();
       currentNotesPages = [
         {
-          id: `page_${Date.now()}_1`,
+          id: generateNotePageId(),
           title: 'Geral',
           content: legacy ? `<p>${escapeHtml(legacy).replace(/\n/g, '<br>')}</p>` : '',
           updatedAt: new Date().toISOString(),
@@ -9435,14 +9797,60 @@
       btn.addEventListener('click', () => setSingleResOpSelection(btn.getAttribute('data-res-op')));
     });
 
-    // Modal de Buffs e Nerfs
+    // Modal de Buffs e Nerfs (Edição, Modificadores, Toggle Switch e Permanência)
     document.getElementById('form-add-buff-nerf')?.addEventListener('submit', handleAddBuffNerfSubmit);
+    document.getElementById('btn-add-bn-modifier')?.addEventListener('click', () => {
+      addBnModifierRow({ targetStat: 'VIDA', modifierType: 'FLAT', value: 10 });
+    });
+    document.getElementById('btn-cancel-edit-bn')?.addEventListener('click', () => {
+      resetBnForm();
+    });
+    document.getElementById('bn-effect-is-permanent')?.addEventListener('change', (e) => {
+      const durContainer = document.getElementById('bn-duration-container');
+      const durInput = document.getElementById('bn-effect-duration');
+      if (e.target.checked) {
+        if (durContainer) durContainer.classList.add('opacity-40');
+        if (durInput) {
+          durInput.disabled = true;
+          durInput.value = '';
+          durInput.placeholder = 'Permanente';
+        }
+      } else {
+        if (durContainer) durContainer.classList.remove('opacity-40');
+        if (durInput) {
+          durInput.disabled = false;
+          durInput.placeholder = 'Ex: 3';
+        }
+      }
+    });
+
     document.getElementById('modal-buffs-nerfs')?.addEventListener('click', (e) => {
+      const toggleSwitch = e.target.closest('[data-action="toggle-buff-nerf"]');
+      if (toggleSwitch) {
+        const charId = toggleSwitch.getAttribute('data-char-id');
+        const effectId = toggleSwitch.getAttribute('data-effect-id');
+        if (charId && effectId) toggleBuffNerf(charId, effectId);
+        return;
+      }
+
+      const editBtn = e.target.closest('[data-action="edit-buff-nerf"]');
+      if (editBtn) {
+        const charId = editBtn.getAttribute('data-char-id');
+        const effectId = editBtn.getAttribute('data-effect-id');
+        if (charId && effectId) editBuffNerf(charId, effectId);
+        return;
+      }
+
       const delBtn = e.target.closest('[data-action="delete-buff-nerf"]');
       if (delBtn) {
         const charId = delBtn.getAttribute('data-char-id');
         const effectId = delBtn.getAttribute('data-effect-id');
-        if (charId && effectId) removeBuffNerf(charId, effectId);
+        if (charId && effectId) {
+          removeBuffNerf(charId, effectId);
+          const updatedChar = state.characters.find((c) => c.id === charId);
+          if (updatedChar) renderBuffsNerfsModalContent(updatedChar);
+        }
+        return;
       }
     });
 

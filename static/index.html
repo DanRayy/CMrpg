@@ -1455,7 +1455,7 @@
   <!-- MODAL: BUFFS E NERFS (Dark Fantasy Modal)                                  -->
   <!-- ========================================================================= -->
   <div id="modal-buffs-nerfs" class="modal-backdrop hidden fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
-    <div class="modal-panel w-full max-w-lg rounded-2xl overflow-hidden flex flex-col max-h-[92vh] bg-[var(--bg-modal,#111318)] border border-amber-500/30 shadow-2xl">
+    <div class="modal-panel w-full max-w-2xl rounded-2xl overflow-hidden flex flex-col max-h-[92vh] bg-[var(--bg-modal,#111318)] border border-amber-500/30 shadow-2xl">
       <!-- Cabeçalho -->
       <div class="px-5 py-4 border-b flex items-center justify-between app-modal-header border-app-divider-border bg-black/40">
         <div class="flex items-center gap-2.5">
@@ -1481,11 +1481,11 @@
           <div class="flex items-center justify-between pb-1 border-b border-emerald-500/20">
             <h4 class="font-bold text-sm uppercase tracking-wide flex items-center gap-1.5" style="color: #22c55e;">
               <iconify-icon icon="game-icons:upgrade"></iconify-icon>
-              <span>Buff</span>
+              <span>Buffs</span>
             </h4>
             <span id="buffs-count-badge" class="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">0</span>
           </div>
-          <div id="buffs-list-container" class="space-y-1.5">
+          <div id="buffs-list-container" class="space-y-2">
             <!-- Renderizado dinamicamente -->
           </div>
         </div>
@@ -1495,71 +1495,109 @@
           <div class="flex items-center justify-between pb-1 border-b border-rose-500/20">
             <h4 class="font-bold text-sm uppercase tracking-wide flex items-center gap-1.5" style="color: #ef4444;">
               <iconify-icon icon="game-icons:decapitation"></iconify-icon>
-              <span>Nerf</span>
+              <span>Nerfs</span>
             </h4>
             <span id="nerfs-count-badge" class="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-rose-500/15 text-rose-400 border border-rose-500/30">0</span>
           </div>
-          <div id="nerfs-list-container" class="space-y-1.5">
+          <div id="nerfs-list-container" class="space-y-2">
             <!-- Renderizado dinamicamente -->
           </div>
         </div>
 
-        <!-- Formulário para Adicionar Buff / Nerf Manualmente -->
-        <div class="p-3.5 rounded-xl bg-black/40 border app-divider-border space-y-3 mt-4">
-          <h5 class="font-serif-fantasy font-black text-xs gold-title uppercase flex items-center gap-1.5">
-            <iconify-icon icon="game-icons:quill-ink"></iconify-icon>
-            <span>Adicionar Novo Efeito</span>
-          </h5>
+        <!-- Formulário para Criar / Editar Buff ou Nerf -->
+        <div id="container-form-buff-nerf" class="p-4 rounded-xl bg-black/40 border border-app-divider-border space-y-3.5 mt-4">
+          <div class="flex items-center justify-between pb-2 border-b border-neutral-800">
+            <h5 id="bn-form-title" class="font-serif-fantasy font-black text-xs gold-title uppercase flex items-center gap-1.5">
+              <iconify-icon icon="game-icons:quill-ink"></iconify-icon>
+              <span>Adicionar Novo Efeito</span>
+            </h5>
+            <button
+              type="button"
+              id="btn-cancel-edit-bn"
+              class="hidden text-[11px] font-bold text-neutral-400 hover:text-white px-2.5 py-1 rounded-lg bg-neutral-800 hover:bg-neutral-700 transition flex items-center gap-1"
+            >
+              <span>✕ Cancelar Edição</span>
+            </button>
+          </div>
 
-          <form id="form-add-buff-nerf" class="space-y-2.5">
+          <form id="form-add-buff-nerf" class="space-y-3">
+            <input type="hidden" id="bn-editing-id" value="" />
+
             <div>
-              <label class="block font-bold uppercase mb-1 text-[10px] app-label">Descrição do Efeito</label>
+              <label class="block font-bold uppercase mb-1 text-[10px] app-label">Nome / Descrição do Efeito</label>
               <input
                 id="bn-effect-desc"
                 type="text"
                 required
-                placeholder="Ex: Bônus de dano +15% ou -1 PA"
+                placeholder="Ex: Bênção da Fúria (+15% Dano, +10 Defesa)"
                 class="w-full px-3 py-1.5 app-input font-bold text-xs"
               />
             </div>
 
-            <div class="grid grid-cols-3 gap-2">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 items-end">
               <div>
-                <label class="block font-bold uppercase mb-1 text-[10px] app-label">Tipo</label>
+                <label class="block font-bold uppercase mb-1 text-[10px] app-label">Tipo de Efeito</label>
                 <select id="bn-effect-type" class="w-full px-2 py-1.5 app-input font-bold text-xs">
-                  <option value="BUFF">Buff (Positivo)</option>
-                  <option value="NERF">Nerf (Negativo)</option>
+                  <option value="BUFF">Buff (Positivo / Bônus)</option>
+                  <option value="NERF">Nerf (Negativo / Penalidade)</option>
                 </select>
               </div>
+
               <div>
-                <label class="block font-bold uppercase mb-1 text-[10px] app-label" title="0 para permanente">Duração (Turnos)</label>
+                <label class="flex items-center gap-2 cursor-pointer px-2.5 py-2 rounded-lg bg-black/30 border border-neutral-800 hover:border-neutral-700 transition">
+                  <input type="checkbox" id="bn-effect-is-permanent" class="w-4 h-4 rounded cursor-pointer accent-purple-500" />
+                  <span class="text-[11px] font-bold text-neutral-200">Efeito Permanente</span>
+                </label>
+              </div>
+
+              <div id="bn-duration-container">
+                <label class="block font-bold uppercase mb-1 text-[10px] app-label" title="Duração em turnos de combate">Duração (Turnos)</label>
                 <input
                   id="bn-effect-duration"
                   type="number"
-                  min="0"
+                  min="1"
                   step="1"
-                  placeholder="Ex: 2 (0=perm)"
+                  placeholder="Ex: 3"
                   class="w-full px-2 py-1.5 app-input font-mono font-bold text-xs"
                 />
               </div>
-              <div>
-                <label class="block font-bold uppercase mb-1 text-[10px] app-label">Modificador PA</label>
-                <select id="bn-effect-pa-mod" class="w-full px-2 py-1.5 app-input font-bold text-xs">
-                  <option value="0">Nenhum (0)</option>
-                  <option value="-1">-1 PA</option>
-                  <option value="-2">-2 PA</option>
-                  <option value="+1">+1 PA</option>
-                </select>
+            </div>
+
+            <!-- Criador de Modificadores de Status (Fixo / %) -->
+            <div class="p-3 rounded-xl bg-black/30 border border-neutral-800 space-y-2">
+              <div class="flex items-center justify-between">
+                <div>
+                  <h6 class="font-serif-fantasy font-black text-[11px] gold-title uppercase flex items-center gap-1">
+                    <iconify-icon icon="game-icons:lightning-branches"></iconify-icon>
+                    <span>Modificadores de Status (Fixo ou %)</span>
+                  </h6>
+                  <p class="text-[10px] app-muted">Bônus ou penalidades somados em tempo real na ficha enquanto ativo</p>
+                </div>
+                <button
+                  type="button"
+                  id="btn-add-bn-modifier"
+                  class="px-2.5 py-1 rounded-lg text-[11px] font-bold btn-gold-outline flex items-center gap-1 transition"
+                >
+                  <iconify-icon icon="game-icons:plus"></iconify-icon>
+                  <span>Modificador</span>
+                </button>
+              </div>
+
+              <div id="bn-modifiers-list" class="space-y-2">
+                <!-- Linhas de modificadores adicionadas dinamicamente -->
               </div>
             </div>
 
-            <button
-              type="submit"
-              class="w-full py-2 px-3 rounded-lg font-serif-fantasy text-xs tracking-wider uppercase font-black btn-gold flex items-center justify-center gap-1.5 shadow-md hover:scale-[1.01] transition"
-            >
-              <iconify-icon icon="game-icons:sparkles"></iconify-icon>
-              <span>+ Adicionar Efeito</span>
-            </button>
+            <div class="pt-1">
+              <button
+                type="submit"
+                id="btn-bn-submit"
+                class="w-full py-2 px-3 rounded-lg font-serif-fantasy text-xs tracking-wider uppercase font-black btn-gold flex items-center justify-center gap-1.5 shadow-md hover:scale-[1.01] transition"
+              >
+                <iconify-icon icon="game-icons:sparkles"></iconify-icon>
+                <span id="btn-bn-submit-text">+ Adicionar Efeito</span>
+              </button>
+            </div>
           </form>
         </div>
       </div>
@@ -2766,6 +2804,46 @@
         <div class="pt-2 flex items-center justify-end gap-2 border-t border-app-divider-border">
           <button type="button" data-close-modal="modal-save-custom-preset" class="px-3 py-1.5 rounded-lg font-bold text-xs uppercase app-secondary-btn">Cancelar</button>
           <button type="submit" id="btn-save-custom-preset-submit" class="btn-gold px-4 py-1.5 font-serif-fantasy text-xs uppercase tracking-wider">Salvar Preset</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- MODAL: NOVA PÁGINA DE NOTAS                                               -->
+  <!-- ========================================================================= -->
+  <div id="modal-new-note-page" class="modal-backdrop hidden fixed inset-0 z-[75] flex items-center justify-center p-3 sm:p-4">
+    <div class="modal-panel w-full max-w-sm rounded-2xl overflow-hidden flex flex-col bg-[var(--bg-modal,#111318)] border border-emerald-500/40 shadow-2xl">
+      <div class="px-5 py-3.5 border-b flex items-center justify-between app-modal-header border-app-divider-border bg-black/40">
+        <div class="flex items-center gap-2">
+          <span class="w-7 h-7 rounded-lg flex items-center justify-center bg-emerald-950/60 border border-emerald-500/40 text-emerald-400 text-sm">
+            <iconify-icon icon="game-icons:quill-ink"></iconify-icon>
+          </span>
+          <h3 class="font-serif-fantasy font-bold text-sm text-emerald-300 uppercase tracking-wide">Nova Página de Notas</h3>
+        </div>
+        <button type="button" data-close-modal="modal-new-note-page" class="app-modal-close text-neutral-400 hover:text-white text-lg">✕</button>
+      </div>
+      <form id="form-new-note-page" class="p-4 space-y-4">
+        <div>
+          <label for="new-note-page-name-input" class="block text-xs font-bold uppercase tracking-wider mb-1.5 app-label">Título da Página</label>
+          <input
+            id="new-note-page-name-input"
+            type="text"
+            maxlength="40"
+            placeholder="Ex: Lore, Magias, Diário, Combos..."
+            required
+            class="w-full px-3 py-2 text-sm app-input font-bold"
+            autocomplete="off"
+          />
+          <p id="new-note-page-error" class="hidden text-xs text-rose-400 font-semibold mt-1.5 flex items-center gap-1"></p>
+          <p class="text-[11px] app-muted mt-1.5">Cada página possui suas próprias anotações, checklists e formatação dentro da ficha.</p>
+        </div>
+        <div class="pt-2 flex items-center justify-end gap-2 border-t border-app-divider-border">
+          <button type="button" data-close-modal="modal-new-note-page" class="px-3 py-1.5 rounded-lg font-bold text-xs uppercase app-secondary-btn">Cancelar</button>
+          <button type="submit" id="btn-new-note-page-submit" class="btn-gold px-4 py-1.5 font-serif-fantasy text-xs uppercase tracking-wider flex items-center gap-1">
+            <iconify-icon icon="game-icons:plus"></iconify-icon>
+            <span>Criar Página</span>
+          </button>
         </div>
       </form>
     </div>

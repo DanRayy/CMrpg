@@ -978,6 +978,18 @@ def normalize_character(
         char["inventory"] = norm_inv
 
     char["activeBuffs"] = []
+    raw_bn = char.get("buffsNerfs")
+    if isinstance(raw_bn, list):
+        char["buffsNerfs"] = [b for b in raw_bn if isinstance(b, dict)]
+    else:
+        char["buffsNerfs"] = []
+
+    raw_notes = char.get("notesPages")
+    if isinstance(raw_notes, list):
+        char["notesPages"] = [p for p in raw_notes if isinstance(p, dict)]
+    else:
+        char["notesPages"] = []
+
     if not isinstance(char.get("talents"), list):
         char["talents"] = []
 

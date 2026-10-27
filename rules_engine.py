@@ -271,6 +271,46 @@ def compute_character_derived_stats(
             else:
                 flat_mods[target] += val
 
+    # Buffs e Nerfs manuais do combatente (com modificadores, permanência e toggle habilitado)
+    for bn in char.get("buffsNerfs") or []:
+        if not isinstance(bn, dict):
+            continue
+        if bn.get("enabled") is False:
+            continue
+        is_perm = bool(bn.get("isPermanent", False))
+        dur = bn.get("duration")
+        if not is_perm and dur is not None:
+            try:
+                if int(dur) <= 0:
+                    continue
+            except (ValueError, TypeError):
+                pass
+
+        for mod in bn.get("modifiers") or []:
+            if not isinstance(mod, dict):
+                continue
+            t_stat = mod.get("targetStat") or mod.get("stat")
+            if t_stat not in flat_mods:
+                continue
+            try:
+                val = float(mod.get("value", 0))
+            except (ValueError, TypeError):
+                val = 0.0
+            m_type = str(mod.get("modifierType") or mod.get("mode") or "FLAT").upper()
+            if m_type in ("PERCENT", "PERCENTUAL", "%"):
+                pct_mods[t_stat] += val
+            else:
+                flat_mods[t_stat] += val
+
+        if bn.get("paModifier") and not any(
+            isinstance(m, dict) and (m.get("targetStat") or m.get("stat")) == "PA"
+            for m in (bn.get("modifiers") or [])
+        ):
+            try:
+                flat_mods["PA"] += float(bn["paModifier"])
+            except (ValueError, TypeError):
+                pass
+
     base_attrs = char.get("attributes") or {}
     effective_attrs: Dict[str, Dict[str, Any]] = {}
     for attr_name in CANONICAL_ATTRIBUTES:
