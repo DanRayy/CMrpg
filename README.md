@@ -4,6 +4,10 @@ O **CMrpg** é uma aplicação web completa para gerenciamento de mesas de RPG d
 
 Desenvolvido para proporcionar uma experiência fluida, o sistema atende tanto ao Mestre da mesa quanto aos Jogadores, permitindo sessões colaborativas locais ou remotas via rede virtual.
 
+<p align="center">
+  <img src="assets/preview.png" alt="Prévia da Interface do CMrpg" width="100%" />
+</p>
+
 ---
 
 ## • Principais Funcionalidades
@@ -71,7 +75,7 @@ O CMrpg já possui inicialização automatizada no Windows através do script [`
 
 ---
 
-## ??? Por que usar o RadminVPN?
+## 🔒 Por que usar o Radmin VPN?
 
 A maioria dos provedores residenciais de internet utiliza **CGNAT** (*Carrier-Grade NAT*). Isso significa que:
 
