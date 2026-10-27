@@ -2,7 +2,7 @@
 
 O **CMrpg** é uma aplicação web completa para gerenciamento de mesas de RPG de mesa, combate tático em tempo real, fichas dinâmicas, controle de inventário e regras sincronizadas via WebSockets.
 
-Desenvolvido para proporcionar uma experiência fluida de *Dark Fantasy Medieval*, o sistema atende tanto ao Mestre da mesa quanto aos Jogadores, permitindo sessões colaborativas locais ou remotas via rede virtual.
+Desenvolvido para proporcionar uma experiência fluida, o sistema atende tanto ao Mestre da mesa quanto aos Jogadores, permitindo sessões colaborativas locais ou remotas via rede virtual.
 
 ---
 
