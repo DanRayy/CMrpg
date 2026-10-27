@@ -747,18 +747,29 @@
   // ---------------------------------------------------------------------------
   function renderShopTab() {
     const buyerSelect = document.getElementById('shop-buyer-char-select');
+    const isEnemyChar = (c) => Boolean(c.isEnemy || c.type === 'enemy' || c.bestiaryId);
+    const nonEnemyChars = (state.characters || []).filter((c) => !isEnemyChar(c));
+    const availableBuyers = isEffectiveMaster() ? nonEnemyChars : nonEnemyChars.filter((c) => isCharacterOwner(c));
+
     if (buyerSelect) {
-      if (!state.selectedBuyerCharId && state.characters.length > 0) {
-        state.selectedBuyerCharId = state.characters[0].id;
+      if (availableBuyers.length === 0) {
+        state.selectedBuyerCharId = null;
+        buyerSelect.innerHTML = '<option value="" disabled selected>Nenhuma ficha vinculada a você</option>';
+        buyerSelect.disabled = true;
+      } else {
+        buyerSelect.disabled = false;
+        if (!state.selectedBuyerCharId || !availableBuyers.some((c) => c.id === state.selectedBuyerCharId)) {
+          state.selectedBuyerCharId = availableBuyers[0].id;
+        }
+        buyerSelect.innerHTML = availableBuyers
+          .map(
+            (c) =>
+              `<option value="${escapeHtml(c.id)}" ${c.id === state.selectedBuyerCharId ? 'selected' : ''}>${escapeHtml(
+                c.name
+              )} ${state.room?.isSharedWallet ? '' : `(${c.gold || 0} ${state.room?.currencyName || 'Ouro'})`}</option>`
+          )
+          .join('');
       }
-      buyerSelect.innerHTML = state.characters
-        .map(
-          (c) =>
-            `<option value="${escapeHtml(c.id)}" ${c.id === state.selectedBuyerCharId ? 'selected' : ''}>${escapeHtml(
-              c.name
-            )} ${state.room?.isSharedWallet ? '' : `(${c.gold || 0} ${state.room?.currencyName || 'Ouro'})`}</option>`
-        )
-        .join('');
     }
 
     // Escrow approvals box (visível para todos os jogadores e para o Mestre)
@@ -846,112 +857,222 @@
     const itemsById = {};
     for (const it of state.itemsCatalog) itemsById[it.id] = it;
 
-    const stockCards = (activeNpc.stock || [])
-      .map((st) => {
-        const item = itemsById[st.itemId];
-        if (!item) return '';
-        if (!isEffectiveMaster() && item.visivelParaJogadores === false) return '';
-        const outOfStock = !st.infinite && Number(st.quantity || 0) <= 0;
-        const hasCustomPrice =
-          st.customPrice !== undefined && st.customPrice !== null && String(st.customPrice).trim() !== '';
-        const effectivePrice = hasCustomPrice ? Math.max(0, Number(st.customPrice)) : Number(item.preco || 0);
-        const maxBuyQty = st.infinite ? 999 : Math.max(1, Number(st.quantity || 1));
+    const query = (state.shopSearchQuery || '').trim().toLowerCase();
+    const typeFilter = state.shopTypeFilter || 'ALL';
+    const hasValidBuyer = Boolean(state.selectedBuyerCharId && availableBuyers.some((c) => c.id === state.selectedBuyerCharId));
 
-        return `
-        <div class="fantasy-card p-4 flex flex-col justify-between gap-3 ${outOfStock ? 'opacity-50' : ''}">
-          <div>
-            <div class="flex items-start justify-between gap-2">
-              <div>
-                <h4 class="font-serif-fantasy font-bold text-sm app-title flex items-center gap-1.5">${ITEM_TYPE_ICONS[item.tipo] || '<iconify-icon icon="game-icons:knapsack"></iconify-icon>'} <span>${escapeHtml(item.nome)}</span></h4>
-                <span class="text-[10px] font-mono app-muted flex items-center gap-1"><iconify-icon icon="game-icons:weight"></iconify-icon> <span>${item.peso}kg</span> • ${
-                  st.infinite ? 'Estoque Infinito' : `Estoque: ${st.quantity}`
-                }</span>
+    const matchingStock = (activeNpc.stock || []).filter((st) => {
+      const item = itemsById[st.itemId];
+      if (!item) return false;
+      if (!isEffectiveMaster() && item.visivelParaJogadores === false) return false;
+      if (typeFilter !== 'ALL' && (item.tipo || 'OUTRO') !== typeFilter) return false;
+      if (query) {
+        const matchName = (item.nome || '').toLowerCase().includes(query);
+        const matchDesc = (item.descricao || '').toLowerCase().includes(query);
+        if (!matchName && !matchDesc) return false;
+      }
+      return true;
+    });
+
+    let stockContentHtml = '';
+
+    if (matchingStock.length > 0) {
+      const stockCards = matchingStock
+        .map((st) => {
+          const item = itemsById[st.itemId];
+          if (!item) return '';
+          const outOfStock = !st.infinite && Number(st.quantity || 0) <= 0;
+          const hasCustomPrice =
+            st.customPrice !== undefined && st.customPrice !== null && String(st.customPrice).trim() !== '';
+          const effectivePrice = hasCustomPrice ? Math.max(0, Number(st.customPrice)) : Number(item.preco || 0);
+          const maxBuyQty = st.infinite ? 999 : Math.max(1, Number(st.quantity || 1));
+          const buyDisabled = outOfStock || !hasValidBuyer;
+
+          let buyBtnLabel = '';
+          if (outOfStock) {
+            buyBtnLabel = 'Esgotado';
+          } else if (!hasValidBuyer) {
+            buyBtnLabel = '<iconify-icon icon="game-icons:padlock"></iconify-icon> <span>Sem ficha vinculada</span>';
+          } else {
+            buyBtnLabel = `<iconify-icon icon="game-icons:two-coins" class="icon-gold"></iconify-icon> <span>Comprar (${effectivePrice} ${escapeHtml(state.room.currencyName)})</span>`;
+          }
+
+          return `
+          <div class="fantasy-card p-4 flex flex-col justify-between gap-3 ${outOfStock ? 'opacity-50' : ''}">
+            <div>
+              <div class="flex items-start justify-between gap-2">
+                <div>
+                  <h4 class="font-serif-fantasy font-bold text-sm app-title flex items-center gap-1.5">${ITEM_TYPE_ICONS[item.tipo] || '<iconify-icon icon="game-icons:knapsack"></iconify-icon>'} <span>${escapeHtml(item.nome)}</span></h4>
+                  <span class="text-[10px] font-mono app-muted flex items-center gap-1"><iconify-icon icon="game-icons:weight"></iconify-icon> <span>${item.peso}kg</span> • ${
+                    st.infinite ? 'Estoque Infinito' : `Estoque: ${st.quantity}`
+                  }</span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                  <span class="px-2.5 py-1 rounded-lg font-mono font-extrabold text-xs bg-amber-500/15 gold-title border border-amber-500/30">
+                    <iconify-icon icon="game-icons:two-coins" class="icon-gold"></iconify-icon> ${effectivePrice}
+                  </span>
+                  ${
+                    canManageShop
+                      ? `<button
+                          type="button"
+                          data-remove-shop-item="${escapeHtml(item.id)}"
+                          data-npc-id="${escapeHtml(activeNpc.id)}"
+                          title="Remover este item da loja do NPC"
+                          class="px-2 py-1 rounded-lg text-xs font-bold text-rose-400 app-secondary-btn hover:bg-rose-500/20"
+                        >
+                          <iconify-icon icon="game-icons:crowned-skull"></iconify-icon>
+                        </button>`
+                      : ''
+                  }
+                </div>
               </div>
-              <div class="flex items-center gap-1.5">
-                <span class="px-2.5 py-1 rounded-lg font-mono font-extrabold text-xs bg-amber-500/15 gold-title border border-amber-500/30">
-                  <iconify-icon icon="game-icons:two-coins" class="icon-gold"></iconify-icon> ${effectivePrice}
-                </span>
-                ${
-                  canManageShop
-                    ? `<button
-                        type="button"
-                        data-remove-shop-item="${escapeHtml(item.id)}"
+              ${
+                item.descricao
+                  ? (item.descricao.length > 70
+                      ? `<div class="mt-2">
+                          <p id="shop-desc-${escapeHtml(item.id)}" class="text-xs app-muted item-description line-clamp-1 leading-relaxed">${escapeHtml(item.descricao)}</p>
+                          <button type="button" data-toggle-desc="shop-desc-${escapeHtml(item.id)}" class="text-[10px] font-bold text-amber-400 hover:text-amber-300 flex items-center gap-1 mt-0.5" title="Ver descrição completa">
+                            <iconify-icon icon="game-icons:magnifying-glass" class="text-xs"></iconify-icon> <span>Ver descrição</span>
+                          </button>
+                        </div>`
+                      : `<p class="text-xs app-muted mt-2 item-description leading-relaxed">${escapeHtml(item.descricao)}</p>`)
+                  : ''
+              }
+            </div>
+
+            <div class="space-y-2 pt-2 border-t app-divider-border">
+              ${
+                canManageShop
+                  ? `<div class="flex items-center justify-between gap-2 text-[11px]">
+                      <span class="font-bold app-muted" title="Apenas o Mestre pode alterar o valor cobrado pelo NPC (vazio = preço padrão ${item.preco})">
+                        <iconify-icon icon="game-icons:two-coins" class="icon-gold"></iconify-icon> Valor no NPC <span class="opacity-60 font-mono">(Padrão: ${item.preco})</span>:
+                      </span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        data-shop-custom-price="${escapeHtml(item.id)}"
                         data-npc-id="${escapeHtml(activeNpc.id)}"
-                        title="Remover este item da loja do NPC"
-                        class="px-2 py-1 rounded-lg text-xs font-bold text-rose-400 app-secondary-btn hover:bg-rose-500/20"
-                      >
-                        <iconify-icon icon="game-icons:crowned-skull"></iconify-icon>
-                      </button>`
-                    : ''
-                }
+                        value="${hasCustomPrice ? effectivePrice : ''}"
+                        placeholder="${item.preco}"
+                        class="w-24 app-input px-2 py-1 rounded-lg text-xs font-mono font-bold text-amber-300 text-right"
+                      />
+                    </div>`
+                  : ''
+              }
+
+              <div class="flex items-center gap-2">
+                <div class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-black/30 border app-divider-border shrink-0" title="Quantidade para comprar de uma vez">
+                  <span class="text-[10px] font-bold uppercase app-muted">Qtd:</span>
+                  <input
+                    type="number"
+                    min="1"
+                    max="${maxBuyQty}"
+                    step="1"
+                    value="1"
+                    data-shop-buy-qty="${escapeHtml(item.id)}"
+                    data-unit-price="${effectivePrice}"
+                    ${buyDisabled ? 'disabled' : ''}
+                    class="w-14 app-input px-1.5 py-0.5 rounded text-xs font-mono font-bold text-center"
+                  />
+                </div>
+                <button
+                  type="button"
+                  data-buy-item="${escapeHtml(item.id)}"
+                  data-npc-id="${escapeHtml(activeNpc.id)}"
+                  data-unit-price="${effectivePrice}"
+                  ${buyDisabled ? 'disabled' : ''}
+                  class="btn-gold flex-1 py-2 px-3 text-xs font-serif-fantasy uppercase tracking-wider disabled:opacity-40 flex items-center justify-center gap-1.5"
+                >
+                  ${buyBtnLabel}
+                </button>
               </div>
             </div>
-            ${
-              item.descricao
-                ? (item.descricao.length > 70
-                    ? `<div class="mt-2">
-                        <p id="shop-desc-${escapeHtml(item.id)}" class="text-xs app-muted item-description line-clamp-1 leading-relaxed">${escapeHtml(item.descricao)}</p>
-                        <button type="button" data-toggle-desc="shop-desc-${escapeHtml(item.id)}" class="text-[10px] font-bold text-amber-400 hover:text-amber-300 flex items-center gap-1 mt-0.5" title="Ver descrição completa">
-                          <iconify-icon icon="game-icons:magnifying-glass" class="text-xs"></iconify-icon> <span>Ver descrição</span>
-                        </button>
-                      </div>`
-                    : `<p class="text-xs app-muted mt-2 item-description leading-relaxed">${escapeHtml(item.descricao)}</p>`)
-                : ''
-            }
           </div>
+        `;
+        })
+        .join('');
 
-          <div class="space-y-2 pt-2 border-t app-divider-border">
-            ${
-              canManageShop
-                ? `<div class="flex items-center justify-between gap-2 text-[11px]">
-                    <span class="font-bold app-muted" title="Apenas o Mestre pode alterar o valor cobrado pelo NPC (vazio = preço padrão ${item.preco})">
-                      <iconify-icon icon="game-icons:two-coins" class="icon-gold"></iconify-icon> Valor no NPC <span class="opacity-60 font-mono">(Padrão: ${item.preco})</span>:
-                    </span>
-                    <input
-                      type="number"
-                      min="0"
-                      step="1"
-                      data-shop-custom-price="${escapeHtml(item.id)}"
-                      data-npc-id="${escapeHtml(activeNpc.id)}"
-                      value="${hasCustomPrice ? effectivePrice : ''}"
-                      placeholder="${item.preco}"
-                      class="w-24 app-input px-2 py-1 rounded-lg text-xs font-mono font-bold text-amber-300 text-right"
-                    />
-                  </div>`
-                : ''
+      stockContentHtml = `<div class="grid grid-cols-1 md:grid-cols-2 gap-4">${stockCards}</div>`;
+    } else {
+      if (query) {
+        const otherNpcs = (state.npcs || []).filter((n) => n.id !== activeNpc.id);
+        const crossMatches = [];
+        otherNpcs.forEach((oNpc) => {
+          const itemsFound = [];
+          (oNpc.stock || []).forEach((st) => {
+            const item = itemsById[st.itemId];
+            if (!item) return;
+            if (!isEffectiveMaster() && item.visivelParaJogadores === false) return;
+            if (typeFilter !== 'ALL' && (item.tipo || 'OUTRO') !== typeFilter) return;
+            const matchName = (item.nome || '').toLowerCase().includes(query);
+            const matchDesc = (item.descricao || '').toLowerCase().includes(query);
+            if (matchName || matchDesc) {
+              itemsFound.push(item);
             }
+          });
+          if (itemsFound.length > 0) {
+            crossMatches.push({ npc: oNpc, items: itemsFound });
+          }
+        });
 
-            <div class="flex items-center gap-2">
-              <div class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-black/30 border app-divider-border shrink-0" title="Quantidade para comprar de uma vez">
-                <span class="text-[10px] font-bold uppercase app-muted">Qtd:</span>
-                <input
-                  type="number"
-                  min="1"
-                  max="${maxBuyQty}"
-                  step="1"
-                  value="1"
-                  data-shop-buy-qty="${escapeHtml(item.id)}"
-                  data-unit-price="${effectivePrice}"
-                  ${outOfStock ? 'disabled' : ''}
-                  class="w-14 app-input px-1.5 py-0.5 rounded text-xs font-mono font-bold text-center"
-                />
+        if (crossMatches.length > 0) {
+          stockContentHtml = `
+            <div class="fantasy-card p-5 border-amber-500/40 bg-amber-500/5 space-y-3.5">
+              <div class="flex items-start gap-3">
+                <span class="text-2xl sm:text-3xl text-amber-400 shrink-0">
+                  <iconify-icon icon="game-icons:compass"></iconify-icon>
+                </span>
+                <div>
+                  <h4 class="font-serif-fantasy text-sm sm:text-base font-bold gold-title">
+                    Este item não é vendido por <span class="underline">${escapeHtml(activeNpc.name)}</span>, mas foi encontrado em:
+                  </h4>
+                  <p class="text-xs app-muted mt-1">
+                    Clique no botão abaixo para alternar direto para a loja do mercador correspondente:
+                  </p>
+                </div>
               </div>
-              <button
-                type="button"
-                data-buy-item="${escapeHtml(item.id)}"
-                data-npc-id="${escapeHtml(activeNpc.id)}"
-                data-unit-price="${effectivePrice}"
-                ${outOfStock ? 'disabled' : ''}
-                class="btn-gold flex-1 py-2 px-3 text-xs font-serif-fantasy uppercase tracking-wider disabled:opacity-40"
-              >
-                ${outOfStock ? 'Esgotado' : `<iconify-icon icon="game-icons:two-coins" class="icon-gold"></iconify-icon> Comprar (${effectivePrice} ${escapeHtml(state.room.currencyName)})`}
+              <div class="flex flex-wrap gap-2 pt-2 border-t app-divider-border">
+                ${crossMatches
+                  .map((m) => {
+                    const namesStr = m.items.map((it) => it.nome).join(', ');
+                    return `
+                      <button
+                        type="button"
+                        data-switch-to-npc="${escapeHtml(m.npc.id)}"
+                        class="btn-gold py-2 px-3 text-xs font-serif-fantasy flex items-center gap-2 group transition"
+                        title="Ir para a loja de ${escapeHtml(m.npc.name)}"
+                      >
+                        <iconify-icon icon="game-icons:shop" class="text-base"></iconify-icon>
+                        <span>Ir para <strong>${escapeHtml(m.npc.name)}</strong> (Possui: ${escapeHtml(namesStr)})</span>
+                        <span class="font-bold group-hover:translate-x-1 transition-transform">➔</span>
+                      </button>
+                    `;
+                  })
+                  .join('')}
+              </div>
+            </div>
+          `;
+        } else {
+          stockContentHtml = `
+            <div class="p-8 text-center app-muted space-y-2 fantasy-card">
+              <div class="text-2xl text-zinc-600 flex justify-center"><iconify-icon icon="game-icons:magnifying-glass"></iconify-icon></div>
+              <p class="text-xs">Nenhum item correspondente a "<strong class="text-amber-300">${escapeHtml(query)}</strong>" foi encontrado em nenhum mercador.</p>
+              <button type="button" data-action="clear-shop-filters" class="px-3 py-1.5 rounded-lg text-xs font-bold btn-gold-outline inline-flex items-center gap-1.5 mt-1">
+                <iconify-icon icon="game-icons:cancel"></iconify-icon> <span>Limpar Busca</span>
               </button>
             </div>
+          `;
+        }
+      } else {
+        stockContentHtml = `
+          <div class="p-8 text-center app-muted space-y-2 fantasy-card">
+            <p class="text-xs">Este mercador não possui itens cadastrados nesta categoria.</p>
+            ${typeFilter !== 'ALL' ? `<button type="button" data-action="clear-shop-filters" class="mt-2 px-3 py-1 rounded-lg text-xs font-bold btn-gold-outline inline-flex items-center gap-1.5"><iconify-icon icon="game-icons:cancel"></iconify-icon> <span>Ver Todos os Itens</span></button>` : ''}
           </div>
-        </div>
-      `;
-      })
-      .join('');
+        `;
+      }
+    }
 
     showcase.innerHTML = `
       <div class="fantasy-card p-4 border-amber-500/30 flex flex-wrap items-center justify-between gap-3">
@@ -972,9 +1093,37 @@
             : ''
         }
       </div>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        ${stockCards || '<div class="col-span-full p-6 text-center app-muted">Este mercador não possui itens à venda.</div>'}
+
+      <!-- Barra de Filtros da Loja -->
+      <div class="fantasy-card p-3 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex flex-wrap items-center gap-1.5" id="shop-type-filters">
+          <button type="button" data-shop-item-type="ALL" class="px-2.5 py-1.5 rounded-lg text-xs font-bold ${typeFilter === 'ALL' ? 'btn-gold' : 'app-secondary-btn'}">Todos</button>
+          <button type="button" data-shop-item-type="ARMADURA" class="px-2.5 py-1.5 rounded-lg text-xs font-bold ${typeFilter === 'ARMADURA' ? 'btn-gold' : 'app-secondary-btn'} flex items-center gap-1"><iconify-icon icon="game-icons:breastplate" class="icon-armor"></iconify-icon> <span>Armaduras</span></button>
+          <button type="button" data-shop-item-type="ARMA" class="px-2.5 py-1.5 rounded-lg text-xs font-bold ${typeFilter === 'ARMA' ? 'btn-gold' : 'app-secondary-btn'} flex items-center gap-1"><iconify-icon icon="game-icons:gladius"></iconify-icon> <span>Armas</span></button>
+          <button type="button" data-shop-item-type="ACESSORIO" class="px-2.5 py-1.5 rounded-lg text-xs font-bold ${typeFilter === 'ACESSORIO' ? 'btn-gold' : 'app-secondary-btn'} flex items-center gap-1"><iconify-icon icon="game-icons:ring"></iconify-icon> <span>Acessórios</span></button>
+          <button type="button" data-shop-item-type="CONSUMIVEL" class="px-2.5 py-1.5 rounded-lg text-xs font-bold ${typeFilter === 'CONSUMIVEL' ? 'btn-gold' : 'app-secondary-btn'} flex items-center gap-1"><iconify-icon icon="game-icons:health-potion"></iconify-icon> <span>Consumíveis</span></button>
+          <button type="button" data-shop-item-type="OUTRO" class="px-2.5 py-1.5 rounded-lg text-xs font-bold ${typeFilter === 'OUTRO' ? 'btn-gold' : 'app-secondary-btn'} flex items-center gap-1"><iconify-icon icon="game-icons:knapsack"></iconify-icon> <span>Outros</span></button>
+        </div>
+        <div class="flex items-center gap-2 flex-1 sm:flex-initial min-w-[200px]">
+          <div class="relative flex-1">
+            <iconify-icon icon="game-icons:magnifying-glass" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-amber-400/70 text-xs"></iconify-icon>
+            <input
+              id="shop-search-input"
+              type="text"
+              placeholder="Pesquisar item na loja..."
+              value="${escapeHtml(state.shopSearchQuery || '')}"
+              class="w-full pl-8 pr-3 py-1.5 text-xs app-input"
+            />
+          </div>
+          ${query || typeFilter !== 'ALL' ? `
+            <button type="button" data-action="clear-shop-filters" class="p-1.5 rounded-lg text-xs app-secondary-btn text-rose-400 hover:bg-rose-500/20" title="Limpar pesquisa e filtros">
+              <iconify-icon icon="game-icons:cancel"></iconify-icon>
+            </button>
+          ` : ''}
+        </div>
       </div>
+
+      ${stockContentHtml}
     `;
   }
 
@@ -1235,18 +1384,76 @@
     const grid = document.getElementById('quests-list-grid');
     if (!grid) return;
 
+    const searchInput = document.getElementById('quests-search-input');
+    if (searchInput && document.activeElement !== searchInput) {
+      searchInput.value = state.questsSearchQuery || '';
+    }
+    const statusSelect = document.getElementById('quests-status-filter');
+    if (statusSelect) {
+      statusSelect.value = state.questsStatusFilter || 'ALL';
+    }
+
     const canAccept = isEffectiveMaster() || hasPermission('mission_accept');
     const canApprove = isEffectiveMaster() || hasPermission('mission_approve');
     const canManage = isEffectiveMaster() || hasPermission('mission_manage');
     const itemsById = {};
     for (const it of state.itemsCatalog) itemsById[it.id] = it;
 
-    if ((state.quests || []).length === 0) {
+    const allQuests = state.quests || [];
+    if (allQuests.length === 0) {
       grid.innerHTML = `<div class="col-span-full py-12 text-center app-muted">Nenhuma missão cadastrada.</div>`;
       return;
     }
 
-    grid.innerHTML = state.quests
+    const query = (state.questsSearchQuery || '').trim().toLowerCase();
+    const statusFilter = state.questsStatusFilter || 'ALL';
+
+    const filteredQuests = allQuests.filter((q) => {
+      if (statusFilter !== 'ALL' && q.status !== statusFilter) return false;
+      if (!query) return true;
+
+      // 1. Título
+      if ((q.title || '').toLowerCase().includes(query)) return true;
+      // 2. Descrição
+      if ((q.description || '').toLowerCase().includes(query)) return true;
+
+      // 3. Personagem que aceitou
+      const charObj = (state.characters || []).find((c) => c.id === q.acceptedByCharacterId);
+      const charName = q.acceptedByCharacterName || charObj?.name || '';
+      if (charName.toLowerCase().includes(query)) return true;
+
+      // 4. Itens de recompensa
+      const rw = q.rewards || {};
+      let rewardItemMatch = false;
+      if (Array.isArray(rw.items)) {
+        rewardItemMatch = rw.items.some((it) => {
+          const tpl = itemsById[it.itemId];
+          const name = tpl ? tpl.nome : String(it.itemId || '');
+          return name.toLowerCase().includes(query);
+        });
+      }
+      if (!rewardItemMatch && Array.isArray(rw.itemIds)) {
+        rewardItemMatch = rw.itemIds.some((id) => {
+          const tpl = itemsById[id];
+          return tpl && tpl.nome.toLowerCase().includes(query);
+        });
+      }
+      return rewardItemMatch;
+    });
+
+    if (filteredQuests.length === 0) {
+      grid.innerHTML = `
+        <div class="col-span-full py-12 text-center app-muted space-y-2">
+          <p class="text-xs">Nenhuma missão encontrada com os filtros selecionados.</p>
+          <button type="button" data-action="clear-quests-filters" class="px-3 py-1.5 rounded-lg text-xs font-bold btn-gold-outline inline-flex items-center gap-1.5">
+            <iconify-icon icon="game-icons:cancel"></iconify-icon> <span>Limpar Filtros</span>
+          </button>
+        </div>
+      `;
+      return;
+    }
+
+    grid.innerHTML = filteredQuests
       .map((q) => {
         const rw = q.rewards || {};
         const rewardItems = [];

@@ -1144,9 +1144,18 @@
   // ---------------------------------------------------------------------------
   function openSellEscrowModal(charId, invId) {
     const char = state.characters.find((c) => c.id === charId);
+    if (!char) return;
+    if (char.isEnemy || char.type === 'enemy' || char.bestiaryId) {
+      showToast('Inimigos não podem vender itens na loja!', 'error');
+      return;
+    }
+    if (!isEffectiveMaster() && !isCharacterOwner(char)) {
+      showToast('Você só pode solicitar venda de itens da sua própria ficha vinculada!', 'warning');
+      return;
+    }
     const inv = char?.inventory?.find((i) => i.id === invId);
     const tpl = state.itemsCatalog.find((it) => it.id === inv?.itemId);
-    if (!char || !inv || !tpl) return;
+    if (!inv || !tpl) return;
 
     const charIdInput = document.getElementById('sell-escrow-char-id');
     const invIdInput = document.getElementById('sell-escrow-inv-id');
@@ -1185,6 +1194,14 @@
         const c = st.characters.find((x) => x.id === charId);
         const inv = c?.inventory?.find((i) => i.id === invId);
         if (!c || !inv) return false;
+        if (c.isEnemy || c.type === 'enemy' || c.bestiaryId) {
+          toasts.push({ message: 'Inimigos não podem vender itens!', variant: 'error' });
+          return false;
+        }
+        if (!isEffectiveMaster() && !isCharacterOwner(c)) {
+          toasts.push({ message: 'Você só pode vender itens da sua própria ficha vinculada!', variant: 'warning' });
+          return false;
+        }
         const tpl = st.itemsCatalog.find((it) => it.id === inv.itemId);
         if (!tpl) return false;
 

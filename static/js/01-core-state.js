@@ -217,6 +217,10 @@
     npcModalTypeFilter: 'ALL',
     selectedShopNpcId: null,
     selectedBuyerCharId: null,
+    shopSearchQuery: '',
+    shopTypeFilter: 'ALL',
+    questsSearchQuery: '',
+    questsStatusFilter: 'ALL',
     auditFilterType: 'ALL',
     auditFilterUser: 'ALL',
     auditFilterSearch: '',
@@ -1180,10 +1184,11 @@
 
   function isCharacterOwner(char) {
     if (!char) return false;
-    if (char.isEnemy) return false;
+    if (char.isEnemy || char.type === 'enemy' || char.bestiaryId) return false;
     const activeMem = getActiveMember();
     if (!activeMem) return false;
 
+    if (char.ownerId && (char.ownerId === activeMem.id || char.ownerId === state.localMemberId)) return true;
     if (activeMem.characterId && activeMem.characterId === char.id) return true;
     if (char.ownerMemberId && char.ownerMemberId === activeMem.id) return true;
     if (!state.simulatingPlayer && state.localClientIp && char.ownerIp && char.ownerIp === state.localClientIp) {

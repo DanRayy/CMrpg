@@ -713,6 +713,42 @@
           </div>
         </div>
 
+        <!-- Barra de Ferramentas de Filtragem de Missões -->
+        <div class="fantasy-card p-3 flex flex-wrap items-center justify-between gap-3">
+          <div class="flex flex-wrap items-center gap-3 flex-1 min-w-[260px]">
+            <div class="relative flex-1 min-w-[200px]">
+              <iconify-icon icon="game-icons:magnifying-glass" class="absolute left-3 top-1/2 -translate-y-1/2 text-amber-400/70 text-sm"></iconify-icon>
+              <input
+                id="quests-search-input"
+                type="text"
+                placeholder="Pesquisar missão..."
+                class="w-full pl-9 pr-3 py-1.5 text-xs app-input"
+              />
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-bold app-muted whitespace-nowrap">Status:</span>
+              <select id="quests-status-filter" class="px-3 py-1.5 text-xs font-bold app-input">
+                <option value="ALL">TODOS OS STATUS</option>
+                <option value="PENDENTE">PENDENTE</option>
+                <option value="ACEITA">ACEITA</option>
+                <option value="EM_PROGRESSO">EM_PROGRESSO</option>
+                <option value="PAUSADA">PAUSADA</option>
+                <option value="CONCLUIDA">CONCLUIDA</option>
+                <option value="RECUSADA">RECUSADA</option>
+                <option value="CANCELADA">CANCELADA</option>
+              </select>
+            </div>
+          </div>
+          <button
+            type="button"
+            id="btn-quests-clear-filters"
+            class="px-3 py-1.5 text-xs font-bold app-secondary-btn flex items-center gap-1.5 hover:text-amber-300"
+            title="Limpar todos os filtros de missões"
+          >
+            <iconify-icon icon="game-icons:cancel"></iconify-icon> <span>Limpar Filtros</span>
+          </button>
+        </div>
+
         <div id="quests-list-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
       </section>
 

@@ -1397,6 +1397,18 @@
     });
 
     document.getElementById('shop-npc-showcase')?.addEventListener('input', (e) => {
+      if (e.target.id === 'shop-search-input') {
+        state.shopSearchQuery = e.target.value;
+        renderShopTab();
+        const searchInputAfter = document.getElementById('shop-search-input');
+        if (searchInputAfter) {
+          searchInputAfter.focus();
+          const len = searchInputAfter.value.length;
+          searchInputAfter.setSelectionRange(len, len);
+        }
+        return;
+      }
+
       const qtyInput = e.target.closest('[data-shop-buy-qty]');
       if (!qtyInput) return;
       const itemId = qtyInput.getAttribute('data-shop-buy-qty');
@@ -1441,6 +1453,31 @@
     });
 
     document.getElementById('shop-npc-showcase')?.addEventListener('click', (e) => {
+      const shopTypeBtn = e.target.closest('[data-shop-item-type]');
+      if (shopTypeBtn) {
+        state.shopTypeFilter = shopTypeBtn.getAttribute('data-shop-item-type') || 'ALL';
+        renderShopTab();
+        return;
+      }
+
+      const clearShopBtn = e.target.closest('[data-action="clear-shop-filters"]');
+      if (clearShopBtn) {
+        state.shopSearchQuery = '';
+        state.shopTypeFilter = 'ALL';
+        renderShopTab();
+        return;
+      }
+
+      const switchNpcBtn = e.target.closest('[data-switch-to-npc]');
+      if (switchNpcBtn) {
+        const targetNpcId = switchNpcBtn.getAttribute('data-switch-to-npc');
+        if (targetNpcId) {
+          state.selectedShopNpcId = targetNpcId;
+          renderShopTab();
+        }
+        return;
+      }
+
       const delNpcBtn = e.target.closest('[data-delete-npc]');
       if (delNpcBtn) {
         requestDeleteNpc(delNpcBtn.getAttribute('data-delete-npc'));
@@ -1473,13 +1510,21 @@
       const item = state.itemsCatalog.find((i) => i.id === itemId);
       const npcObj = state.npcs.find((n) => n.id === npcId);
       const stockObj = npcObj?.stock?.find((s) => s.itemId === itemId);
-      const buyer = state.characters.find((c) => c.id === state.selectedBuyerCharId) || state.characters[0];
-      if (!item || !buyer) {
-        showToast('Crie ou selecione um personagem comprador primeiro!', 'warning');
+      const buyer = (state.characters || []).find((c) => c.id === state.selectedBuyerCharId);
+      if (!buyer) {
+        showToast('Nenhuma ficha de personagem vinculada a você foi selecionada como compradora!', 'warning');
         return;
       }
-      if (!isEffectiveMaster() && !canEditCharacter(buyer) && !canEditInventory(buyer)) {
-        showToast('Você só pode comprar itens para a sua própria ficha!', 'warning');
+      if (buyer.isEnemy || buyer.type === 'enemy' || buyer.bestiaryId) {
+        showToast('Inimigos não podem comprar itens na loja!', 'error');
+        return;
+      }
+      if (!isEffectiveMaster() && !isCharacterOwner(buyer)) {
+        showToast('Você só pode comprar itens para a sua própria ficha vinculada!', 'warning');
+        return;
+      }
+      if (!item) {
+        showToast('Item não encontrado no catálogo!', 'warning');
         return;
       }
 
@@ -2339,7 +2384,31 @@
       );
     };
 
+    document.getElementById('quests-search-input')?.addEventListener('input', (e) => {
+      state.questsSearchQuery = e.target.value;
+      renderQuestsTab();
+    });
+
+    document.getElementById('quests-status-filter')?.addEventListener('change', (e) => {
+      state.questsStatusFilter = e.target.value;
+      renderQuestsTab();
+    });
+
+    document.getElementById('btn-quests-clear-filters')?.addEventListener('click', () => {
+      state.questsSearchQuery = '';
+      state.questsStatusFilter = 'ALL';
+      renderQuestsTab();
+    });
+
     document.getElementById('quests-list-grid')?.addEventListener('click', (e) => {
+      const clearQuestsBtn = e.target.closest('[data-action="clear-quests-filters"]');
+      if (clearQuestsBtn) {
+        state.questsSearchQuery = '';
+        state.questsStatusFilter = 'ALL';
+        renderQuestsTab();
+        return;
+      }
+
       // Aceitar Missão
       const acceptBtn = e.target.closest('[data-action="open-accept-quest"]');
       if (acceptBtn) {
