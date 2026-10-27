@@ -6,37 +6,37 @@ Desenvolvido para proporcionar uma experiência fluida de *Dark Fantasy Medieval
 
 ---
 
-## ✨ Principais Funcionalidades
+## • Principais Funcionalidades
 
-### ⚔️ Combate Tático e Fila de Turnos
+### • Combate Tático e Fila de Turnos
 - **Iniciativa Dinâmica:** Ordenação automática e reordenável por Drag & Drop.
 - **Pipeline de Dano:** Aplicação rápida ou tática com cálculo automático de resistências (Física, Mágica e Elementais: Fogo, Gelo, Raio, Luz e Trevas).
 - **Acúmulos e Condições:** Gerenciamento de status como **Chamas** (dano progressivo no fim do turno) e **Congelamento** (perda de turno e imunidade temporária).
 
-### 🛡️ Fichas de Personagens e Bestiário
+### • Fichas de Personagens e Bestiário
 - **Atributos Canônicos:** Força, Destreza, Constituição, Inteligência, Sabedoria e Carisma com recálculo automático de atributos derivados.
 - **Barras Dinâmicas:** Vida, Armadura (com suporte a dano direto e overflow) e Mana.
 - **Painel de 7 Resistências:** Exibição clara e harmonizada nas fichas de heróis e monstros do bestiário.
 - **Habilidades & Magias:** Gerenciamento com slots de Habilidade Passiva, Ativa e Suprema.
 
-### ⚡ Sistema de Buffs e Nerfs Avançado
+### • Sistema de Buffs e Nerfs Avançado
 - **Edição em Tempo Real:** Edite efeitos já aplicados sem precisar recriá-los.
 - **Modificadores Múltiplos:** Altere múltiplos atributos no mesmo efeito, com valores fixos (+X) ou percentuais (+X%).
 - **Efeitos Permanentes:** Suporte a status permanentes que não decaem com a passagem de turnos nem se perdem em resets de combate.
 - **Interruptores Rápidos (Toggle):** Ative ou desative temporariamente qualquer efeito com um clique.
 
-### 📝 Bloco de Notas & Diário da Ficha
+### • Bloco de Notas & Diário da Ficha
 - **Persistência Segura por ID Único:** Cada página possui identificador próprio imutável, prevenindo embaralhamento de anotações.
 - **Autosave Isolado:** Sincronização automática a cada digitação e antes de trocar ou fechar abas.
 - **Validação de Nomes:** Modal para criação de novas páginas com checagem automática de nomes duplicados.
 - **Editor Flutuante:** Menus suspensos de cor e realce sobrepostos sem barras de rolagem internas.
 
-### 💰 Economia, Inventário e Missões
+### • Economia, Inventário e Missões
 - **Inventário Dedicado 3x:** Organização por slots, abas de consumíveis, equipamentos e itens-chave.
 - **Loja e Escrow:** Comércio entre jogadores e mercadores com sistema de custódia segura.
 - **Quests:** Painel de missões com concessão de recompensas individuais ou em lote.
 
-### 👥 Multiplayer Colaborativo
+### • Multiplayer Colaborativo
 - **Cursores em Tempo Real:** Visualização dos cursores dos jogadores na tela (estilo Figma/Miro).
 - **Controle de Acesso:** Permissões granulares para Mestre (Host) e Jogadores com histórico de ações (Undo/Redo).
 - **Arquitetura Frontend Modular:** Código cliente estruturado em módulos independentes em `static/js/`.
@@ -71,7 +71,7 @@ O CMrpg já possui inicialização automatizada no Windows através do script [`
 
 ---
 
-## ❓ Por que usar o Radmin VPN?
+## ??? Por que usar o RadminVPN?
 
 A maioria dos provedores residenciais de internet utiliza **CGNAT** (*Carrier-Grade NAT*). Isso significa que:
 
@@ -86,7 +86,7 @@ A maioria dos provedores residenciais de internet utiliza **CGNAT** (*Carrier-Gr
 
 ---
 
-## 💻 Execução Manual (Sem .bat)
+## • Execução Manual (Sem .bat)
 
 Caso prefira rodar manualmente pelo terminal ou em Linux/macOS:
 
