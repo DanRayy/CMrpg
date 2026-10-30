@@ -49,7 +49,7 @@ Desenvolvido para proporcionar uma experiência fluida, o sistema atende tanto a
 
 ## 🌐 Como Usar com o Radmin VPN
 
-O CMrpg já possui inicialização automatizada no Windows através do script [`iniciar_servidor.bat`](file:///C:/Users/dan-pc/Documents/dev/Python/CMrpg/iniciar_servidor.bat).
+O CMrpg já possui inicialização automatizada no Windows através do script **`iniciar_servidor.bat`**.
 
 ### Passo a Passo para o Mestre (Host)
 

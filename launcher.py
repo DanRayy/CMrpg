@@ -288,28 +288,84 @@ def check_and_configure_firewall():
         print(f"{YELLOW}[AVISO] Falha ao verificar firewall ({e}). Continuando...{RESET}")
 
 
+def is_venv_valid(venv_python, venv_dir):
+    """
+    Verifica se o ambiente virtual realmente funciona e pertence a esta maquina.
+    Detecta se foi copiado de outro computador ou se o caminho do Python base mudou.
+    """
+    if not os.path.isfile(venv_python):
+        return False
+
+    # 1. Checagem do pyvenv.cfg
+    cfg_path = os.path.join(venv_dir, "pyvenv.cfg")
+    if os.path.isfile(cfg_path):
+        try:
+            with open(cfg_path, "r", encoding="utf-8", errors="ignore") as f:
+                for line in f:
+                    stripped = line.strip()
+                    if stripped.startswith("home"):
+                        parts = stripped.split("=", 1)
+                        if len(parts) > 1:
+                            home_path = parts[1].strip()
+                            if not os.path.isdir(home_path):
+                                return False
+        except Exception:
+            pass
+
+    # 2. Teste real de execucao do binario Python do venv
+    try:
+        test_proc = subprocess.run(
+            [venv_python, "-c", "import sys; sys.exit(0)"],
+            capture_output=True,
+            timeout=5,
+        )
+        if test_proc.returncode != 0:
+            return False
+        stderr_text = (test_proc.stderr or b"").decode("utf-8", errors="ignore")
+        if "No Python at" in stderr_text:
+            return False
+        return True
+    except Exception:
+        return False
+
+
 def ensure_venv_and_dependencies(root_dir, selected_option):
-    """Garante que o ambiente virtual venv exista e as dependencias do requirements.txt estejam prontas."""
+    """Garante que o ambiente virtual venv exista, funcione nesta maquina e as dependencias estejam prontas."""
     print(f"\n{CYAN}[3/5] Verificando ambiente virtual Python (venv)...{RESET}")
     venv_dir = os.path.join(root_dir, "venv")
     venv_python = os.path.join(venv_dir, "Scripts", "python.exe")
 
-    if not os.path.exists(venv_python):
+    need_create = False
+    if not is_venv_valid(venv_python, venv_dir):
+        need_create = True
+        if os.path.exists(venv_dir):
+            print(f"{YELLOW}[!] Ambiente virtual venv invalido ou copiado de outro PC detectado.{RESET}")
+            print(f"{CYAN}[i] Recriando ambiente virtual limpo especifico para esta maquina...{RESET}")
+            try:
+                shutil.rmtree(venv_dir, ignore_errors=True)
+            except Exception as e:
+                print(f"{YELLOW}[AVISO] Nao foi possivel excluir pasta venv antiga: {e}{RESET}")
+
+    if need_create:
         print(f"{YELLOW}Criando ambiente virtual venv...{RESET}")
         try:
             subprocess.run([sys.executable, "-m", "venv", "venv"], cwd=root_dir, check=True)
-            print(f"{GREEN}[OK] Ambiente virtual criado com sucesso.{RESET}")
+            if not is_venv_valid(venv_python, venv_dir):
+                print(f"{RED}[ERRO] Falha ao validar o ambiente virtual recem-criado.{RESET}")
+                sys.exit(1)
+            print(f"{GREEN}[OK] Ambiente virtual criado e validado com sucesso.{RESET}")
         except Exception as e:
             print(f"{RED}[ERRO] Falha ao criar o ambiente virtual: {e}{RESET}")
             sys.exit(1)
     else:
-        print(f"{GREEN}[OK] Ambiente virtual encontrado.{RESET}")
+        print(f"{GREEN}[OK] Ambiente virtual encontrado e verificado.{RESET}")
 
     print(f"\n{CYAN}[4/5] Verificando dependencias (requirements.txt)...{RESET}")
     req_file = os.path.join(root_dir, "requirements.txt")
 
-    # Inicializacao rapida: se escolheu 'Iniciar' direto e os pacotes ja estao funcionais, pula pip
-    if selected_option == 0:
+    # Se o venv acabou de ser recriado OU selecionou atualizar (1), roda pip obrigatoriamente
+    # Se escolheu 'Iniciar' direto e o venv ja existia valido, faz checagem rapida
+    if selected_option == 0 and not need_create:
         quick_check = subprocess.run([venv_python, "-c", "import fastapi, uvicorn"], capture_output=True)
         if quick_check.returncode == 0:
             print(f"{GREEN}[OK] Dependencias verificadas (inicializacao rapida).{RESET}")
