@@ -5,58 +5,43 @@ title CMrpg - Servidor Local (Radmin VPN)
 cd /d "%~dp0"
 
 :: ============================================================
-:: 0. VERIFICAR ULTIMA RELEASE NO GITHUB
+:: 0. MENU INICIAL E ESCOLHA DE INICIALIZACAO
 :: ============================================================
 set "MENU_CHOICE=1"
-set "LATEST_RELEASE=Verificando..."
 
-for /f "usebackq tokens=1,2 delims=|" %%A in (`powershell -NoProfile -ExecutionPolicy Bypass -Command ^
-    "$ErrorActionPreference = 'SilentlyContinue';" ^
-    "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12;" ^
-    "$repo = 'DanRayy/CMrpg';" ^
-    "$headers = @{ 'User-Agent' = 'CMrpg-Launcher' };" ^
-    "$latest = $null;" ^
-    "try { $rel = Invoke-RestMethod -Uri \"https://api.github.com/repos/$repo/releases/latest\" -Headers $headers -TimeoutSec 5; $latest = $rel.tag_name } catch {}" ^
-    "if (-not $latest) { try { $tags = Invoke-RestMethod -Uri \"https://api.github.com/repos/$repo/tags\" -Headers $headers -TimeoutSec 5; if ($tags -and $tags.Count -gt 0) { $latest = $tags[0].name } } catch {} }" ^
-    "if (-not $latest) { $latest = 'Indisponivel (Offline ou sem Release)' };" ^
-    "$options = @('Iniciar', \"Instalar atualizacoes e iniciar [Ultima Release no GitHub: $latest]\");" ^
-    "$selected = 0;" ^
-    "[Console]::CursorVisible = $false;" ^
-    "while ($true) {" ^
-    "    Clear-Host;" ^
-    "    Write-Host '============================================================' -ForegroundColor DarkYellow;" ^
-    "    Write-Host '               CMrpg - Inicializador do Servidor            ' -ForegroundColor Yellow;" ^
-    "    Write-Host '============================================================' -ForegroundColor DarkYellow;" ^
-    "    Write-Host '';" ^
-    "    Write-Host '  Use as setas [CIMA / BAIXO] para navegar e [ENTER] para confirmar:' -ForegroundColor Gray;" ^
-    "    Write-Host '';" ^
-    "    for ($i = 0; $i -lt $options.Count; $i++) {" ^
-    "        if ($i -eq $selected) {" ^
-    "            Write-Host \"  > $($options[$i])  \" -ForegroundColor Black -BackgroundColor Yellow;" ^
-    "        } else {" ^
-    "            Write-Host \"    $($options[$i])  \" -ForegroundColor White;" ^
-    "        }" ^
-    "    }" ^
-    "    Write-Host '';" ^
-    "    Write-Host '============================================================' -ForegroundColor DarkYellow;" ^
-    "    $key = [Console]::ReadKey($true).Key;" ^
-    "    if ($key -eq 'UpArrow') { if ($selected -gt 0) { $selected-- } else { $selected = $options.Count - 1 } }" ^
-    "    elseif ($key -eq 'DownArrow') { if ($selected -lt ($options.Count - 1)) { $selected++ } else { $selected = 0 } }" ^
-    "    elseif ($key -eq 'Enter') { break }" ^
-    "}" ^
-    "[Console]::CursorVisible = $true;" ^
-    "Clear-Host;" ^
-    "[Console]::Out.WriteLine(\"$($selected + 1)|$latest\");"`) do (
-    set "MENU_CHOICE=%%A"
-    set "LATEST_RELEASE=%%B"
+if exist "%~dp0scripts\launcher_menu.ps1" (
+    powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\launcher_menu.ps1"
+    if !errorlevel! equ 2 (
+        set "MENU_CHOICE=2"
+    ) else (
+        set "MENU_CHOICE=1"
+    )
+) else (
+    echo ============================================================
+    echo                CMrpg - Inicializador do Servidor            
+    echo ============================================================
+    echo.
+    echo   [1] Iniciar Servidor (Direto)
+    echo   [2] Instalar atualizacoes do GitHub e iniciar
+    echo.
+    echo ============================================================
+    where choice >nul 2>&1
+    if !errorlevel! equ 0 (
+        choice /c 12 /n /t 5 /d 1 /m "Escolha uma opcao [1 ou 2] (Auto-iniciar em 5s): "
+        if !errorlevel! equ 2 set "MENU_CHOICE=2"
+    ) else (
+        set /p "MENU_CHOICE=Escolha uma opcao [1 ou 2] (Padrao 1): "
+        if not "!MENU_CHOICE!"=="2" set "MENU_CHOICE=1"
+    )
 )
 
+echo.
 echo ============================================================
-echo                CMrpg - Inicializador do Servidor
+echo                CMrpg - Inicializador do Servidor            
 echo ============================================================
 echo.
 
-if "%MENU_CHOICE%"=="1" (
+if "!MENU_CHOICE!"=="1" (
     echo [1/5] Iniciando direto ^(atualizacao ignorada pelo usuario^)...
     goto :after_update
 )
@@ -64,7 +49,7 @@ if "%MENU_CHOICE%"=="1" (
 :: ============================================================
 :: 1. BAIXAR E INSTALAR ATUALIZACOES DO GITHUB
 :: ============================================================
-echo [1/5] Buscando e instalando atualizacoes do GitHub ^(Ultima Release: %LATEST_RELEASE%^)...
+echo [1/5] Buscando e instalando atualizacoes do GitHub...
 
 where git >nul 2>&1
 if %errorlevel% neq 0 goto :no_git
@@ -98,8 +83,8 @@ if exist "state.backup.json" (
 goto :after_update
 
 :no_git
-echo [i] Git nao detectado ou pasta sem .git. Baixando atualizacoes via Python...
-python -c "import urllib.request, json, os, zipfile, io, shutil; repo = 'DanRayy/CMrpg'; headers = {'User-Agent': 'CMrpg-Launcher'}; url = f'https://api.github.com/repos/{repo}/zipball/main'; req = urllib.request.Request(url, headers=headers); exec(\"try:\n    print('[i] Baixando pacote mais recente do GitHub...')\n    with urllib.request.urlopen(req, timeout=15) as resp:\n        z = zipfile.ZipFile(io.BytesIO(resp.read()))\n        root_dir = z.namelist()[0].split('/')[0]\n        for member in z.namelist():\n            rel_path = member[len(root_dir)+1:]\n            if not rel_path or rel_path == 'state.json' or rel_path.startswith('.git'): continue\n            if member.endswith('/'):\n                os.makedirs(rel_path, exist_ok=True)\n            else:\n                os.makedirs(os.path.dirname(rel_path) or '.', exist_ok=True)\n                with z.open(member) as src, open(rel_path, 'wb') as dst:\n                    shutil.copyfileobj(src, dst)\n    print('[OK] Todos os arquivos foram atualizados com sucesso via GitHub!')\nexcept Exception as e:\n    print(f'[AVISO] Falha ao atualizar via GitHub ({e}). Continuando com versao local...')\")"
+echo [i] Git nao detectado ou pasta sem .git. Baixando atualizacoes via PowerShell...
+powershell -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; try { Write-Host '[i] Baixando pacote mais recente do GitHub...'; Invoke-WebRequest -Uri 'https://github.com/DanRayy/CMrpg/archive/refs/heads/main.zip' -OutFile 'update.zip' -TimeoutSec 20; Expand-Archive -Path 'update.zip' -DestinationPath 'update_temp' -Force; Get-ChildItem -Path 'update_temp\CMrpg-main\*' | ForEach-Object { if ($_.Name -ne 'state.json' -and $_.Name -ne '.git') { Copy-Item -Path $_.FullName -Destination '.' -Recurse -Force } }; Remove-Item -Path 'update_temp','update.zip' -Recurse -Force; Write-Host '[OK] Arquivos atualizados com sucesso via GitHub!' } catch { Write-Host ('[AVISO] Falha ao atualizar via GitHub (' + $_.Exception.Message + '). Continuando com versao local...') }"
 
 :after_update
 echo.
@@ -111,7 +96,7 @@ echo [2/5] Verificando regra "CMrpg Server" no Firewall do Windows...
 netsh advfirewall firewall show rule name="CMrpg Server" >nul 2>&1
 if %errorlevel% neq 0 (
     echo [!] Regra nao encontrada. Solicitando permissao de Administrador ^(UAC^) para liberar a porta 8000...
-    powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process netsh -ArgumentList 'advfirewall firewall add rule name=\"CMrpg Server\" dir=in action=allow protocol=TCP localport=8000 profile=any' -Verb RunAs -Wait"
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process netsh -ArgumentList 'advfirewall firewall add rule name=\"CMrpg Server\" dir=in action=allow protocol=TCP localport=8000 profile=any' -Verb RunAs -Wait" >nul 2>&1
     netsh advfirewall firewall show rule name="CMrpg Server" >nul 2>&1
     if %errorlevel% equ 0 (
         echo [OK] Porta 8000 liberada com sucesso no Firewall ^(profile=any^).
@@ -127,11 +112,31 @@ echo.
 :: 3. VERIFICAR / CRIAR AMBIENTE VIRTUAL PYTHON (venv)
 :: ============================================================
 echo [3/5] Verificando ambiente virtual Python ^(venv^)...
+
+set "PYTHON_CMD="
+where python >nul 2>&1 && set "PYTHON_CMD=python"
+if not defined PYTHON_CMD (
+    where py >nul 2>&1 && set "PYTHON_CMD=py"
+)
+
+if not defined PYTHON_CMD (
+    echo.
+    echo ============================================================
+    echo [ERRO] Python nao foi encontrado no sistema!
+    echo ============================================================
+    echo Baixe e instale o Python 3.10+ em: https://www.python.org/
+    echo IMPORTANTE: Marque a opcao "Add python.exe to PATH" durante a instalacao!
+    echo.
+    pause
+    exit /b 1
+)
+
 if not exist "venv\Scripts\activate.bat" (
     echo Criando ambiente virtual venv...
-    python -m venv venv
+    !PYTHON_CMD! -m venv venv
     if %errorlevel% neq 0 (
-        echo [ERRO] Falha ao criar o ambiente virtual. Verifique se o Python 3.10+ esta instalado e no PATH.
+        echo.
+        echo [ERRO] Falha ao criar o ambiente virtual venv.
         pause
         exit /b 1
     )
@@ -144,16 +149,32 @@ echo.
 :: ============================================================
 :: 4. ATIVAR VENV E INSTALAR / ATUALIZAR DEPENDENCIAS
 :: ============================================================
-echo [4/5] Ativando venv e verificando dependencias ^(requirements.txt^)...
+echo [4/5] Ativando venv e verificando dependencias...
 call "venv\Scripts\activate.bat"
-python -m pip install --upgrade pip --quiet
-pip install -r requirements.txt --quiet
 if %errorlevel% neq 0 (
-    echo [ERRO] Falha ao instalar dependencias do requirements.txt.
+    echo [ERRO] Falha ao ativar ambiente virtual em venv\Scripts\activate.bat.
     pause
     exit /b 1
 )
-echo [OK] Dependencias instaladas e atualizadas.
+
+set "DEPS_OK=0"
+if "!MENU_CHOICE!"=="1" (
+    python -c "import fastapi, uvicorn" >nul 2>&1
+    if !errorlevel! equ 0 set "DEPS_OK=1"
+)
+
+if "!DEPS_OK!"=="1" (
+    echo [OK] Dependencias essenciais verificadas ^(inicializacao rapida^).
+) else (
+    echo [i] Instalando/atualizando pacotes ^(requirements.txt^)...
+    python -m pip install --upgrade pip --quiet
+    pip install -r requirements.txt --quiet
+    if !errorlevel! neq 0 (
+        echo [AVISO] Falha na atualizacao via pip. Tentando prosseguir com pacotes locais...
+    ) else (
+        echo [OK] Dependencias instaladas e atualizadas.
+    )
+)
 echo.
 
 :: ============================================================
@@ -177,5 +198,17 @@ echo.
 echo [5/5] Abrindo navegador em http://localhost:8000 e iniciando Uvicorn...
 start "" "http://localhost:8000"
 
-uvicorn main:app --host 0.0.0.0 --port 8000
+python -m uvicorn main:app --host 0.0.0.0 --port 8000
+if %errorlevel% neq 0 (
+    echo.
+    echo ============================================================
+    echo [ERRO] O servidor encerrou inesperadamente ^(codigo %errorlevel%^).
+    echo Possiveis causas:
+    echo  - A porta 8000 ja pode estar aberta em outra janela.
+    echo  - Erro na inicializacao ^(verifique as mensagens acima^).
+    echo ============================================================
+    pause
+    exit /b %errorlevel%
+)
+
 pause
