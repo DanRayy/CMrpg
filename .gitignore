@@ -22,5 +22,9 @@ Thumbs.db
 *.log
 .env
 
+# Backups e pacotes compactados locais
+*.rar
+*.zip
+
 # Estado da aplicacao
 /state.json
