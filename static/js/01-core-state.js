@@ -105,29 +105,41 @@
   ];
 
   const EFFECT_TARGET_OPTIONS = [
-    { value: 'VIDA', label: 'Vida Máxima (HP)' },
-    { value: 'ARMADURA', label: 'Armadura Máxima' },
-    { value: 'MANA', label: 'Mana Máxima' },
-    { value: 'PA', label: 'Pontos de Ação (PA)' },
-    { value: 'REGEN_VIDA', label: 'Regenerar Vida' },
-    { value: 'REGEN_ARMADURA', label: 'Regenerar Armadura' },
-    { value: 'REGEN_MANA', label: 'Regenerar Mana' },
-    { value: 'DEFESA', label: 'Defesa' },
-    { value: 'ATAQUE', label: 'Ataque' },
-    { value: 'ARCANA', label: 'Arcana' },
-    { value: 'SANTIDADE', label: 'Santidade' },
-    { value: 'RES_FISICO', label: 'Resistência Físico (%)' },
-    { value: 'RES_MAGICO', label: 'Resistência Mágico (%)' },
-    { value: 'RES_PYRO', label: 'Resistência Pyro (%)' },
-    { value: 'RES_CRYO', label: 'Resistência Cryo (%)' },
-    { value: 'RES_ELETRICO', label: 'Resistência Elétrico (%)' },
-    { value: 'RES_PROFANO', label: 'Resistência Profano (%)' },
-    { value: 'RES_SACRO', label: 'Resistência Sacro (%)' },
-    { value: 'FORCA', label: 'Força' },
-    { value: 'DESTREZA', label: 'Destreza' },
-    { value: 'INTELIGENCIA', label: 'Inteligência' },
-    { value: 'SABEDORIA', label: 'Sabedoria' },
-    { value: 'LABIA', label: 'Lábia' },
+    { group: 'Atributos Vitais & Combate', value: 'VIDA', label: 'Vida Máxima (HP)' },
+    { group: 'Atributos Vitais & Combate', value: 'ARMADURA', label: 'Armadura Máxima' },
+    { group: 'Atributos Vitais & Combate', value: 'MANA', label: 'Mana Máxima' },
+    { group: 'Atributos Vitais & Combate', value: 'PA', label: 'Pontos de Ação (PA)' },
+    { group: 'Atributos Vitais & Combate', value: 'REGEN_VIDA', label: 'Regenerar Vida' },
+    { group: 'Atributos Vitais & Combate', value: 'REGEN_ARMADURA', label: 'Regenerar Armadura' },
+    { group: 'Atributos Vitais & Combate', value: 'REGEN_MANA', label: 'Regenerar Mana' },
+    { group: 'Atributos Vitais & Combate', value: 'DEFESA', label: 'Defesa' },
+    { group: 'Atributos Vitais & Combate', value: 'ATAQUE', label: 'Ataque' },
+    { group: 'Atributos Vitais & Combate', value: 'ARCANA', label: 'Arcana' },
+    { group: 'Atributos Vitais & Combate', value: 'SANTIDADE', label: 'Santidade' },
+
+    { group: 'Resistências Elementais (%)', value: 'RES_GERAL', label: 'Resistência Geral (%)' },
+    { group: 'Resistências Elementais (%)', value: 'RES_FISICO', label: 'Resistência Físico (%)' },
+    { group: 'Resistências Elementais (%)', value: 'RES_MAGICO', label: 'Resistência Mágico (%)' },
+    { group: 'Resistências Elementais (%)', value: 'RES_PYRO', label: 'Resistência Pyro (%)' },
+    { group: 'Resistências Elementais (%)', value: 'RES_CRYO', label: 'Resistência Cryo (%)' },
+    { group: 'Resistências Elementais (%)', value: 'RES_ELETRICO', label: 'Resistência Elétrico (%)' },
+    { group: 'Resistências Elementais (%)', value: 'RES_PROFANO', label: 'Resistência Profano (%)' },
+    { group: 'Resistências Elementais (%)', value: 'RES_SACRO', label: 'Resistência Sacro (%)' },
+
+    { group: 'Limites Máximos de Acúmulos', value: 'ACUMULO_GERAL', label: 'Acúmulos Gerais' },
+    { group: 'Limites Máximos de Acúmulos', value: 'ACUMULO_CONGELAMENTO', label: 'Acúmulo de Congelamento' },
+    { group: 'Limites Máximos de Acúmulos', value: 'ACUMULO_CHOQUE', label: 'Acúmulo de Choque' },
+    { group: 'Limites Máximos de Acúmulos', value: 'ACUMULO_SANGRAMENTO', label: 'Acúmulo de Sangramento' },
+    { group: 'Limites Máximos de Acúmulos', value: 'ACUMULO_CHAMAS', label: 'Acúmulo de Chamas' },
+    { group: 'Limites Máximos de Acúmulos', value: 'ACUMULO_VENENO', label: 'Acúmulo de Veneno' },
+    { group: 'Limites Máximos de Acúmulos', value: 'ACUMULO_ATORDOAMENTO', label: 'Acúmulo de Atordoamento' },
+    { group: 'Limites Máximos de Acúmulos', value: 'ACUMULO_CEGUEIRA', label: 'Acúmulo de Cegueira' },
+
+    { group: '5 Atributos Canônicos', value: 'FORCA', label: 'Força' },
+    { group: '5 Atributos Canônicos', value: 'DESTREZA', label: 'Destreza' },
+    { group: '5 Atributos Canônicos', value: 'INTELIGENCIA', label: 'Inteligência' },
+    { group: '5 Atributos Canônicos', value: 'SABEDORIA', label: 'Sabedoria' },
+    { group: '5 Atributos Canônicos', value: 'LABIA', label: 'Lábia' },
   ];
 
   const EFFECT_TARGET_SHORT_LABELS = {
@@ -142,6 +154,7 @@
     ATAQUE: 'ATAQUE',
     ARCANA: 'ARCANA',
     SANTIDADE: 'SANTIDADE',
+    RES_GERAL: 'RES. GERAL (%)',
     RES_FISICO: 'RES. FÍSICO (%)',
     RES_MAGICO: 'RES. MÁGICO (%)',
     RES_PYRO: 'RES. PYRO (%)',
@@ -149,6 +162,14 @@
     RES_ELETRICO: 'RES. ELÉTRICO (%)',
     RES_PROFANO: 'RES. PROFANO (%)',
     RES_SACRO: 'RES. SACRO (%)',
+    ACUMULO_GERAL: 'ACÚM. GERAIS',
+    ACUMULO_CONGELAMENTO: 'ACÚM. CONGELAMENTO',
+    ACUMULO_CHOQUE: 'ACÚM. CHOQUE',
+    ACUMULO_SANGRAMENTO: 'ACÚM. SANGRAMENTO',
+    ACUMULO_CHAMAS: 'ACÚM. CHAMAS',
+    ACUMULO_VENENO: 'ACÚM. VENENO',
+    ACUMULO_ATORDOAMENTO: 'ACÚM. ATORDOAMENTO',
+    ACUMULO_CEGUEIRA: 'ACÚM. CEGUEIRA',
     FORCA: 'FORÇA',
     DESTREZA: 'DESTREZA',
     INTELIGENCIA: 'INTELIGÊNCIA',
@@ -157,7 +178,27 @@
   };
 
   function formatEffectTargetLabel(targetStat) {
-    return EFFECT_TARGET_SHORT_LABELS[targetStat] || targetStat;
+    if (!targetStat) return '';
+    if (EFFECT_TARGET_SHORT_LABELS[targetStat]) return EFFECT_TARGET_SHORT_LABELS[targetStat];
+    if (targetStat === 'RESISTENCIA_GERAL') return 'RES. GERAL (%)';
+    if (targetStat === 'ACUMULOS_GERAIS') return 'ACÚM. GERAIS';
+    return targetStat;
+  }
+
+  function renderEffectTargetOptionsHtml(selectedValue) {
+    let html = '';
+    let currentGroup = null;
+    for (const opt of EFFECT_TARGET_OPTIONS) {
+      if (opt.group && opt.group !== currentGroup) {
+        if (currentGroup !== null) html += '</optgroup>';
+        currentGroup = opt.group;
+        html += `<optgroup label="${escapeHtml(currentGroup)}">`;
+      }
+      const isSelected = selectedValue === opt.value ? 'selected' : '';
+      html += `<option value="${opt.value}" ${isSelected}>${escapeHtml(opt.label)}</option>`;
+    }
+    if (currentGroup !== null) html += '</optgroup>';
+    return html;
   }
 
   // ===========================================================================
@@ -440,6 +481,10 @@
       flatMods[opt.value] = 0;
       pctMods[opt.value] = 0;
     }
+    flatMods.RESISTENCIA_GERAL = 0;
+    pctMods.RESISTENCIA_GERAL = 0;
+    flatMods.ACUMULOS_GERAIS = 0;
+    pctMods.ACUMULOS_GERAIS = 0;
 
     let totalWeight = 0;
     for (const inv of char.inventory || []) {
@@ -454,11 +499,14 @@
       if (directArc) flatMods.ARCANA += directArc;
 
       for (const eff of tpl.effects || []) {
-        if (!(eff.targetStat in flatMods)) continue;
+        let tStat = eff.targetStat;
+        if (tStat === 'RESISTENCIA_GERAL') tStat = 'RES_GERAL';
+        else if (tStat === 'ACUMULOS_GERAIS') tStat = 'ACUMULO_GERAL';
+        if (!(tStat in flatMods)) continue;
         if (eff.modifierType === 'PERCENT') {
-          pctMods[eff.targetStat] += Number(eff.value || 0);
+          pctMods[tStat] += Number(eff.value || 0);
         } else {
-          flatMods[eff.targetStat] += Number(eff.value || 0);
+          flatMods[tStat] += Number(eff.value || 0);
         }
       }
     }
@@ -466,11 +514,14 @@
     for (const buff of char.activeBuffs || []) {
       if (Number(buff.remainingTurns || 0) <= 0) continue;
       for (const eff of buff.effects || []) {
-        if (!(eff.targetStat in flatMods)) continue;
+        let tStat = eff.targetStat;
+        if (tStat === 'RESISTENCIA_GERAL') tStat = 'RES_GERAL';
+        else if (tStat === 'ACUMULOS_GERAIS') tStat = 'ACUMULO_GERAL';
+        if (!(tStat in flatMods)) continue;
         if (eff.modifierType === 'PERCENT') {
-          pctMods[eff.targetStat] += Number(eff.value || 0);
+          pctMods[tStat] += Number(eff.value || 0);
         } else {
-          flatMods[eff.targetStat] += Number(eff.value || 0);
+          flatMods[tStat] += Number(eff.value || 0);
         }
       }
     }
@@ -483,7 +534,9 @@
       if (!isPerm && dur !== null && dur !== undefined && Number(dur) <= 0) continue;
 
       for (const mod of bn.modifiers || []) {
-        const stat = mod.targetStat || mod.stat;
+        let stat = mod.targetStat || mod.stat;
+        if (stat === 'RESISTENCIA_GERAL') stat = 'RES_GERAL';
+        else if (stat === 'ACUMULOS_GERAIS') stat = 'ACUMULO_GERAL';
         if (!(stat in flatMods)) continue;
         const val = Number(mod.value || 0);
         const mode = String(mod.modifierType || mod.mode || 'FLAT').toUpperCase();
@@ -525,13 +578,79 @@
 
     char.elementalResistances = char.elementalResistances || {};
     const effectiveElementalResistances = {};
+    const resGeralBonus =
+      Number(flatMods.RES_GERAL || flatMods.RESISTENCIA_GERAL || 0) +
+      Number(pctMods.RES_GERAL || pctMods.RESISTENCIA_GERAL || 0);
+
     for (const er of ELEMENTAL_RESISTANCE_TYPES) {
       const rawEr = Number(char.elementalResistances[er.key] ?? 0);
       const baseEr = Number.isFinite(rawEr) ? Number(rawEr.toFixed(1)) : 0;
       char.elementalResistances[er.key] = baseEr;
       const targetKey = `RES_${er.key}`;
-      const bonusEr = Number(flatMods[targetKey] || 0) + Number(pctMods[targetKey] || 0);
+      const bonusEr = Number(flatMods[targetKey] || 0) + Number(pctMods[targetKey] || 0) + resGeralBonus;
       effectiveElementalResistances[er.key] = Number((baseEr + bonusEr).toFixed(1));
+    }
+
+    // Cálculo dos Limites Máximos de Acúmulos (Painel de Acúmulos / Resistências de Status)
+    const ACCUMULATION_STAT_MAP = {
+      Congelamento: 'ACUMULO_CONGELAMENTO',
+      Choque: 'ACUMULO_CHOQUE',
+      Sangramento: 'ACUMULO_SANGRAMENTO',
+      Chamas: 'ACUMULO_CHAMAS',
+      Veneno: 'ACUMULO_VENENO',
+      Atordoamento: 'ACUMULO_ATORDOAMENTO',
+      Cegueira: 'ACUMULO_CEGUEIRA',
+    };
+
+    const flatAcumGeral = Number(flatMods.ACUMULO_GERAL || flatMods.ACUMULOS_GERAIS || 0);
+    const pctAcumGeral = Number(pctMods.ACUMULO_GERAL || pctMods.ACUMULOS_GERAIS || 0);
+
+    char.resistances = char.resistances || {};
+    if (!char.initial) char.initial = {};
+    if (!char.initial.resistances) char.initial.resistances = {};
+
+    const effectiveResistances = {};
+    for (const r of RESISTANCE_TYPES) {
+      if (!char.resistances[r.name]) {
+        char.resistances[r.name] = { current: 0, max: 100 };
+      }
+      const curEntry = char.resistances[r.name];
+      const baseMax = Number(
+        char.initial.resistances[r.name]?.max ?? curEntry.baseMax ?? curEntry.max ?? 100
+      );
+      curEntry.baseMax = baseMax;
+      if (!char.initial.resistances[r.name]) {
+        char.initial.resistances[r.name] = { current: curEntry.current || 0, max: baseMax };
+      }
+
+      const tStat = ACCUMULATION_STAT_MAP[r.name];
+      const indivFlat = tStat ? Number(flatMods[tStat] || 0) : 0;
+      const indivPct = tStat ? Number(pctMods[tStat] || 0) : 0;
+      const totFlat = flatAcumGeral + indivFlat;
+      const totPct = pctAcumGeral + indivPct;
+
+      const effMax = Math.max(1, computeStatWithModifiers(baseMax, totFlat, totPct));
+      curEntry.max = effMax;
+      if (curEntry.current > effMax) {
+        curEntry.current = effMax;
+      }
+      effectiveResistances[r.name] = {
+        current: curEntry.current,
+        max: effMax,
+        baseMax,
+      };
+    }
+
+    if (char.resistances['Cegueira']) {
+      const curEntry = char.resistances['Cegueira'];
+      const baseMax = Number(char.initial.resistances['Cegueira']?.max ?? curEntry.baseMax ?? curEntry.max ?? 100);
+      curEntry.baseMax = baseMax;
+      const indivFlat = Number(flatMods.ACUMULO_CEGUEIRA || 0);
+      const indivPct = Number(pctMods.ACUMULO_CEGUEIRA || 0);
+      const effMax = Math.max(1, computeStatWithModifiers(baseMax, flatAcumGeral + indivFlat, pctAcumGeral + indivPct));
+      curEntry.max = effMax;
+      if (curEntry.current > effMax) curEntry.current = effMax;
+      effectiveResistances['Cegueira'] = { current: curEntry.current, max: effMax, baseMax };
     }
 
     char.baseMaxHp = Math.max(1, Number(char.baseMaxHp ?? char.maxHp ?? 80));
@@ -597,6 +716,7 @@
       totalWeight: Number(totalWeight.toFixed(2)),
       effectiveAttributes,
       effectiveElementalResistances,
+      effectiveResistances,
       effectiveMaxArmorUnpenalized: effMaxArmorRaw,
       effectiveRegenVida: effRegenVida,
       effectiveRegenArmadura: effRegenArmadura,

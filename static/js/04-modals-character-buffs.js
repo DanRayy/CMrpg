@@ -138,7 +138,7 @@
     const container = document.getElementById('char-form-resistances-grid');
     if (!container) return;
     container.innerHTML = RESISTANCE_TYPES.map((r) => {
-      const maxVal = resistancesObj?.[r.name]?.max ?? 100;
+      const maxVal = resistancesObj?.[r.name]?.baseMax ?? resistancesObj?.[r.name]?.max ?? 100;
       return `
         <div>
           <label class="block text-[11px] font-bold mb-1 ${r.textClass}">${r.icon} ${escapeHtml(r.name)}</label>
@@ -386,7 +386,7 @@
           const initialResistances = {};
           for (const r of RESISTANCE_TYPES) {
             const rMax = newResLimits[r.name] ?? 100;
-            resistances[r.name] = { current: 0, max: rMax };
+            resistances[r.name] = { current: 0, max: rMax, baseMax: rMax };
             initialResistances[r.name] = { current: 0, max: rMax };
           }
           const newChar = {
@@ -506,6 +506,7 @@
             target.resistances[r.name] = {
               current: Math.max(0, Math.min(prevCur, rMax)),
               max: rMax,
+              baseMax: rMax,
             };
             initialResistances[r.name] = { current: 0, max: rMax };
           }
@@ -870,7 +871,7 @@
 
             for (const r of RESISTANCE_TYPES) {
               const iMax = init.resistances?.[r.name]?.max ?? 100;
-              target.resistances[r.name] = { current: 0, max: iMax };
+              target.resistances[r.name] = { current: 0, max: iMax, baseMax: iMax };
             }
             return true;
           },
@@ -1090,9 +1091,7 @@
     const currentType = String(mod.modifierType || mod.mode || 'FLAT').toUpperCase() === 'PERCENT' ? 'PERCENT' : 'FLAT';
     row.innerHTML = `
       <select data-mod-target class="col-span-6 px-2 py-1.5 app-input font-bold text-xs">
-        ${EFFECT_TARGET_OPTIONS.map(
-          (o) => `<option value="${o.value}" ${currentTarget === o.value ? 'selected' : ''}>${escapeHtml(o.label)}</option>`
-        ).join('')}
+        ${renderEffectTargetOptionsHtml(currentTarget)}
       </select>
       <select data-mod-type class="col-span-3 px-2 py-1.5 app-input font-bold text-xs">
         <option value="FLAT" ${currentType === 'FLAT' ? 'selected' : ''}>Fixo (+/-)</option>

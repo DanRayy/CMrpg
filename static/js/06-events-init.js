@@ -997,9 +997,7 @@
       row.className = 'grid grid-cols-12 gap-2 items-center';
       row.innerHTML = `
         <select data-eff-target class="col-span-5 px-2 py-1.5 app-input font-bold">
-          ${EFFECT_TARGET_OPTIONS.map(
-            (o) => `<option value="${o.value}" ${eff.targetStat === o.value ? 'selected' : ''}>${o.label}</option>`
-          ).join('')}
+          ${renderEffectTargetOptionsHtml(eff.targetStat)}
         </select>
         <select data-eff-type class="col-span-3 px-2 py-1.5 app-input font-bold">
           <option value="FLAT" ${eff.modifierType === 'FLAT' ? 'selected' : ''}>Fixo (FLAT)</option>

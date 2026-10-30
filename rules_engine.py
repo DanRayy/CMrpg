@@ -57,6 +57,7 @@ VALID_EFFECT_TARGETS: List[str] = [
     "ATAQUE",
     "ARCANA",
     "SANTIDADE",
+    "RES_GERAL",
     "RES_FISICO",
     "RES_MAGICO",
     "RES_PYRO",
@@ -64,6 +65,14 @@ VALID_EFFECT_TARGETS: List[str] = [
     "RES_ELETRICO",
     "RES_PROFANO",
     "RES_SACRO",
+    "ACUMULO_GERAL",
+    "ACUMULO_CONGELAMENTO",
+    "ACUMULO_CHOQUE",
+    "ACUMULO_SANGRAMENTO",
+    "ACUMULO_CHAMAS",
+    "ACUMULO_VENENO",
+    "ACUMULO_ATORDOAMENTO",
+    "ACUMULO_CEGUEIRA",
     "FORCA",
     "DESTREZA",
     "INTELIGENCIA",
@@ -247,6 +256,10 @@ def compute_character_derived_stats(
                 flat_mods["ARCANA"] += direct_arc
             for eff in item_tpl.get("effects") or []:
                 target = eff.get("targetStat")
+                if target == "RESISTENCIA_GERAL":
+                    target = "RES_GERAL"
+                elif target == "ACUMULOS_GERAIS":
+                    target = "ACUMULO_GERAL"
                 if target not in flat_mods:
                     continue
                 val = float(eff.get("value", 0))
@@ -263,6 +276,10 @@ def compute_character_derived_stats(
             continue
         for eff in buff.get("effects") or []:
             target = eff.get("targetStat")
+            if target == "RESISTENCIA_GERAL":
+                target = "RES_GERAL"
+            elif target == "ACUMULOS_GERAIS":
+                target = "ACUMULO_GERAL"
             if target not in flat_mods:
                 continue
             val = float(eff.get("value", 0))
@@ -290,6 +307,10 @@ def compute_character_derived_stats(
             if not isinstance(mod, dict):
                 continue
             t_stat = mod.get("targetStat") or mod.get("stat")
+            if t_stat == "RESISTENCIA_GERAL":
+                t_stat = "RES_GERAL"
+            elif t_stat == "ACUMULOS_GERAIS":
+                t_stat = "ACUMULO_GERAL"
             if t_stat not in flat_mods:
                 continue
             try:
@@ -363,16 +384,68 @@ def compute_character_derived_stats(
 
     base_elem_res = char.get("elementalResistances") or {}
     effective_elem_res: Dict[str, float] = {}
+    res_geral_bonus = float(flat_mods.get("RES_GERAL", 0.0)) + float(pct_mods.get("RES_GERAL", 0.0))
     for ek in ELEMENTAL_RESISTANCE_TYPES:
         b_er = float(base_elem_res.get(ek, 0.0))
         t_key = f"RES_{ek}"
-        eff_er = b_er + float(flat_mods.get(t_key, 0.0)) + float(pct_mods.get(t_key, 0.0))
+        eff_er = b_er + float(flat_mods.get(t_key, 0.0)) + float(pct_mods.get(t_key, 0.0)) + res_geral_bonus
         effective_elem_res[ek] = int(eff_er) if eff_er.is_integer() else round(eff_er, 1)
+
+    # Cálculo dos Limites Máximos de Acúmulos (Painel de Acúmulos / Resistências de Status)
+    accumulation_stat_map = {
+        "Congelamento": "ACUMULO_CONGELAMENTO",
+        "Choque": "ACUMULO_CHOQUE",
+        "Sangramento": "ACUMULO_SANGRAMENTO",
+        "Chamas": "ACUMULO_CHAMAS",
+        "Veneno": "ACUMULO_VENENO",
+        "Atordoamento": "ACUMULO_ATORDOAMENTO",
+        "Cegueira": "ACUMULO_CEGUEIRA",
+    }
+    flat_acum_geral = float(flat_mods.get("ACUMULO_GERAL", 0.0))
+    pct_acum_geral = float(pct_mods.get("ACUMULO_GERAL", 0.0))
+
+    effective_resistances: Dict[str, Dict[str, Any]] = {}
+    char_resistances = char.get("resistances")
+    if not isinstance(char_resistances, dict):
+        char_resistances = {}
+        char["resistances"] = char_resistances
+
+    initial_resistances = (char.get("initial") or {}).get("resistances") or {}
+
+    for r_name in STATUS_RESISTANCE_TYPES:
+        cur_entry = char_resistances.get(r_name)
+        if not isinstance(cur_entry, dict):
+            cur_entry = {"current": 0, "max": 100}
+            char_resistances[r_name] = cur_entry
+
+        init_max = initial_resistances.get(r_name, {}).get("max")
+        base_max = float(init_max if init_max is not None else (cur_entry.get("baseMax") if cur_entry.get("baseMax") is not None else (cur_entry.get("max") if cur_entry.get("max") is not None else 100.0)))
+        cur_entry["baseMax"] = int(base_max)
+
+        t_stat = accumulation_stat_map.get(r_name)
+        indiv_flat = float(flat_mods.get(t_stat, 0.0)) if t_stat else 0.0
+        indiv_pct = float(pct_mods.get(t_stat, 0.0)) if t_stat else 0.0
+        tot_flat = flat_acum_geral + indiv_flat
+        tot_pct = pct_acum_geral + indiv_pct
+
+        eff_max = max(1, compute_stat_with_modifiers(int(base_max), tot_flat, tot_pct, precedence, rounding_mode))
+        cur_val = int(cur_entry.get("current", 0))
+        if cur_val > eff_max:
+            cur_val = eff_max
+            cur_entry["current"] = cur_val
+
+        cur_entry["max"] = eff_max
+        effective_resistances[r_name] = {
+            "current": cur_val,
+            "max": eff_max,
+            "baseMax": int(base_max),
+        }
 
     return {
         "totalWeight": round(total_weight, 2),
         "effectiveAttributes": effective_attrs,
         "effectiveElementalResistances": effective_elem_res,
+        "effectiveResistances": effective_resistances,
         "effectiveMaxHp": eff_max_hp,
         "effectiveMaxArmor": eff_max_armor,
         "effectiveMaxArmorUnpenalized": eff_max_armor_raw,

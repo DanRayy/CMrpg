@@ -1367,7 +1367,7 @@
     const resGrid = document.getElementById('enemy-resistances-grid');
     if (resGrid) {
       resGrid.innerHTML = RESISTANCE_TYPES.map((r) => {
-        const curMax = enemy?.resistances?.[r.name]?.max ?? 100;
+        const curMax = enemy?.resistances?.[r.name]?.baseMax ?? enemy?.resistances?.[r.name]?.max ?? 100;
         return `
           <div>
             <label class="block font-bold mb-1 truncate text-[11px]" title="${escapeHtml(r.label)}">
