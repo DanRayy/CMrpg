@@ -1782,6 +1782,15 @@
           </button>
           <button
             type="button"
+            data-host-delete-tree="${escapeHtml(activeTree.id)}"
+            class="px-3 py-1.5 rounded-lg text-xs font-bold bg-rose-600/20 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/40 transition flex items-center gap-1.5"
+            title="Excluir esta Árvore de Habilidades"
+          >
+            <iconify-icon icon="game-icons:trash-can"></iconify-icon>
+            <span>Excluir Árvore</span>
+          </button>
+          <button
+            type="button"
             data-host-add-node="${escapeHtml(activeTree.id)}"
             class="px-3.5 py-1.5 rounded-lg text-xs font-serif-fantasy font-black uppercase btn-gold flex items-center gap-1.5"
           >
@@ -1928,6 +1937,7 @@
         class="constellation-node-card p-3.5 flex flex-col justify-between gap-2.5 cursor-grab active:cursor-grabbing"
         draggable="true"
         data-skill-node-card="${escapeHtml(node.id)}"
+        data-tree-id="${escapeHtml(tree.id)}"
         data-skill-tree-id="${escapeHtml(tree.id)}"
       >
         <div class="space-y-2">

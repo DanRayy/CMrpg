@@ -2007,8 +2007,10 @@
     const activeTree = visibleTrees.find((t) => t.id === state.activeSkillTreeId) || null;
 
     const editTreeBtn = document.getElementById('btn-st-modal-edit-tree');
+    const delTreeBtn = document.getElementById('btn-st-modal-delete-tree');
     const addNodeBtn = document.getElementById('btn-st-modal-add-node');
     if (editTreeBtn) editTreeBtn.classList.toggle('hidden', !activeTree);
+    if (delTreeBtn) delTreeBtn.classList.toggle('hidden', !activeTree);
     if (addNodeBtn) addNodeBtn.classList.toggle('hidden', !activeTree);
 
     // Abas de árvores
@@ -2085,7 +2087,9 @@
       )
       .join('');
 
-    const nodes = Array.isArray(activeTree.nodes) ? activeTree.nodes : [];
+    const nodes = Array.isArray(activeTree.nodes)
+      ? [...activeTree.nodes].sort((a, b) => Number(a.order ?? 0) - Number(b.order ?? 0))
+      : [];
     const tierOrder = [
       {
         key: 'SUPREMA',
@@ -2781,14 +2785,18 @@
         if (!Array.isArray(st.skillTrees)) st.skillTrees = [];
         const tpl = buildGeomanciaSkillTreeTemplate();
         const existingIdx = st.skillTrees.findIndex(
-          (t) => t.id === 'tree_geomancia' || String(t.name || '').toLowerCase() === 'geomancia'
+          (t) =>
+            t.id === 'tree_geomancia' ||
+            t.id === 'tree_geomancia_exemplo' ||
+            String(t.name || '').toLowerCase() === 'geomancia'
         );
         if (existingIdx >= 0) {
-          tpl.id = st.skillTrees[existingIdx].id;
+          tpl.id = 'tree_geomancia_exemplo';
           st.skillTrees[existingIdx] = tpl;
           state.activeSkillTreeId = tpl.id;
           toasts.push('🪨 Árvore de Exemplo "Geomancia" restaurada/atualizada com sucesso!');
         } else {
+          tpl.id = 'tree_geomancia_exemplo';
           st.skillTrees.push(tpl);
           state.activeSkillTreeId = tpl.id;
           toasts.push('🪨 Árvore de Exemplo "Geomancia" adicionada com sucesso!');
@@ -2816,7 +2824,7 @@
     row.innerHTML = `
       <div class="sm:col-span-6">
         <select data-st-comp-target class="w-full px-2.5 py-1.5 text-xs font-bold app-input">
-          ${renderEffectTargetSelectOptions(currentTarget)}
+          ${renderEffectTargetOptionsHtml(currentTarget)}
         </select>
       </div>
       <div class="sm:col-span-3">
@@ -2961,7 +2969,7 @@
     row.innerHTML = `
       <div class="sm:col-span-6">
         <select data-sn-eff-target class="w-full px-2.5 py-1.5 text-xs font-bold app-input">
-          ${renderEffectTargetSelectOptions(currentTarget)}
+          ${renderEffectTargetOptionsHtml(currentTarget)}
         </select>
       </div>
       <div class="sm:col-span-3">

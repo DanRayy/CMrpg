@@ -673,7 +673,9 @@
               ensureMembersHavePermanentCursorColors();
             }
             if (Array.isArray(data.itemsCatalog)) state.itemsCatalog = data.itemsCatalog;
-            if (Array.isArray(data.skillTrees)) state.skillTrees = data.skillTrees;
+            if (Array.isArray(data.skillTrees)) {
+        state.skillTrees = data.skillTrees.filter((t) => t && t.id !== 'tree_geomancia');
+      }
             if (Array.isArray(data.characters)) {
               state.characters = data.characters;
               state.characters.forEach(recalculateCharacterDerived);

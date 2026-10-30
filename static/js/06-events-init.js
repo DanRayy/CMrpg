@@ -2603,70 +2603,61 @@
 
     // Botões na Aba Exclusiva do Host (#tab-skill-trees)
     document.getElementById('btn-seed-geomancia-tree')?.addEventListener('click', () => seedGeomanciaSkillTree());
-    document.getElementById('btn-open-skill-tree-constellation-host')?.addEventListener('click', () => {
+    document.getElementById('btn-open-fullscreen-skill-tree-master')?.addEventListener('click', () => {
       openSkillTreeModal(null, state.activeSkillTreeId);
     });
-    document.getElementById('btn-new-skill-tree')?.addEventListener('click', () => openSkillTreeFormModal(null));
+    document.getElementById('btn-create-skill-tree')?.addEventListener('click', () => openSkillTreeFormModal(null));
 
-    document.getElementById('skill-trees-host-sidebar')?.addEventListener('click', (e) => {
-      const editBtn = e.target.closest('[data-edit-skill-tree]');
-      if (editBtn) {
-        e.stopPropagation();
-        openSkillTreeFormModal(editBtn.getAttribute('data-edit-skill-tree'));
+    document.getElementById('skill-trees-host-container')?.addEventListener('click', (e) => {
+      if (e.target.closest('[data-host-seed-geomancia]')) {
+        seedGeomanciaSkillTree();
         return;
       }
-      const delBtn = e.target.closest('[data-delete-skill-tree]');
-      if (delBtn) {
-        e.stopPropagation();
-        confirmAndDeleteSkillTree(delBtn.getAttribute('data-delete-skill-tree'));
+      if (e.target.closest('[data-host-create-tree]')) {
+        openSkillTreeFormModal(null);
         return;
       }
-      const selCard = e.target.closest('[data-select-host-tree]');
-      if (selCard) {
-        state.activeSkillTreeId = selCard.getAttribute('data-select-host-tree');
+
+      const selectTreeBtn = e.target.closest('[data-host-select-tree]');
+      if (selectTreeBtn) {
+        state.activeSkillTreeId = selectTreeBtn.getAttribute('data-host-select-tree');
         renderSkillTreesTab();
+        return;
       }
-    });
 
-    document.getElementById('skill-trees-host-editor')?.addEventListener('click', (e) => {
-      const editTreeBtn = e.target.closest('[data-edit-skill-tree]');
+      const editTreeBtn = e.target.closest('[data-host-edit-tree]');
       if (editTreeBtn) {
-        openSkillTreeFormModal(editTreeBtn.getAttribute('data-edit-skill-tree'));
+        openSkillTreeFormModal(editTreeBtn.getAttribute('data-host-edit-tree'));
         return;
       }
-      const openConstBtn = e.target.closest('[data-open-constellation-tree]');
-      if (openConstBtn) {
-        openSkillTreeModal(null, openConstBtn.getAttribute('data-open-constellation-tree'));
+
+      const delTreeBtn = e.target.closest('[data-host-delete-tree]');
+      if (delTreeBtn) {
+        confirmAndDeleteSkillTree(delTreeBtn.getAttribute('data-host-delete-tree'));
         return;
       }
-      const addNodeBtn = e.target.closest('[data-add-skill-node]');
+
+      const addNodeBtn = e.target.closest('[data-host-add-node]');
       if (addNodeBtn) {
-        openSkillNodeFormModal(addNodeBtn.getAttribute('data-add-skill-node'), null, 'TALENTO');
+        const treeId = addNodeBtn.getAttribute('data-host-add-node') || state.activeSkillTreeId;
+        const cat = addNodeBtn.getAttribute('data-host-node-cat') || 'TALENTO';
+        openSkillNodeFormModal(treeId, null, cat);
         return;
       }
-      const addNodeCatBtn = e.target.closest('[data-add-skill-node-cat]');
-      if (addNodeCatBtn) {
-        openSkillNodeFormModal(
-          addNodeCatBtn.getAttribute('data-tree-id') || state.activeSkillTreeId,
-          null,
-          addNodeCatBtn.getAttribute('data-add-skill-node-cat') || 'TALENTO'
-        );
-        return;
-      }
-      const editNodeBtn = e.target.closest('[data-edit-skill-node]');
+
+      const editNodeBtn = e.target.closest('[data-host-edit-node]');
       if (editNodeBtn) {
-        openSkillNodeFormModal(
-          editNodeBtn.getAttribute('data-tree-id') || state.activeSkillTreeId,
-          editNodeBtn.getAttribute('data-edit-skill-node')
-        );
+        const treeId = editNodeBtn.getAttribute('data-host-node-tree') || state.activeSkillTreeId;
+        const nodeId = editNodeBtn.getAttribute('data-host-edit-node');
+        openSkillNodeFormModal(treeId, nodeId);
         return;
       }
-      const delNodeBtn = e.target.closest('[data-delete-skill-node]');
+
+      const delNodeBtn = e.target.closest('[data-host-delete-node]');
       if (delNodeBtn) {
-        confirmAndDeleteSkillNode(
-          delNodeBtn.getAttribute('data-tree-id') || state.activeSkillTreeId,
-          delNodeBtn.getAttribute('data-delete-skill-node')
-        );
+        const treeId = delNodeBtn.getAttribute('data-host-node-tree') || state.activeSkillTreeId;
+        const nodeId = delNodeBtn.getAttribute('data-host-delete-node');
+        confirmAndDeleteSkillNode(treeId, nodeId);
       }
     });
 
@@ -2703,6 +2694,9 @@
     document.getElementById('btn-st-modal-new-tree')?.addEventListener('click', () => openSkillTreeFormModal(null));
     document.getElementById('btn-st-modal-edit-tree')?.addEventListener('click', () => {
       if (state.activeSkillTreeId) openSkillTreeFormModal(state.activeSkillTreeId);
+    });
+    document.getElementById('btn-st-modal-delete-tree')?.addEventListener('click', () => {
+      if (state.activeSkillTreeId) confirmAndDeleteSkillTree(state.activeSkillTreeId);
     });
     document.getElementById('btn-st-modal-add-node')?.addEventListener('click', () => {
       if (state.activeSkillTreeId) openSkillNodeFormModal(state.activeSkillTreeId, null, 'TALENTO');
@@ -2786,7 +2780,8 @@
         const card = e.target.closest('[data-skill-node-card]');
         if (!card) return;
         state.draggingSkillNodeId = card.getAttribute('data-skill-node-card');
-        state.draggingSkillNodeTreeId = card.getAttribute('data-tree-id') || state.activeSkillTreeId;
+        state.draggingSkillNodeTreeId =
+          card.getAttribute('data-tree-id') || card.getAttribute('data-skill-tree-id') || state.activeSkillTreeId;
         card.classList.add('skill-node-dragging');
         if (e.dataTransfer) {
           e.dataTransfer.effectAllowed = 'move';
@@ -2824,7 +2819,11 @@
         if (!targetCard) return;
         e.preventDefault();
         const targetNodeId = targetCard.getAttribute('data-skill-node-card');
-        const treeId = targetCard.getAttribute('data-tree-id') || state.draggingSkillNodeTreeId || state.activeSkillTreeId;
+        const treeId =
+          targetCard.getAttribute('data-tree-id') ||
+          targetCard.getAttribute('data-skill-tree-id') ||
+          state.draggingSkillNodeTreeId ||
+          state.activeSkillTreeId;
         const draggedId = state.draggingSkillNodeId;
         state.draggingSkillNodeId = null;
         state.draggingSkillNodeTreeId = null;
@@ -2843,7 +2842,7 @@
     };
 
     bindSkillNodeDragAndDrop('skill-tree-modal-body');
-    bindSkillNodeDragAndDrop('skill-trees-host-editor');
+    bindSkillNodeDragAndDrop('skill-trees-host-container');
 
     // Modal 21 (#modal-skill-tree-form) & Modal 22 (#modal-skill-node-form)
     document.getElementById('btn-add-st-completion-effect')?.addEventListener('click', () => {

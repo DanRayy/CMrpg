@@ -28,7 +28,7 @@
   <!-- Iconify Web Component (game-icons) -->
   <script src="https://code.iconify.design/iconify-icon/2.1.0/iconify-icon.min.js"></script>
   <!-- Estilos Customizados -->
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="styles.css?v=1.6.1" />
 </head>
 <body class="min-h-screen flex select-none">
 
@@ -3225,6 +3225,15 @@
             </button>
             <button
               type="button"
+              id="btn-st-modal-delete-tree"
+              class="px-2.5 py-1.5 rounded-lg text-[11px] font-serif-fantasy font-bold uppercase bg-rose-600/20 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/40 transition flex items-center gap-1"
+              title="Excluir Árvore Atual"
+            >
+              <iconify-icon icon="game-icons:trash-can"></iconify-icon>
+              <span class="hidden md:inline">Excluir Árvore</span>
+            </button>
+            <button
+              type="button"
               id="btn-st-modal-add-node"
               class="px-3 py-1.5 rounded-lg text-[11px] font-serif-fantasy font-black uppercase btn-gold flex items-center gap-1"
             >
@@ -3601,11 +3610,11 @@
   </div>
 
     <!-- Módulos Sequenciais da Aplicação -->
-    <script src="js/01-core-state.js"></script>
-    <script src="js/02-websocket-combat.js"></script>
-    <script src="js/03-tabs-renderers.js"></script>
-    <script src="js/04-modals-character-buffs.js"></script>
-    <script src="js/05-modals-notes-inventory-bestiary.js"></script>
-    <script src="js/06-events-init.js"></script>
+    <script src="js/01-core-state.js?v=1.6.1"></script>
+    <script src="js/02-websocket-combat.js?v=1.6.1"></script>
+    <script src="js/03-tabs-renderers.js?v=1.6.1"></script>
+    <script src="js/04-modals-character-buffs.js?v=1.6.1"></script>
+    <script src="js/05-modals-notes-inventory-bestiary.js?v=1.6.1"></script>
+    <script src="js/06-events-init.js?v=1.6.1"></script>
 </body>
 </html>

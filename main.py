@@ -865,125 +865,8 @@ def build_default_campaign_state() -> Dict[str, Any]:
 
 
 def build_default_skill_trees() -> List[Dict[str, Any]]:
-    """Retorna a árvore de habilidades padrão de exemplo (Geomancia) pré-cadastrada."""
-    return [
-        {
-            "id": "tree_geomancia",
-            "name": "Geomancia",
-            "description": "Domínio telúrico focado em fortificação de armadura, postura defensiva inabalável e retaliação sísmica.",
-            "hiddenForPlayers": False,
-            "completionDescription": "Domínio completo da terra: +10 kg de Capacidade de Peso máxima na mochila.",
-            "completionEffects": [
-                {
-                    "targetStat": "CAPACIDADE_PESO",
-                    "modifierType": "FLAT",
-                    "value": 10,
-                }
-            ],
-            "nodes": [
-                {
-                    "id": "node_geo_passiva_1",
-                    "category": "PASSIVA",
-                    "name": "Geomancia",
-                    "subtype": "",
-                    "description": "Inicia batalhas com 10% de sua capacidade de armadura como armadura adicional, e aumenta sua defesa enquanto tem armadura em 8%+2. Se sua armadura for quebrada, causa 25+40% de seu ataque e arcana ao atacante, esse dano possui 50% de letalidade.",
-                    "unlockCost": 6,
-                    "maxRanks": 1,
-                    "costPerRank": 6,
-                    "maxUpgrades": 0,
-                    "upgradeCost": 0,
-                    "upgradeDescription": "",
-                    "manaCost": "",
-                    "paCost": "",
-                    "uses": "",
-                    "cooldown": "",
-                    "effects": [],
-                    "order": 0,
-                },
-                {
-                    "id": "node_geo_passiva_2",
-                    "category": "PASSIVA",
-                    "name": "Foco de Armadura",
-                    "subtype": "",
-                    "description": "Aumenta sua redução de dano em 10% enquanto tiver armadura, mas recebe 15%+1 de dano quando sofrer dano fora da armadura (efeitos não inclusos).",
-                    "unlockCost": 4,
-                    "maxRanks": 1,
-                    "costPerRank": 4,
-                    "maxUpgrades": 0,
-                    "upgradeCost": 0,
-                    "upgradeDescription": "",
-                    "manaCost": "",
-                    "paCost": "",
-                    "uses": "",
-                    "cooldown": "",
-                    "effects": [],
-                    "order": 1,
-                },
-                {
-                    "id": "node_geo_ativa_1",
-                    "category": "ATIVA",
-                    "name": "Armadura de Rochas",
-                    "subtype": "Postura",
-                    "description": "Recupera 10% de sua armadura máxima e um adicional de 65% de sua arcana, para si ou um aliado, enquanto mantiver a postura o alvo recebe 5 de defesa e 8% de resistência geral, mas se sua postura for quebrada você sofre 55 acúmulos de atordoamento.",
-                    "unlockCost": 4,
-                    "maxRanks": 1,
-                    "costPerRank": 4,
-                    "maxUpgrades": 2,
-                    "upgradeCost": 2,
-                    "upgradeDescription": "Recuperação com base em armadura +2%.",
-                    "manaCost": "35",
-                    "paCost": "2",
-                    "uses": "3",
-                    "cooldown": "",
-                    "effects": [],
-                    "order": 2,
-                },
-                {
-                    "id": "node_geo_talento_1",
-                    "category": "TALENTO",
-                    "name": "Blindagem",
-                    "subtype": "",
-                    "description": "Aumenta a armadura em 4 e defesa em 1.",
-                    "unlockCost": 1,
-                    "maxRanks": 5,
-                    "costPerRank": 1,
-                    "maxUpgrades": 0,
-                    "upgradeCost": 1,
-                    "upgradeDescription": "",
-                    "manaCost": "",
-                    "paCost": "",
-                    "uses": "",
-                    "cooldown": "",
-                    "effects": [
-                        {"targetStat": "ARMADURA", "modifierType": "FLAT", "value": 4},
-                        {"targetStat": "DEFESA", "modifierType": "FLAT", "value": 1},
-                    ],
-                    "order": 3,
-                },
-                {
-                    "id": "node_geo_talento_2",
-                    "category": "TALENTO",
-                    "name": "Vigor",
-                    "subtype": "",
-                    "description": "Aumenta o HP em 5.",
-                    "unlockCost": 1,
-                    "maxRanks": 5,
-                    "costPerRank": 1,
-                    "maxUpgrades": 0,
-                    "upgradeCost": 1,
-                    "upgradeDescription": "",
-                    "manaCost": "",
-                    "paCost": "",
-                    "uses": "",
-                    "cooldown": "",
-                    "effects": [
-                        {"targetStat": "VIDA", "modifierType": "FLAT", "value": 5},
-                    ],
-                    "order": 4,
-                },
-            ],
-        }
-    ]
+    """Retorna lista vazia por padrão (nenhuma árvore pré-criada automaticamente)."""
+    return []
 
 
 def normalize_character(
@@ -1355,8 +1238,10 @@ class StateManager:
         catalog = self.state.get("itemsCatalog") or []
         skill_trees = self.state.get("skillTrees")
         if not isinstance(skill_trees, list):
-            skill_trees = build_default_skill_trees()
-            self.state["skillTrees"] = skill_trees
+            skill_trees = []
+        else:
+            skill_trees = [t for t in skill_trees if isinstance(t, dict) and t.get("id") != "tree_geomancia"]
+        self.state["skillTrees"] = skill_trees
         for it in catalog:
             if not isinstance(it, dict):
                 continue

@@ -1621,7 +1621,7 @@
 
   function buildGeomanciaSkillTreeTemplate() {
     return {
-      id: 'tree_geomancia',
+      id: 'tree_geomancia_exemplo',
       name: 'Geomancia',
       description: 'Domínio telúrico focado em fortificação de armadura, postura defensiva inabalável e retaliação sísmica.',
       hiddenForPlayers: false,
@@ -2078,8 +2078,10 @@
         permissions: masterFullPermissionsClient(),
       },
     ];
-    if (!Array.isArray(state.skillTrees) || state.skillTrees.length === 0) {
-      state.skillTrees = [buildGeomanciaSkillTreeTemplate()];
+    if (!Array.isArray(state.skillTrees)) {
+      state.skillTrees = [];
+    } else {
+      state.skillTrees = state.skillTrees.filter((t) => t && t.id !== 'tree_geomancia');
     }
     state.characters.forEach(recalculateCharacterDerived);
   }
@@ -2121,8 +2123,10 @@
         const parsed = JSON.parse(rawFull);
         if (parsed && Array.isArray(parsed.characters) && parsed.characters.length > 0) {
           Object.assign(state, parsed);
-          if (!Array.isArray(state.skillTrees) || state.skillTrees.length === 0) {
-            state.skillTrees = [buildGeomanciaSkillTreeTemplate()];
+          if (!Array.isArray(state.skillTrees)) {
+            state.skillTrees = [];
+          } else {
+            state.skillTrees = state.skillTrees.filter((t) => t && t.id !== 'tree_geomancia');
           }
           sanitizeLegacyMembersClient();
           state.characters.forEach(recalculateCharacterDerived);
