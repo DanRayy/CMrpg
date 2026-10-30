@@ -28,7 +28,7 @@
   <!-- Iconify Web Component (game-icons) -->
   <script src="https://code.iconify.design/iconify-icon/2.1.0/iconify-icon.min.js"></script>
   <!-- Estilos Customizados -->
-  <link rel="stylesheet" href="styles.css?v=1.6.1" />
+  <link rel="stylesheet" href="styles.css?v=1.8.0" />
 </head>
 <body class="min-h-screen flex select-none">
 
@@ -804,6 +804,35 @@
               <iconify-icon icon="game-icons:sparkles"></iconify-icon>
               <span>＋ Nova Árvore</span>
             </button>
+          </div>
+        </div>
+
+        <!-- Barra de Pesquisa e Filtros Rápidos do Editor do Mestre -->
+        <div id="host-skill-tree-search-bar" class="fantasy-card p-3.5 flex flex-wrap items-center justify-between gap-3">
+          <div class="relative flex-1 min-w-[240px]">
+            <iconify-icon icon="game-icons:magnifying-glass" class="absolute left-3.5 top-1/2 -translate-y-1/2 text-amber-400/75 text-sm pointer-events-none"></iconify-icon>
+            <input
+              id="host-skill-tree-search-input"
+              type="text"
+              placeholder="Pesquisar habilidade, efeito ou atributo..."
+              autocomplete="off"
+              class="w-full pl-9 pr-8 py-2 text-xs font-semibold app-input"
+            />
+            <button
+              id="btn-host-skill-tree-search-clear"
+              type="button"
+              title="Limpar pesquisa"
+              class="hidden absolute right-2.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded flex items-center justify-center text-xs app-muted hover:text-amber-300"
+            >
+              ✕
+            </button>
+          </div>
+          <div id="host-skill-tree-filter-pills" class="flex flex-wrap items-center gap-1.5">
+            <button type="button" data-host-st-filter="ALL" class="px-3 py-1.5 rounded-lg text-xs font-bold btn-gold">Todos</button>
+            <button type="button" data-host-st-filter="SUPREMA" class="px-3 py-1.5 rounded-lg text-xs font-bold app-secondary-btn">Supremas</button>
+            <button type="button" data-host-st-filter="ATIVA" class="px-3 py-1.5 rounded-lg text-xs font-bold app-secondary-btn">Ativas</button>
+            <button type="button" data-host-st-filter="PASSIVA" class="px-3 py-1.5 rounded-lg text-xs font-bold app-secondary-btn">Passivas</button>
+            <button type="button" data-host-st-filter="TALENTO" class="px-3 py-1.5 rounded-lg text-xs font-bold app-secondary-btn">Talentos</button>
           </div>
         </div>
 
@@ -3225,6 +3254,15 @@
             </button>
             <button
               type="button"
+              id="btn-st-modal-clone-tree"
+              class="px-2.5 py-1.5 rounded-lg text-[11px] font-serif-fantasy font-bold uppercase btn-gold-outline flex items-center gap-1"
+              title="Duplicar / Clonar Árvore Inteira com todos os nós e efeitos"
+            >
+              <iconify-icon icon="game-icons:files"></iconify-icon>
+              <span class="hidden md:inline">Duplicar Árvore</span>
+            </button>
+            <button
+              type="button"
               id="btn-st-modal-delete-tree"
               class="px-2.5 py-1.5 rounded-lg text-[11px] font-serif-fantasy font-bold uppercase bg-rose-600/20 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/40 transition flex items-center gap-1"
               title="Excluir Árvore Atual"
@@ -3249,6 +3287,37 @@
       <!-- Barra de Abas de Seleção de Árvore -->
       <div id="skill-tree-modal-tabs" class="px-5 py-2.5 border-b app-divider-border bg-black/35 flex items-center gap-2 overflow-x-auto shrink-0">
         <!-- Abas das árvores renderizadas via JS -->
+      </div>
+
+      <!-- Barra de Pesquisa em Tempo Real e Pílulas de Filtro Rápido -->
+      <div id="skill-tree-modal-search-bar" class="px-5 py-2.5 border-b app-divider-border bg-black/25 flex flex-wrap items-center justify-between gap-2.5 shrink-0">
+        <div class="relative flex-1 min-w-[240px]">
+          <iconify-icon icon="game-icons:magnifying-glass" class="absolute left-3.5 top-1/2 -translate-y-1/2 text-amber-400/75 text-sm pointer-events-none"></iconify-icon>
+          <input
+            id="st-modal-search-input"
+            type="text"
+            placeholder="Pesquisar habilidade, efeito ou atributo..."
+            autocomplete="off"
+            class="w-full pl-9 pr-8 py-1.5 text-xs font-semibold app-input"
+          />
+          <button
+            id="btn-st-modal-search-clear"
+            type="button"
+            title="Limpar pesquisa"
+            class="hidden absolute right-2.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded flex items-center justify-center text-xs app-muted hover:text-amber-300"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div id="st-modal-filter-pills" class="flex flex-wrap items-center gap-1.5">
+          <button type="button" data-st-filter="ALL" class="px-3 py-1 rounded-lg text-[11px] font-bold btn-gold">Todos</button>
+          <button type="button" data-st-filter="ACQUIRED" class="px-3 py-1 rounded-lg text-[11px] font-bold app-secondary-btn">Adquiridos</button>
+          <button type="button" data-st-filter="SUPREMA" class="px-3 py-1 rounded-lg text-[11px] font-bold app-secondary-btn">Supremas</button>
+          <button type="button" data-st-filter="ATIVA" class="px-3 py-1 rounded-lg text-[11px] font-bold app-secondary-btn">Ativas</button>
+          <button type="button" data-st-filter="PASSIVA" class="px-3 py-1 rounded-lg text-[11px] font-bold app-secondary-btn">Passivas</button>
+          <button type="button" data-st-filter="TALENTO" class="px-3 py-1 rounded-lg text-[11px] font-bold app-secondary-btn">Talentos</button>
+        </div>
       </div>
 
       <!-- Corpo Principal da Constelação (Scrollable) -->
@@ -3610,11 +3679,11 @@
   </div>
 
     <!-- Módulos Sequenciais da Aplicação -->
-    <script src="js/01-core-state.js?v=1.6.1"></script>
-    <script src="js/02-websocket-combat.js?v=1.6.1"></script>
-    <script src="js/03-tabs-renderers.js?v=1.6.1"></script>
-    <script src="js/04-modals-character-buffs.js?v=1.6.1"></script>
-    <script src="js/05-modals-notes-inventory-bestiary.js?v=1.6.1"></script>
-    <script src="js/06-events-init.js?v=1.6.1"></script>
+    <script src="js/01-core-state.js?v=1.8.0"></script>
+    <script src="js/02-websocket-combat.js?v=1.8.0"></script>
+    <script src="js/03-tabs-renderers.js?v=1.8.0"></script>
+    <script src="js/04-modals-character-buffs.js?v=1.8.0"></script>
+    <script src="js/05-modals-notes-inventory-bestiary.js?v=1.8.0"></script>
+    <script src="js/06-events-init.js?v=1.8.0"></script>
 </body>
 </html>

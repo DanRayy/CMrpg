@@ -1668,7 +1668,25 @@
     const container = document.getElementById('skill-trees-host-container');
     if (!container) return;
 
+    const searchQ = (state.hostSkillTreeSearchQuery || '').trim();
+    const catFilter = String(state.hostSkillTreeCategoryFilter || 'ALL').toUpperCase();
+
+    const searchInputEl = document.getElementById('host-skill-tree-search-input');
+    if (searchInputEl && document.activeElement !== searchInputEl) {
+      searchInputEl.value = state.hostSkillTreeSearchQuery || '';
+    }
+    document.getElementById('btn-host-skill-tree-search-clear')?.classList.toggle('hidden', !searchQ);
+    document.querySelectorAll('#host-skill-tree-filter-pills [data-host-st-filter]').forEach((btn) => {
+      const isAct = btn.getAttribute('data-host-st-filter') === catFilter;
+      btn.className = isAct
+        ? 'px-3 py-1.5 rounded-lg text-xs font-bold btn-gold'
+        : 'px-3 py-1.5 rounded-lg text-xs font-bold app-secondary-btn';
+    });
+
     const trees = Array.isArray(state.skillTrees) ? state.skillTrees : [];
+    const searchBarEl = document.getElementById('host-skill-tree-search-bar');
+    if (searchBarEl) searchBarEl.classList.toggle('hidden', trees.length === 0);
+
     if (trees.length === 0) {
       container.innerHTML = `
         <div class="fantasy-card p-10 text-center space-y-3 border border-dashed app-divider-border">
@@ -1698,9 +1716,10 @@
       state.activeSkillTreeId = trees[0].id;
     }
     const activeTree = trees.find((t) => t.id === state.activeSkillTreeId) || trees[0];
-    const nodes = Array.isArray(activeTree.nodes)
+    const allNodes = Array.isArray(activeTree.nodes)
       ? [...activeTree.nodes].sort((a, b) => Number(a.order ?? 0) - Number(b.order ?? 0))
       : [];
+    const filteredNodes = allNodes.filter((n) => doesSkillNodeMatchFilter(n, null, searchQ, catFilter));
 
     const completionEffectsSummary = (activeTree.completionEffects || [])
       .map(
@@ -1738,6 +1757,11 @@
       },
     ];
 
+    const visibleCategories =
+      catFilter !== 'ALL' && catFilter !== 'ACQUIRED'
+        ? categoriesMeta.filter((c) => c.key === catFilter)
+        : categoriesMeta;
+
     container.innerHTML = `
       <!-- Barra de Abas das Árvores Cadastradas -->
       <div class="fantasy-card p-3 flex flex-wrap items-center justify-between gap-2">
@@ -1747,6 +1771,7 @@
               const isSelected = t.id === activeTree.id;
               const nCount = Array.isArray(t.nodes) ? t.nodes.length : 0;
               const isHidden = Boolean(t.hiddenForPlayers || t.ocultarParaJogadores);
+              const matchCount = searchQ ? countMatchingNodesInTree(t, null, searchQ, catFilter) : 0;
               return `
                 <button
                   type="button"
@@ -1760,6 +1785,15 @@
                   <span class="px-1.5 py-0.5 rounded text-[10px] font-mono ${
                     isSelected ? 'bg-black/25 text-black font-black' : 'bg-black/40 gold-title'
                   }">${nCount} nós</span>
+                  ${
+                    searchQ && matchCount > 0
+                      ? `<span class="px-1.5 py-0.5 rounded-full text-[9px] font-mono font-black ${
+                          isSelected
+                            ? 'bg-emerald-900 text-emerald-200 border border-emerald-400/50'
+                            : 'bg-emerald-500/25 text-emerald-300 border border-emerald-400/50'
+                        }">${matchCount} encontrado${matchCount !== 1 ? 's' : ''}</span>`
+                      : ''
+                  }
                   ${
                     isHidden
                       ? `<span class="px-1.5 py-0.5 rounded text-[9px] font-mono bg-rose-900/80 text-rose-200 border border-rose-500/40" title="Oculta para jogadores">OCULTA</span>`
@@ -1779,6 +1813,15 @@
           >
             <iconify-icon icon="game-icons:quill-ink"></iconify-icon>
             <span>Editar Árvore / Bônus 100%</span>
+          </button>
+          <button
+            type="button"
+            data-host-clone-tree="${escapeHtml(activeTree.id)}"
+            class="px-3 py-1.5 rounded-lg text-xs font-bold btn-gold-outline flex items-center gap-1.5"
+            title="Clonar / Duplicar esta Árvore inteira com novos IDs independentes"
+          >
+            <iconify-icon icon="game-icons:files"></iconify-icon>
+            <span>Duplicar Árvore</span>
           </button>
           <button
             type="button"
@@ -1846,15 +1889,16 @@
         </div>
 
         <div class="flex items-center justify-between text-[11px] app-muted">
-          <span><iconify-icon icon="game-icons:move"></iconify-icon> <strong>Dica do Mestre:</strong> Arraste os cards de nós (Drag &amp; Drop) para personalizar a ordem visual nas constelações.</span>
-          <span class="font-mono font-bold gold-title">Total de Nós: ${nodes.length}</span>
+          <span><iconify-icon icon="game-icons:move"></iconify-icon> <strong>Dica do Mestre:</strong> Arraste os cards de nós (Drag &amp; Drop) para personalizar a ordem visual nas constelações, ou clique em <strong>Duplicar</strong> em um nó para cloná-lo rapidamente.</span>
+          <span class="font-mono font-bold gold-title">Exibindo: ${filteredNodes.length} / ${allNodes.length} Nó(s)</span>
         </div>
 
         <!-- 4 Seções de Constelação no Editor do Mestre -->
         <div class="space-y-4">
-          ${categoriesMeta
+          ${visibleCategories
             .map((cat) => {
-              const catNodes = nodes.filter((n) => String(n.category || 'TALENTO').toUpperCase() === cat.key);
+              const catNodes = filteredNodes.filter((n) => String(n.category || 'TALENTO').toUpperCase() === cat.key);
+              if (searchQ && catNodes.length === 0 && visibleCategories.length > 1) return '';
               return `
                 <div class="constellation-tier-section space-y-3">
                   <div class="relative z-10 flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-amber-500/20">
@@ -1879,7 +1923,7 @@
                   ${
                     catNodes.length === 0
                       ? `<div class="relative z-10 p-4 rounded-xl bg-black/30 border border-dashed app-divider-border text-center text-xs app-muted">
-                          Nenhum nó cadastrado nesta categoria ainda.
+                          ${searchQ ? 'Nenhum nó corresponde à pesquisa nesta categoria.' : 'Nenhum nó cadastrado nesta categoria ainda.'}
                         </div>`
                       : `<div class="constellation-nodes-grid grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5" data-skill-nodes-dropzone="${escapeHtml(activeTree.id)}">
                           ${catNodes
@@ -1890,7 +1934,10 @@
                 </div>
               `;
             })
-            .join('')}
+            .join('') ||
+            `<div class="p-8 rounded-2xl bg-black/30 border border-dashed app-divider-border text-center text-xs app-muted">
+              Nenhuma habilidade ou talento encontrado para a pesquisa <strong>"${escapeHtml(searchQ)}"</strong> nesta árvore.
+            </div>`}
         </div>
       </div>
     `;
@@ -1952,6 +1999,16 @@
               </h4>
             </div>
             <div class="flex items-center gap-1 shrink-0">
+              <button
+                type="button"
+                data-host-clone-node="${escapeHtml(node.id)}"
+                data-host-node-tree="${escapeHtml(tree.id)}"
+                class="px-2 h-7 rounded-lg btn-gold-outline flex items-center justify-center gap-1 text-[10px] font-bold"
+                title="Duplicar / Clonar este Nó na mesma árvore"
+              >
+                <iconify-icon icon="game-icons:files"></iconify-icon>
+                <span>Duplicar</span>
+              </button>
               <button
                 type="button"
                 data-host-edit-node="${escapeHtml(node.id)}"

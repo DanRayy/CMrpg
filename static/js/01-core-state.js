@@ -259,6 +259,10 @@
     editingSkillTreeId: null,
     editingSkillNodeTreeId: null,
     editingSkillNodeId: null,
+    skillTreeSearchQuery: '',
+    skillTreeCategoryFilter: 'ALL',
+    hostSkillTreeSearchQuery: '',
+    hostSkillTreeCategoryFilter: 'ALL',
 
     // UI Filters & Selections
     searchQuery: '',
@@ -1746,7 +1750,10 @@
   function getCharacterSkillNodeState(char, node) {
     if (!node || !node.id) {
       return {
+        isTalent: true,
         unlocked: false,
+        isAcquired: false,
+        isMaxed: false,
         rank: 0,
         upgrades: 0,
         maxRanks: 1,
@@ -1761,15 +1768,20 @@
     }
     const rawProg = (char?.skillTreeProgress && char.skillTreeProgress[node.id]) || {};
     const cat = String(node.category || 'TALENTO').toUpperCase();
+    const isTalent = cat === 'TALENTO';
     const enabled = rawProg.enabled !== false;
 
-    if (cat === 'TALENTO') {
+    if (isTalent) {
       const maxRanks = Math.max(1, Math.round(Number(node.maxRanks || 1)));
       const costPerRank = Math.max(0, Math.round(Number(node.costPerRank ?? node.unlockCost ?? 1)));
       const rank = Math.max(0, Math.min(maxRanks, Math.round(Number(rawProg.rank || 0))));
       const unlocked = rank > 0;
+      const isMaxed = rank >= maxRanks;
       return {
+        isTalent: true,
         unlocked,
+        isAcquired: unlocked,
+        isMaxed,
         rank,
         upgrades: 0,
         maxRanks,
@@ -1793,9 +1805,13 @@
     const rank = unlocked ? 1 : 0;
     const acquiredSteps = (unlocked ? 1 : 0) + upgrades;
     const totalSteps = 1 + maxUpgrades;
+    const isMaxed = unlocked && acquiredSteps >= totalSteps;
 
     return {
+      isTalent: false,
       unlocked,
+      isAcquired: unlocked,
+      isMaxed,
       rank,
       upgrades,
       maxRanks: 1,
@@ -1807,6 +1823,76 @@
       upgradeCost,
       costPerRank: unlockCost,
     };
+  }
+
+  function normalizeSkillSearchTerm(text) {
+    return String(text || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim();
+  }
+
+  function doesSkillNodeMatchSearch(node, searchQuery) {
+    const qRaw = String(searchQuery || '').toLowerCase().trim();
+    if (!qRaw) return true;
+    const qNorm = normalizeSkillSearchTerm(qRaw);
+    if (!node) return false;
+
+    const candidateParts = [
+      node.name || '',
+      node.description || '',
+      node.upgradeDescription || '',
+      node.subtype || '',
+      node.category || '',
+    ];
+
+    const effectsList = Array.isArray(node.effects)
+      ? node.effects
+      : Array.isArray(node.modifiers)
+      ? node.modifiers
+      : [];
+    for (const ef of effectsList) {
+      if (!ef || !ef.targetStat) continue;
+      candidateParts.push(ef.targetStat);
+      candidateParts.push(formatEffectTargetLabel(ef.targetStat));
+      const fullOpt = EFFECT_TARGET_OPTIONS.find((o) => o.value === ef.targetStat);
+      if (fullOpt && fullOpt.label) {
+        candidateParts.push(fullOpt.label);
+      }
+    }
+
+    const haystackRaw = candidateParts.join(' ').toLowerCase();
+    if (haystackRaw.includes(qRaw)) return true;
+    const haystackNorm = normalizeSkillSearchTerm(haystackRaw);
+    return haystackNorm.includes(qNorm);
+  }
+
+  function doesSkillNodeMatchFilter(node, char, searchQuery, categoryFilter = 'ALL') {
+    if (!node) return false;
+    const filter = String(categoryFilter || 'ALL').toUpperCase();
+    const nodeCat = String(node.category || 'TALENTO').toUpperCase();
+
+    if (filter === 'ACQUIRED') {
+      if (!char) return false;
+      const ns = getCharacterSkillNodeState(char, node);
+      if (!ns.isAcquired) return false;
+    } else if (filter !== 'ALL' && nodeCat !== filter) {
+      return false;
+    }
+
+    return doesSkillNodeMatchSearch(node, searchQuery);
+  }
+
+  function countMatchingNodesInTree(tree, char, searchQuery, categoryFilter = 'ALL') {
+    const nodes = Array.isArray(tree?.nodes) ? tree.nodes : [];
+    let count = 0;
+    for (const n of nodes) {
+      if (doesSkillNodeMatchFilter(n, char, searchQuery, categoryFilter)) {
+        count += 1;
+      }
+    }
+    return count;
   }
 
   function computeSkillTreeProgress(char, tree) {

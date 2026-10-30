@@ -2007,11 +2007,42 @@
     const activeTree = visibleTrees.find((t) => t.id === state.activeSkillTreeId) || null;
 
     const editTreeBtn = document.getElementById('btn-st-modal-edit-tree');
+    const cloneTreeBtn = document.getElementById('btn-st-modal-clone-tree');
     const delTreeBtn = document.getElementById('btn-st-modal-delete-tree');
     const addNodeBtn = document.getElementById('btn-st-modal-add-node');
     if (editTreeBtn) editTreeBtn.classList.toggle('hidden', !activeTree);
+    if (cloneTreeBtn) cloneTreeBtn.classList.toggle('hidden', !activeTree);
     if (delTreeBtn) delTreeBtn.classList.toggle('hidden', !activeTree);
     if (addNodeBtn) addNodeBtn.classList.toggle('hidden', !activeTree);
+
+    // Sincronizar barra de pesquisa e pílulas de filtro do modal
+    const searchBarWrap = document.getElementById('skill-tree-modal-search-bar');
+    const searchInput = document.getElementById('st-modal-search-input');
+    const searchClearBtn = document.getElementById('btn-st-modal-search-clear');
+    const filterPillsWrap = document.getElementById('st-modal-filter-pills');
+    const searchQ = String(state.skillTreeSearchQuery || '');
+    const catFilter = String(state.skillTreeCategoryFilter || 'ALL').toUpperCase();
+
+    if (searchBarWrap) {
+      searchBarWrap.classList.toggle('hidden', visibleTrees.length === 0);
+    }
+    if (searchInput && document.activeElement !== searchInput && searchInput.value !== searchQ) {
+      searchInput.value = searchQ;
+    }
+    if (searchClearBtn) {
+      searchClearBtn.classList.toggle('hidden', !searchQ.trim());
+    }
+    if (filterPillsWrap) {
+      filterPillsWrap.querySelectorAll('[data-st-filter]').forEach((btn) => {
+        const pillKey = String(btn.getAttribute('data-st-filter') || 'ALL').toUpperCase();
+        const isActive = pillKey === catFilter;
+        btn.className = `st-filter-pill px-2.5 py-1 rounded-lg text-[10px] font-serif-fantasy font-bold uppercase transition ${
+          isActive
+            ? 'btn-gold shadow'
+            : 'bg-black/45 text-amber-200/80 border border-amber-500/25 hover:border-amber-500/50'
+        }`;
+      });
+    }
 
     // Abas de árvores
     if (visibleTrees.length === 0) {
@@ -2036,6 +2067,15 @@
       .map((t) => {
         const isSelected = t.id === activeTree?.id;
         const prog = activeChar ? computeSkillTreeProgress(activeChar, t) : { percent: 0, isComplete: false };
+        const matchCount = searchQ.trim()
+          ? countMatchingNodesInTree(t, activeChar, searchQ, catFilter)
+          : 0;
+        const matchBadgeHtml =
+          searchQ.trim() && matchCount > 0
+            ? `<span class="px-1.5 py-0.5 rounded-full text-[9px] font-mono font-black bg-emerald-500/25 text-emerald-200 border border-emerald-400/50" title="${matchCount} resultado(s) encontrado(s) nesta árvore">${matchCount} encontrado${
+                matchCount !== 1 ? 's' : ''
+              }</span>`
+            : '';
         return `
           <button
             type="button"
@@ -2055,6 +2095,7 @@
                 ? 'bg-black/30 text-amber-200'
                 : 'bg-amber-500/15 text-amber-300'
             }">${prog.percent}%</span>
+            ${matchBadgeHtml}
             ${
               t.hiddenForPlayers
                 ? '<iconify-icon icon="game-icons:eyeball" class="text-rose-300" title="Oculta para jogadores"></iconify-icon>'
@@ -2087,9 +2128,12 @@
       )
       .join('');
 
-    const nodes = Array.isArray(activeTree.nodes)
+    const allNodes = Array.isArray(activeTree.nodes)
       ? [...activeTree.nodes].sort((a, b) => Number(a.order ?? 0) - Number(b.order ?? 0))
       : [];
+    const nodes = allNodes.filter((n) => doesSkillNodeMatchFilter(n, activeChar, searchQ, catFilter));
+    const hasActiveFilter = Boolean(searchQ.trim()) || catFilter !== 'ALL';
+
     const tierOrder = [
       {
         key: 'SUPREMA',
@@ -2121,10 +2165,15 @@
       },
     ];
 
-    const tiersHtml = tierOrder
+    const visibleTiers =
+      catFilter !== 'ALL' && catFilter !== 'ACQUIRED'
+        ? tierOrder.filter((t) => t.key === catFilter)
+        : tierOrder;
+
+    const tiersHtml = visibleTiers
       .map((tier) => {
         const catNodes = nodes.filter((n) => String(n.category || 'TALENTO').toUpperCase() === tier.key);
-        if (catNodes.length === 0 && !isMaster) return '';
+        if (catNodes.length === 0 && (!isMaster || hasActiveFilter)) return '';
         return `
           <div class="constellation-tier-section p-4 sm:p-5 rounded-2xl space-y-3.5">
             <div class="flex flex-wrap items-center justify-between gap-2 pb-2 border-b app-divider-border">
@@ -2174,6 +2223,17 @@
         `;
       })
       .join('');
+
+    const emptyFilterHtml =
+      nodes.length === 0 && hasActiveFilter
+        ? `<div class="p-8 text-center app-muted border border-dashed app-divider-border rounded-2xl max-w-xl mx-auto">
+            <div class="text-3xl mb-2 flex justify-center gold-title"><iconify-icon icon="game-icons:magnifying-glass"></iconify-icon></div>
+            <h5 class="font-serif-fantasy font-bold text-sm app-title">Nenhuma habilidade encontrada nesta árvore</h5>
+            <p class="text-xs app-muted mt-1">Nenhum nó corresponde à busca ou filtro selecionado em "${escapeHtml(
+              activeTree.name
+            )}". Verifique os contadores nas outras árvores acima ou limpe o filtro.</p>
+          </div>`
+        : '';
 
     bodyContainer.innerHTML = `
       <!-- Cabeçalho da Árvore + Progresso (X% Completa) + Efeito de Árvore Completa (100%) -->
@@ -2270,6 +2330,7 @@
 
       <!-- As 4 Constelações da Árvore -->
       <div class="space-y-5">
+        ${emptyFilterHtml}
         ${tiersHtml}
       </div>
     `;
@@ -2506,6 +2567,15 @@
               ${
                 isMaster
                   ? `<button
+                      type="button"
+                      data-clone-skill-node="${escapeHtml(node.id)}"
+                      data-tree-id="${escapeHtml(tree.id)}"
+                      class="w-7 h-7 rounded-lg app-icon-btn flex items-center justify-center text-xs"
+                      title="Duplicar Nó (Mestre)"
+                    >
+                      <iconify-icon icon="game-icons:files"></iconify-icon>
+                    </button>
+                    <button
                       type="button"
                       data-edit-skill-node="${escapeHtml(node.id)}"
                       data-tree-id="${escapeHtml(tree.id)}"
@@ -3201,5 +3271,93 @@
       }
     );
   }
+
+  function duplicateSkillTree(treeId) {
+    if (!isEffectiveMaster()) {
+      showToast('Apenas o Mestre pode duplicar Árvores de Habilidades!', 'warning');
+      return;
+    }
+    const origTree = (state.skillTrees || []).find((t) => t.id === treeId);
+    if (!origTree) return;
+
+    const clonedTreeName = `${origTree.name || 'Árvore Sem Nome'} (Cópia)`;
+
+    commitMutation(
+      (st, toasts) => {
+        if (!Array.isArray(st.skillTrees)) st.skillTrees = [];
+        const src = st.skillTrees.find((t) => t.id === treeId);
+        if (!src) return false;
+
+        // Cópia profunda (Deep Clone) da árvore inteira
+        const cloned = JSON.parse(JSON.stringify(src));
+        const now = Date.now();
+        cloned.id = `tree_${now}_${Math.random().toString(36).slice(2, 6)}`;
+        cloned.name = `${src.name || 'Árvore Sem Nome'} (Cópia)`;
+
+        // Regenera IDs únicos para TODOS os nós dentro da árvore clonada (100% independente)
+        if (Array.isArray(cloned.nodes)) {
+          cloned.nodes = cloned.nodes.map((nd, idx) => ({
+            ...nd,
+            id: `node_${now}_${idx}_${Math.random().toString(36).slice(2, 6)}`,
+            order: idx,
+          }));
+        } else {
+          cloned.nodes = [];
+        }
+
+        st.skillTrees.push(cloned);
+        state.activeSkillTreeId = cloned.id;
+        toasts.push(
+          `📋 Árvore "${src.name}" duplicada como "${cloned.name}" com ${cloned.nodes.length} nó(s) independentes!`
+        );
+        return true;
+      },
+      {
+        actionType: 'SKILL_TREE_CLONE',
+        targetEntity: `Árvore: ${clonedTreeName}`,
+        summary: `Árvore "${origTree.name}" clonada como "${clonedTreeName}" com ${(origTree.nodes || []).length} nó(s) e novos IDs únicos.`,
+      }
+    );
+  }
+
+  function duplicateSkillNode(treeId, nodeId) {
+    if (!isEffectiveMaster()) {
+      showToast('Apenas o Mestre pode duplicar nós da Árvore de Habilidades!', 'warning');
+      return;
+    }
+    const tree = (state.skillTrees || []).find((t) => t.id === treeId);
+    const origNode = (tree?.nodes || []).find((n) => n.id === nodeId);
+    if (!tree || !origNode) return;
+
+    const clonedNodeName = `${origNode.name || 'Habilidade Sem Nome'} (Cópia)`;
+
+    commitMutation(
+      (st, toasts) => {
+        const tr = (st.skillTrees || []).find((t) => t.id === treeId);
+        if (!tr || !Array.isArray(tr.nodes)) return false;
+        const srcIdx = tr.nodes.findIndex((n) => n.id === nodeId);
+        if (srcIdx < 0) return false;
+
+        const srcNode = tr.nodes[srcIdx];
+        const clonedNode = JSON.parse(JSON.stringify(srcNode));
+        clonedNode.id = `node_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+        clonedNode.name = `${srcNode.name || 'Habilidade Sem Nome'} (Cópia)`;
+
+        tr.nodes.splice(srcIdx + 1, 0, clonedNode);
+        tr.nodes.forEach((n, idx) => {
+          n.order = idx;
+        });
+
+        toasts.push(`📋 Nó "${srcNode.name}" duplicado como "${clonedNode.name}" em ${tr.name}!`);
+        return true;
+      },
+      {
+        actionType: 'SKILL_NODE_CLONE',
+        targetEntity: `${clonedNodeName} (${tree.name})`,
+        summary: `Nó "${origNode.name}" duplicado como "${clonedNodeName}" na árvore "${tree.name}".`,
+      }
+    );
+  }
+
 
 

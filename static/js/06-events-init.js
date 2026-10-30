@@ -2608,6 +2608,27 @@
     });
     document.getElementById('btn-create-skill-tree')?.addEventListener('click', () => openSkillTreeFormModal(null));
 
+    // Busca e filtros em tempo real na aba de criação do Host (#tab-skill-trees)
+    document.getElementById('host-skill-tree-search-input')?.addEventListener('input', (e) => {
+      state.hostSkillTreeSearchQuery = e.target.value || '';
+      renderSkillTreesTab();
+    });
+    document.getElementById('btn-host-skill-tree-search-clear')?.addEventListener('click', () => {
+      state.hostSkillTreeSearchQuery = '';
+      const inp = document.getElementById('host-skill-tree-search-input');
+      if (inp) {
+        inp.value = '';
+        inp.focus();
+      }
+      renderSkillTreesTab();
+    });
+    document.getElementById('host-skill-tree-filter-pills')?.addEventListener('click', (e) => {
+      const pill = e.target.closest('[data-host-st-filter]');
+      if (!pill) return;
+      state.hostSkillTreeCategoryFilter = pill.getAttribute('data-host-st-filter') || 'ALL';
+      renderSkillTreesTab();
+    });
+
     document.getElementById('skill-trees-host-container')?.addEventListener('click', (e) => {
       if (e.target.closest('[data-host-seed-geomancia]')) {
         seedGeomanciaSkillTree();
@@ -2622,6 +2643,12 @@
       if (selectTreeBtn) {
         state.activeSkillTreeId = selectTreeBtn.getAttribute('data-host-select-tree');
         renderSkillTreesTab();
+        return;
+      }
+
+      const cloneTreeBtn = e.target.closest('[data-host-clone-tree]');
+      if (cloneTreeBtn) {
+        duplicateSkillTree(cloneTreeBtn.getAttribute('data-host-clone-tree'));
         return;
       }
 
@@ -2642,6 +2669,14 @@
         const treeId = addNodeBtn.getAttribute('data-host-add-node') || state.activeSkillTreeId;
         const cat = addNodeBtn.getAttribute('data-host-node-cat') || 'TALENTO';
         openSkillNodeFormModal(treeId, null, cat);
+        return;
+      }
+
+      const cloneNodeBtn = e.target.closest('[data-host-clone-node]');
+      if (cloneNodeBtn) {
+        const treeId = cloneNodeBtn.getAttribute('data-host-node-tree') || state.activeSkillTreeId;
+        const nodeId = cloneNodeBtn.getAttribute('data-host-clone-node');
+        duplicateSkillNode(treeId, nodeId);
         return;
       }
 
@@ -2695,11 +2730,35 @@
     document.getElementById('btn-st-modal-edit-tree')?.addEventListener('click', () => {
       if (state.activeSkillTreeId) openSkillTreeFormModal(state.activeSkillTreeId);
     });
+    document.getElementById('btn-st-modal-clone-tree')?.addEventListener('click', () => {
+      if (state.activeSkillTreeId) duplicateSkillTree(state.activeSkillTreeId);
+    });
     document.getElementById('btn-st-modal-delete-tree')?.addEventListener('click', () => {
       if (state.activeSkillTreeId) confirmAndDeleteSkillTree(state.activeSkillTreeId);
     });
     document.getElementById('btn-st-modal-add-node')?.addEventListener('click', () => {
       if (state.activeSkillTreeId) openSkillNodeFormModal(state.activeSkillTreeId, null, 'TALENTO');
+    });
+
+    // Busca e filtros rápidos em tempo real no Modal da Árvore de Habilidades (#modal-skill-tree)
+    document.getElementById('st-modal-search-input')?.addEventListener('input', (e) => {
+      state.skillTreeSearchQuery = e.target.value || '';
+      renderSkillTreeConstellationModal();
+    });
+    document.getElementById('btn-st-modal-search-clear')?.addEventListener('click', () => {
+      state.skillTreeSearchQuery = '';
+      const inp = document.getElementById('st-modal-search-input');
+      if (inp) {
+        inp.value = '';
+        inp.focus();
+      }
+      renderSkillTreeConstellationModal();
+    });
+    document.getElementById('st-modal-filter-pills')?.addEventListener('click', (e) => {
+      const pill = e.target.closest('[data-st-filter]');
+      if (!pill) return;
+      state.skillTreeCategoryFilter = pill.getAttribute('data-st-filter') || 'ALL';
+      renderSkillTreeConstellationModal();
     });
 
     document.getElementById('skill-tree-modal-tabs')?.addEventListener('click', (e) => {
@@ -2737,6 +2796,15 @@
           addCatBtn.getAttribute('data-tree-id') || state.activeSkillTreeId,
           null,
           addCatBtn.getAttribute('data-st-add-node-cat') || 'TALENTO'
+        );
+        return;
+      }
+
+      const cloneNodeBtn = e.target.closest('[data-clone-skill-node]');
+      if (cloneNodeBtn) {
+        duplicateSkillNode(
+          cloneNodeBtn.getAttribute('data-tree-id') || state.activeSkillTreeId,
+          cloneNodeBtn.getAttribute('data-clone-skill-node')
         );
         return;
       }
