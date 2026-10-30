@@ -1,61 +1,112 @@
 @echo off
+setlocal EnableDelayedExpansion
 chcp 65001 >nul 2>&1
 title CMrpg - Servidor Local (Radmin VPN)
 cd /d "%~dp0"
 
+:: ============================================================
+:: 0. VERIFICAR ULTIMA RELEASE NO GITHUB
+:: ============================================================
+set "MENU_CHOICE=1"
+set "LATEST_RELEASE=Verificando..."
+
+for /f "usebackq tokens=1,2 delims=|" %%A in (`powershell -NoProfile -ExecutionPolicy Bypass -Command ^
+    "$ErrorActionPreference = 'SilentlyContinue';" ^
+    "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12;" ^
+    "$repo = 'DanRayy/CMrpg';" ^
+    "$headers = @{ 'User-Agent' = 'CMrpg-Launcher' };" ^
+    "$latest = $null;" ^
+    "try { $rel = Invoke-RestMethod -Uri \"https://api.github.com/repos/$repo/releases/latest\" -Headers $headers -TimeoutSec 5; $latest = $rel.tag_name } catch {}" ^
+    "if (-not $latest) { try { $tags = Invoke-RestMethod -Uri \"https://api.github.com/repos/$repo/tags\" -Headers $headers -TimeoutSec 5; if ($tags -and $tags.Count -gt 0) { $latest = $tags[0].name } } catch {} }" ^
+    "if (-not $latest) { $latest = 'Indisponivel (Offline ou sem Release)' };" ^
+    "$options = @('Iniciar', \"Instalar atualizacoes e iniciar [Ultima Release no GitHub: $latest]\");" ^
+    "$selected = 0;" ^
+    "[Console]::CursorVisible = $false;" ^
+    "while ($true) {" ^
+    "    Clear-Host;" ^
+    "    Write-Host '============================================================' -ForegroundColor DarkYellow;" ^
+    "    Write-Host '               CMrpg - Inicializador do Servidor            ' -ForegroundColor Yellow;" ^
+    "    Write-Host '============================================================' -ForegroundColor DarkYellow;" ^
+    "    Write-Host '';" ^
+    "    Write-Host '  Use as setas [CIMA / BAIXO] para navegar e [ENTER] para confirmar:' -ForegroundColor Gray;" ^
+    "    Write-Host '';" ^
+    "    for ($i = 0; $i -lt $options.Count; $i++) {" ^
+    "        if ($i -eq $selected) {" ^
+    "            Write-Host \"  > $($options[$i])  \" -ForegroundColor Black -BackgroundColor Yellow;" ^
+    "        } else {" ^
+    "            Write-Host \"    $($options[$i])  \" -ForegroundColor White;" ^
+    "        }" ^
+    "    }" ^
+    "    Write-Host '';" ^
+    "    Write-Host '============================================================' -ForegroundColor DarkYellow;" ^
+    "    $key = [Console]::ReadKey($true).Key;" ^
+    "    if ($key -eq 'UpArrow') { if ($selected -gt 0) { $selected-- } else { $selected = $options.Count - 1 } }" ^
+    "    elseif ($key -eq 'DownArrow') { if ($selected -lt ($options.Count - 1)) { $selected++ } else { $selected = 0 } }" ^
+    "    elseif ($key -eq 'Enter') { break }" ^
+    "}" ^
+    "[Console]::CursorVisible = $true;" ^
+    "Clear-Host;" ^
+    "[Console]::Out.WriteLine(\"$($selected + 1)|$latest\");"`) do (
+    set "MENU_CHOICE=%%A"
+    set "LATEST_RELEASE=%%B"
+)
+
 echo ============================================================
-echo               CMrpg - Inicializador do Servidor
+echo                CMrpg - Inicializador do Servidor
 echo ============================================================
 echo.
 
-:: 1. Verificar e baixar atualizacoes do GitHub (apenas arquivos alterados)
-echo [1/5] Verificando atualizacoes no GitHub ^(DanRayy/CMrpg^)...
-if "%~1"=="--no-update" (
-    echo [i] Verificacao de atualizacoes ignorada ^(--no-update^).
+if "%MENU_CHOICE%"=="1" (
+    echo [1/5] Iniciando direto ^(atualizacao ignorada pelo usuario^)...
     goto :after_update
 )
+
+:: ============================================================
+:: 1. BAIXAR E INSTALAR ATUALIZACOES DO GITHUB
+:: ============================================================
+echo [1/5] Buscando e instalando atualizacoes do GitHub ^(Ultima Release: %LATEST_RELEASE%^)...
 
 where git >nul 2>&1
 if %errorlevel% neq 0 goto :no_git
 if not exist .git goto :no_git
 
 echo [i] Conectando ao repositorio remoto via Git...
-git -c http.timeout=5 fetch origin main >nul 2>&1
+git -c http.timeout=5 fetch --all --tags >nul 2>&1
 if %errorlevel% neq 0 (
     echo [AVISO] Nao foi possivel conectar ao GitHub ^(offline ou tempo esgotado^). Continuando com a versao local...
     goto :after_update
 )
 
-set "LOCAL_HASH="
-set "REMOTE_HASH="
-for /f %%a in ('git rev-parse HEAD 2^>nul') do set "LOCAL_HASH=%%a"
-for /f %%b in ('git rev-parse origin/main 2^>nul') do set "REMOTE_HASH=%%b"
+:: Backup preventivo do state.json antes do git pull
+if exist "state.json" copy /y "state.json" "state.backup.json" >nul 2>&1
 
-if not defined LOCAL_HASH goto :no_git
-if not defined REMOTE_HASH goto :no_git
-
-if not "%LOCAL_HASH%"=="%REMOTE_HASH%" (
-    echo [!] Novas atualizacoes encontradas no GitHub!
-    echo [!] Baixando e substituindo apenas os arquivos alterados...
-    git pull origin main
-    if %errorlevel% equ 0 (
-        echo [OK] Arquivos atualizados com sucesso para a versao mais recente.
-    ) else (
-        echo [AVISO] Nao foi possivel mesclar automaticamente. Mantendo arquivos locais.
-    )
+echo [!] Baixando e aplicando atualizacoes da branch principal...
+git pull origin main
+if %errorlevel% equ 0 (
+    echo [OK] Arquivos atualizados com sucesso!
 ) else (
-    echo [OK] O CMrpg ja esta na versao mais recente do GitHub.
+    echo [AVISO] Conflito local detectado. Sincronizando arquivos do sistema preservando dados...
+    git fetch origin main >nul 2>&1
+    git checkout origin/main -- static main.py rules_engine.py requirements.txt >nul 2>&1
+    echo [OK] Arquivos principais sincronizados.
+)
+
+if exist "state.backup.json" (
+    if not exist "state.json" copy /y "state.backup.json" "state.json" >nul 2>&1
+    del /q "state.backup.json" >nul 2>&1
 )
 goto :after_update
 
 :no_git
-echo [i] Git nao detectado ou pasta sem .git. Verificando atualizacoes via Python...
-python -c "import urllib.request, json, os; repo = 'DanRayy/CMrpg'; ver_file = '.github_version'; url = f'https://api.github.com/repos/{repo}/commits/main'; req = urllib.request.Request(url, headers={'User-Agent': 'CMrpg-Launcher'}); exec(\"try:\n    with urllib.request.urlopen(req, timeout=5) as resp:\n        data = json.loads(resp.read().decode('utf-8'))\n    remote_sha = data.get('sha', '')\n    local_sha = ''\n    if os.path.exists(ver_file):\n        with open(ver_file, 'r', encoding='utf-8') as f: local_sha = f.read().strip()\n    if local_sha != remote_sha:\n        print(f'[!] Nova versao encontrada ({remote_sha[:7]}). Baixando arquivos alterados...')\n        for f_info in data.get('files', []):\n            fname = f_info.get('filename')\n            if not fname or fname == 'state.json': continue\n            raw_url = f'https://raw.githubusercontent.com/{repo}/main/{fname}'\n            print(f' -> Atualizando: {fname}')\n            os.makedirs(os.path.dirname(fname) or '.', exist_ok=True)\n            with urllib.request.urlopen(urllib.request.Request(raw_url, headers={'User-Agent': 'CMrpg-Launcher'}), timeout=10) as in_f, open(fname, 'wb') as out_f:\n                out_f.write(in_f.read())\n        with open(ver_file, 'w', encoding='utf-8') as f: f.write(remote_sha)\n        print('[OK] Arquivos atualizados com sucesso via GitHub.')\n    else:\n        print(f'[OK] O CMrpg ja esta na versao mais recente ({remote_sha[:7]}).')\nexcept Exception as e:\n    print(f'[AVISO] Nao foi possivel verificar atualizacoes no GitHub ({e}). Continuando com versao local...')\")" 2>nul
+echo [i] Git nao detectado ou pasta sem .git. Baixando atualizacoes via Python...
+python -c "import urllib.request, json, os, zipfile, io, shutil; repo = 'DanRayy/CMrpg'; headers = {'User-Agent': 'CMrpg-Launcher'}; url = f'https://api.github.com/repos/{repo}/zipball/main'; req = urllib.request.Request(url, headers=headers); exec(\"try:\n    print('[i] Baixando pacote mais recente do GitHub...')\n    with urllib.request.urlopen(req, timeout=15) as resp:\n        z = zipfile.ZipFile(io.BytesIO(resp.read()))\n        root_dir = z.namelist()[0].split('/')[0]\n        for member in z.namelist():\n            rel_path = member[len(root_dir)+1:]\n            if not rel_path or rel_path == 'state.json' or rel_path.startswith('.git'): continue\n            if member.endswith('/'):\n                os.makedirs(rel_path, exist_ok=True)\n            else:\n                os.makedirs(os.path.dirname(rel_path) or '.', exist_ok=True)\n                with z.open(member) as src, open(rel_path, 'wb') as dst:\n                    shutil.copyfileobj(src, dst)\n    print('[OK] Todos os arquivos foram atualizados com sucesso via GitHub!')\nexcept Exception as e:\n    print(f'[AVISO] Falha ao atualizar via GitHub ({e}). Continuando com versao local...')\")"
 
 :after_update
 echo.
 
-:: 2. Verificar regra do Firewall do Windows ("CMrpg Server")
+:: ============================================================
+:: 2. VERIFICAR REGRA DO FIREWALL DO WINDOWS ("CMrpg Server")
+:: ============================================================
 echo [2/5] Verificando regra "CMrpg Server" no Firewall do Windows...
 netsh advfirewall firewall show rule name="CMrpg Server" >nul 2>&1
 if %errorlevel% neq 0 (
@@ -65,14 +116,16 @@ if %errorlevel% neq 0 (
     if %errorlevel% equ 0 (
         echo [OK] Porta 8000 liberada com sucesso no Firewall ^(profile=any^).
     ) else (
-        echo [AVISO] Nao foi possivel confirmar a regra do Firewall. Caso os jogadores nao consigam conectar, execute este script como Administrador.
+        echo [AVISO] Nao foi possivel confirmar a regra do Firewall. Execute como Administrador se necessario.
     )
 ) else (
     echo [OK] Regra "CMrpg Server" ja configurada no Firewall.
 )
 echo.
 
-:: 3. Verificar/Criar ambiente virtual Python (venv)
+:: ============================================================
+:: 3. VERIFICAR / CRIAR AMBIENTE VIRTUAL PYTHON (venv)
+:: ============================================================
 echo [3/5] Verificando ambiente virtual Python ^(venv^)...
 if not exist "venv\Scripts\activate.bat" (
     echo Criando ambiente virtual venv...
@@ -88,7 +141,9 @@ if not exist "venv\Scripts\activate.bat" (
 )
 echo.
 
-:: 4. Ativar venv e instalar/atualizar dependencias
+:: ============================================================
+:: 4. ATIVAR VENV E INSTALAR / ATUALIZAR DEPENDENCIAS
+:: ============================================================
 echo [4/5] Ativando venv e verificando dependencias ^(requirements.txt^)...
 call "venv\Scripts\activate.bat"
 python -m pip install --upgrade pip --quiet
@@ -101,7 +156,9 @@ if %errorlevel% neq 0 (
 echo [OK] Dependencias instaladas e atualizadas.
 echo.
 
-:: 5. Exibir enderecos IPv4 (destacando Radmin VPN 26.x.x.x) e iniciar Uvicorn
+:: ============================================================
+:: 5. EXIBIR ENDERECOS IPV4 E INICIAR SERVIDOR UVICORN
+:: ============================================================
 echo ============================================================
 echo                 ENDERECOS IP DA SUA MAQUINA
 echo ============================================================
