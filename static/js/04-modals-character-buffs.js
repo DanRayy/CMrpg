@@ -296,7 +296,7 @@
     document.getElementById('char-arcana').value = String(char.baseArcana ?? char.arcana ?? 0);
     document.getElementById('char-santidade').value = String(char.baseSantidade ?? char.santidade ?? 0);
     if (document.getElementById('char-max-weight')) {
-      document.getElementById('char-max-weight').value = String(char.maxWeight ?? 27);
+      document.getElementById('char-max-weight').value = String(char.baseMaxWeight ?? char.maxWeight ?? 27);
     }
 
     renderCharFormAttributesInputs(char.attributes);
@@ -401,6 +401,7 @@
             skillPassive,
             skillActive,
             skillSupreme,
+            baseMaxWeight: maxWeight,
             maxWeight,
             level: 1,
             xp: 0,
@@ -486,6 +487,7 @@
           target.skillPassive = skillPassive;
           target.skillActive = skillActive;
           target.skillSupreme = skillSupreme;
+          target.baseMaxWeight = maxWeight;
           target.maxWeight = maxWeight;
 
           target.baseMaxHp = maxHp;
@@ -1666,6 +1668,19 @@
     const hasActive = Boolean((char.skillActive || '').trim());
     const hasSupreme = Boolean((char.skillSupreme || '').trim());
 
+    const treePassives = getCharacterAcquiredTreeSkillsByCategory(char, 'PASSIVA');
+    const treeActives = getCharacterAcquiredTreeSkillsByCategory(char, 'ATIVA');
+    const treeSupremes = getCharacterAcquiredTreeSkillsByCategory(char, 'SUPREMA');
+    const treeTalents = getCharacterAcquiredTreeSkillsByCategory(char, 'TALENTO');
+
+    const activeTreePassivesCount = treePassives.filter((s) => s.nodeState.enabled).length;
+    const activeTreeActivesCount = treeActives.filter((s) => s.nodeState.enabled).length;
+    const activeTreeSupremesCount = treeSupremes.filter((s) => s.nodeState.enabled).length;
+
+    const allAcquiredTreeNodes = [...treeSupremes, ...treeActives, ...treePassives, ...treeTalents];
+    const visibleTrees = getVisibleSkillTrees();
+    const completedTreesList = visibleTrees.filter((t) => computeSkillTreeProgress(char, t).isComplete);
+
     body.innerHTML = `
       <!-- 5 Atributos Canônicos -->
       <div class="space-y-2">
@@ -1705,13 +1720,13 @@
         </div>
       </div>
 
-      <!-- 3 Botões de Habilidades (PASSIVA, ATIVA, SUPREMA) — Abre Modal Individual -->
+      <!-- 3 Botões de Habilidades (PASSIVA, ATIVA, SUPREMA) — Abre Modal Individual Integrado com Árvore -->
       <div class="p-3.5 rounded-xl bg-black/25 border app-divider-border space-y-2.5">
         <div class="flex flex-wrap items-center justify-between gap-2">
           <h4 class="font-serif-fantasy font-extrabold uppercase gold-title">
             <iconify-icon icon="game-icons:fairy-wand"></iconify-icon> <span>Habilidades Principais (Clique para Abrir Modal com o Texto)</span>
           </h4>
-          <span class="text-[11px] app-muted">Os textos ficam guardados em seus respectivos modais.</span>
+          <span class="text-[11px] app-muted">Exibe anotações manuais e habilidades adquiridas nas Árvores.</span>
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
           <button
@@ -1720,9 +1735,14 @@
             class="py-3 px-3 rounded-xl font-serif-fantasy font-extrabold text-xs uppercase tracking-wider border border-sky-500/40 bg-sky-500/10 text-sky-300 hover:bg-sky-500/20 transition flex flex-col items-center justify-center gap-1"
           >
             <span class="flex items-center gap-1.5"><iconify-icon icon="game-icons:dragon-shield"></iconify-icon> <span>PASSIVA</span></span>
-            <span class="text-[10px] font-mono ${hasPassive ? 'text-emerald-400 font-bold' : 'app-muted'}">
-              ${hasPassive ? (canEdit ? 'Ver / Editar Texto' : 'Visualizar Texto') : canEdit ? 'Vazia (Clique p/ escrever)' : 'Vazia'}
+            <span class="text-[10px] font-mono ${hasPassive || treePassives.length > 0 ? 'text-emerald-400 font-bold' : 'app-muted'}">
+              ${hasPassive ? (canEdit ? 'Ver / Editar Texto' : 'Visualizar Texto') : treePassives.length > 0 ? 'Ver Habilidades da Árvore' : canEdit ? 'Vazia (Clique p/ escrever)' : 'Vazia'}
             </span>
+            ${
+              treePassives.length > 0
+                ? `<span class="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold bg-sky-500/25 text-sky-200 border border-sky-400/40">${activeTreePassivesCount} da Árvore${treePassives.length > activeTreePassivesCount ? ` (${treePassives.length} total)` : ''}</span>`
+                : `<span class="text-[9px] font-mono app-muted">0 da Árvore</span>`
+            }
           </button>
           <button
             type="button"
@@ -1730,9 +1750,14 @@
             class="py-3 px-3 rounded-xl font-serif-fantasy font-extrabold text-xs uppercase tracking-wider border border-amber-500/40 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20 transition flex flex-col items-center justify-center gap-1"
           >
             <span class="flex items-center gap-1.5"><iconify-icon icon="game-icons:crossed-swords"></iconify-icon> <span>ATIVA</span></span>
-            <span class="text-[10px] font-mono ${hasActive ? 'text-emerald-400 font-bold' : 'app-muted'}">
-              ${hasActive ? (canEdit ? 'Ver / Editar Texto' : 'Visualizar Texto') : canEdit ? 'Vazia (Clique p/ escrever)' : 'Vazia'}
+            <span class="text-[10px] font-mono ${hasActive || treeActives.length > 0 ? 'text-emerald-400 font-bold' : 'app-muted'}">
+              ${hasActive ? (canEdit ? 'Ver / Editar Texto' : 'Visualizar Texto') : treeActives.length > 0 ? 'Ver Habilidades da Árvore' : canEdit ? 'Vazia (Clique p/ escrever)' : 'Vazia'}
             </span>
+            ${
+              treeActives.length > 0
+                ? `<span class="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold bg-amber-500/25 text-amber-200 border border-amber-400/40">${activeTreeActivesCount} da Árvore${treeActives.length > activeTreeActivesCount ? ` (${treeActives.length} total)` : ''}</span>`
+                : `<span class="text-[9px] font-mono app-muted">0 da Árvore</span>`
+            }
           </button>
           <button
             type="button"
@@ -1740,9 +1765,14 @@
             class="py-3 px-3 rounded-xl font-serif-fantasy font-extrabold text-xs uppercase tracking-wider border border-rose-500/40 bg-rose-500/10 text-rose-300 hover:bg-rose-500/20 transition flex flex-col items-center justify-center gap-1"
           >
             <span class="flex items-center gap-1.5"><iconify-icon icon="game-icons:ifrit" style="color: #f97316;"></iconify-icon> <span>SUPREMA</span></span>
-            <span class="text-[10px] font-mono ${hasSupreme ? 'text-emerald-400 font-bold' : 'app-muted'}">
-              ${hasSupreme ? (canEdit ? 'Ver / Editar Texto' : 'Visualizar Texto') : canEdit ? 'Vazia (Clique p/ escrever)' : 'Vazia'}
+            <span class="text-[10px] font-mono ${hasSupreme || treeSupremes.length > 0 ? 'text-emerald-400 font-bold' : 'app-muted'}">
+              ${hasSupreme ? (canEdit ? 'Ver / Editar Texto' : 'Visualizar Texto') : treeSupremes.length > 0 ? 'Ver Habilidades da Árvore' : canEdit ? 'Vazia (Clique p/ escrever)' : 'Vazia'}
             </span>
+            ${
+              treeSupremes.length > 0
+                ? `<span class="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold bg-rose-500/25 text-rose-200 border border-rose-400/40">${activeTreeSupremesCount} da Árvore${treeSupremes.length > activeTreeSupremesCount ? ` (${treeSupremes.length} total)` : ''}</span>`
+                : `<span class="text-[9px] font-mono app-muted">0 da Árvore</span>`
+            }
           </button>
         </div>
       </div>
@@ -1776,29 +1806,117 @@
         </button>
       </div>
 
-      <!-- Cockpit de Talentos / Pontos de Habilidade (+2 por Nível) -->
-      <div class="p-3.5 rounded-xl bg-black/25 border app-divider-border space-y-2.5">
-        <div class="flex flex-wrap items-center justify-between gap-2">
-          <h4 class="font-serif-fantasy font-extrabold uppercase gold-title">
-            <iconify-icon icon="game-icons:spell-book"></iconify-icon> <span>Talentos de Nível (Pontos Disponíveis: <span class="text-purple-400 font-mono">${char.skillPoints || 0}</span>)</span>
-          </h4>
+      <!-- Árvore de Habilidades & Talentos de Nível -->
+      <div class="p-3.5 rounded-xl bg-black/25 border app-divider-border space-y-3">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div class="space-y-1">
+            <h4 class="font-serif-fantasy font-extrabold uppercase gold-title flex flex-wrap items-center gap-2">
+              <span class="flex items-center gap-1.5"><iconify-icon icon="game-icons:family-tree"></iconify-icon> <span>Árvore de Habilidades &amp; Talentos</span></span>
+              <span class="px-2.5 py-0.5 rounded-lg bg-purple-500/20 text-purple-200 border border-purple-500/40 font-mono text-[11px]">
+                Pontos Disponíveis: <strong class="text-purple-300">${char.skillPoints || 0}</strong>
+              </span>
+              ${
+                isEffectiveMaster()
+                  ? `<span class="inline-flex items-center gap-1">
+                      <button type="button" data-sheet-skill-pt-adj="-1" class="w-5 h-5 rounded bg-black/50 hover:bg-black/80 border border-purple-500/40 text-purple-200 font-mono font-bold text-[10px]" title="Remover 1 Ponto de Talento">-1</button>
+                      <button type="button" data-sheet-skill-pt-adj="1" class="w-5 h-5 rounded bg-purple-600 hover:bg-purple-500 text-white font-mono font-bold text-[10px]" title="Conceder +1 Ponto de Talento">+1</button>
+                    </span>`
+                  : ''
+              }
+            </h4>
+            <p class="text-[11px] app-muted">
+              ${allAcquiredTreeNodes.length} habilidade(s)/talento(s) desbloqueado(s) nas árvores${
+                completedTreesList.length > 0 ? ` • ${completedTreesList.length} árvore(s) 100% completa(s)` : ''
+              }.
+            </p>
+          </div>
+          <button
+            type="button"
+            data-open-char-skill-tree="${escapeHtml(char.id)}"
+            class="px-4 py-2.5 rounded-xl font-serif-fantasy font-extrabold text-xs uppercase tracking-wider btn-gold flex items-center gap-2 shadow-lg"
+          >
+            <iconify-icon icon="game-icons:family-tree"></iconify-icon>
+            <span>ABRIR ÁRVORE DE HABILIDADES</span>
+          </button>
         </div>
-        <div class="space-y-1.5">
-          ${
-            (char.talents || []).map(
-              (t) => `<div class="p-2 rounded bg-black/30 border app-divider-border"><strong><iconify-icon icon="game-icons:sparkles"></iconify-icon> ${escapeHtml(t.name)}:</strong> <span class="app-muted">${escapeHtml(t.description || '')}</span></div>`
-            ).join('') || '<p class="app-muted italic">Nenhum talento adquirido ainda.</p>'
-          }
-        </div>
+
         ${
-          canEdit && ((char.skillPoints || 0) > 0 || isEffectiveMaster())
-            ? `<div class="flex flex-wrap gap-2 pt-1">
-                <input id="sheet-new-talent-name" type="text" placeholder="Nome do Talento..." class="px-3 py-1.5 app-input flex-1" />
-                <input id="sheet-new-talent-desc" type="text" placeholder="Efeito / Descrição..." class="px-3 py-1.5 app-input flex-1" />
-                <button type="button" id="btn-sheet-add-talent" class="px-3 py-1.5 rounded-lg font-bold btn-gold">＋ Adquirir (-1 Pt)</button>
+          completedTreesList.length > 0
+            ? `<div class="flex flex-wrap gap-2">
+                ${completedTreesList
+                  .map((t) => {
+                    const compEffStr = (t.completionEffects || [])
+                      .map((ef) => `${formatEffectTargetLabel(ef.targetStat)} ${ef.value >= 0 ? '+' : ''}${ef.value}${ef.modifierType === 'PERCENT' ? '%' : ''}`)
+                      .join(' • ');
+                    return `<div class="px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500/25 via-yellow-500/15 to-amber-500/25 border border-amber-400/60 text-amber-200 text-[11px] font-bold flex items-center gap-1.5 shadow">
+                      <iconify-icon icon="game-icons:laurel-crown" class="text-amber-300 text-sm"></iconify-icon>
+                      <span>100% ${escapeHtml(t.name)}</span>
+                      ${compEffStr ? `<span class="font-mono text-[10px] text-amber-300">(${escapeHtml(compEffStr)})</span>` : ''}
+                    </div>`;
+                  })
+                  .join('')}
               </div>`
             : ''
         }
+
+        <div class="space-y-1.5">
+          ${
+            allAcquiredTreeNodes.length > 0
+              ? allAcquiredTreeNodes
+                  .map(({ tree, node, nodeState }) => {
+                    const cat = String(node.category || 'TALENTO').toUpperCase();
+                    const isTalent = cat === 'TALENTO';
+                    const rankBadge = isTalent
+                      ? `Nível ${nodeState.rank}/${nodeState.maxRanks}`
+                      : nodeState.maxUpgrades > 0
+                      ? `Melhoria ${nodeState.upgrades}/${nodeState.maxUpgrades}`
+                      : 'Liberada';
+                    const mult = isTalent ? nodeState.rank : 1;
+                    const effectsStr = (node.effects || [])
+                      .map((ef) => {
+                        const totalVal = Number((Number(ef.value || 0) * mult).toFixed(2));
+                        return `${formatEffectTargetLabel(ef.targetStat)} ${totalVal >= 0 ? '+' : ''}${totalVal}${ef.modifierType === 'PERCENT' ? '%' : ''}`;
+                      })
+                      .join(' • ');
+                    return `
+                      <div class="p-2.5 rounded-xl bg-black/35 border ${
+                        nodeState.enabled ? 'border-amber-500/35' : 'border-slate-700/50 opacity-60'
+                      } flex flex-wrap items-center justify-between gap-2 text-xs">
+                        <div class="min-w-0 flex-1">
+                          <div class="flex flex-wrap items-center gap-1.5">
+                            <span class="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold uppercase bg-amber-500/15 gold-title border border-amber-500/30">${escapeHtml(cat)}${node.subtype ? ` - ${escapeHtml(node.subtype.toUpperCase())}` : ''}</span>
+                            <strong class="font-serif-fantasy font-bold app-title">${escapeHtml(node.name)}</strong>
+                            <span class="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-purple-500/20 text-purple-200 border border-purple-500/35">${escapeHtml(rankBadge)}</span>
+                            <span class="text-[10px] font-mono app-muted">(${escapeHtml(tree.name)})</span>
+                          </div>
+                          <p class="text-[11px] app-muted mt-0.5">${escapeHtml(node.description || '')}</p>
+                          ${effectsStr ? `<div class="text-[10px] font-mono text-emerald-300 mt-0.5"><iconify-icon icon="game-icons:lightning-branches"></iconify-icon> ${escapeHtml(effectsStr)}</div>` : ''}
+                        </div>
+                        ${
+                          canEdit
+                            ? `<label class="inline-flex items-center gap-1.5 cursor-pointer select-none shrink-0">
+                                <input type="checkbox" data-toggle-skill-node="${escapeHtml(node.id)}" data-char-id="${escapeHtml(char.id)}" ${nodeState.enabled ? 'checked' : ''} class="w-4 h-4 rounded accent-emerald-500 cursor-pointer" />
+                                <span class="text-[10px] font-mono font-bold ${nodeState.enabled ? 'text-emerald-300' : 'text-slate-400'}">${nodeState.enabled ? 'Ativa' : 'Inativa'}</span>
+                              </label>`
+                            : `<span class="text-[10px] font-mono font-bold ${nodeState.enabled ? 'text-emerald-300' : 'text-slate-400'}">${nodeState.enabled ? 'Ativa' : 'Inativa'}</span>`
+                        }
+                      </div>
+                    `;
+                  })
+                  .join('')
+              : ''
+          }
+          ${
+            (char.talents || []).map(
+              (t) => `<div class="p-2 rounded bg-black/30 border app-divider-border"><strong><iconify-icon icon="game-icons:sparkles"></iconify-icon> ${escapeHtml(t.name)}:</strong> <span class="app-muted">${escapeHtml(t.description || '')}</span></div>`
+            ).join('')
+          }
+          ${
+            allAcquiredTreeNodes.length === 0 && (char.talents || []).length === 0
+              ? '<p class="app-muted italic text-xs">Nenhuma habilidade ou talento adquirido nas árvores ainda. Clique em "Abrir Árvore de Habilidades" para explorar e liberar nós.</p>'
+              : ''
+          }
+        </div>
       </div>
 
       <!-- Biografia -->
@@ -1808,4 +1926,1272 @@
       </div>
     `;
   }
+
+  // ---------------------------------------------------------------------------
+  // Modal 20, 21 & 22: Árvore de Habilidades (Constelação 96vw x 92vh, Ranks, 100%, Drag & Drop)
+  // ---------------------------------------------------------------------------
+  function openSkillTreeModal(charId = null, treeId = null) {
+    const heroes = (state.characters || []).filter((c) => !c.isEnemy);
+    let targetCharId = charId;
+    if (!targetCharId) {
+      const myChar = getMyLinkedCharacter();
+      if (myChar && !myChar.isEnemy) {
+        targetCharId = myChar.id;
+      } else if (state.activeSheetCharId) {
+        targetCharId = state.activeSheetCharId;
+      } else if (heroes.length > 0) {
+        targetCharId = heroes[0].id;
+      }
+    }
+    state.activeSkillTreeCharId = targetCharId || null;
+
+    const visibleTrees = getVisibleSkillTrees();
+    if (treeId && visibleTrees.some((t) => t.id === treeId)) {
+      state.activeSkillTreeId = treeId;
+    } else if (!state.activeSkillTreeId || !visibleTrees.some((t) => t.id === state.activeSkillTreeId)) {
+      state.activeSkillTreeId = visibleTrees[0]?.id || null;
+    }
+
+    renderSkillTreeConstellationModal();
+    openModal('modal-skill-tree');
+  }
+
+  function renderSkillTreeConstellationModal() {
+    const charSelect = document.getElementById('skill-tree-modal-char-select');
+    const ptsBadge = document.getElementById('skill-tree-modal-points-badge');
+    const masterPtsBtns = document.getElementById('skill-tree-modal-master-pts-btns');
+    const masterToolbar = document.getElementById('skill-tree-modal-master-toolbar');
+    const tabsContainer = document.getElementById('skill-tree-modal-tabs');
+    const bodyContainer = document.getElementById('skill-tree-modal-body');
+    if (!bodyContainer || !tabsContainer) return;
+
+    const isMaster = isEffectiveMaster();
+    const heroes = (state.characters || []).filter((c) => !c.isEnemy);
+
+    if (charSelect) {
+      if (heroes.length === 0) {
+        charSelect.innerHTML = `<option value="">Sem personagens na mesa</option>`;
+      } else {
+        if (!state.activeSkillTreeCharId || !heroes.some((h) => h.id === state.activeSkillTreeCharId)) {
+          const myChar = getMyLinkedCharacter();
+          state.activeSkillTreeCharId = (myChar && !myChar.isEnemy ? myChar.id : heroes[0]?.id) || null;
+        }
+        charSelect.innerHTML = heroes
+          .map(
+            (h) =>
+              `<option value="${escapeHtml(h.id)}" ${h.id === state.activeSkillTreeCharId ? 'selected' : ''}>${escapeHtml(
+                h.name
+              )} (NV ${h.level || 1} • ${h.skillPoints || 0} pts)</option>`
+          )
+          .join('');
+      }
+    }
+
+    const activeChar = heroes.find((h) => h.id === state.activeSkillTreeCharId) || null;
+    const canEditChar = activeChar ? canEditCharacter(activeChar) : isMaster;
+
+    if (ptsBadge) {
+      ptsBadge.textContent = String(activeChar ? activeChar.skillPoints || 0 : 0);
+    }
+    if (masterPtsBtns) {
+      masterPtsBtns.classList.toggle('hidden', !(isMaster && activeChar));
+    }
+    if (masterToolbar) {
+      masterToolbar.classList.toggle('hidden', !isMaster);
+    }
+
+    const visibleTrees = getVisibleSkillTrees();
+    if (!state.activeSkillTreeId || !visibleTrees.some((t) => t.id === state.activeSkillTreeId)) {
+      state.activeSkillTreeId = visibleTrees[0]?.id || null;
+    }
+    const activeTree = visibleTrees.find((t) => t.id === state.activeSkillTreeId) || null;
+
+    const editTreeBtn = document.getElementById('btn-st-modal-edit-tree');
+    const addNodeBtn = document.getElementById('btn-st-modal-add-node');
+    if (editTreeBtn) editTreeBtn.classList.toggle('hidden', !activeTree);
+    if (addNodeBtn) addNodeBtn.classList.toggle('hidden', !activeTree);
+
+    // Abas de árvores
+    if (visibleTrees.length === 0) {
+      tabsContainer.innerHTML = `<span class="text-xs app-muted italic">Nenhuma árvore disponível no momento.</span>`;
+      bodyContainer.innerHTML = `
+        <div class="p-12 text-center app-muted border border-dashed app-divider-border rounded-2xl max-w-xl mx-auto my-8">
+          <div class="text-4xl mb-3 flex justify-center gold-title"><iconify-icon icon="game-icons:family-tree"></iconify-icon></div>
+          <h4 class="font-serif-fantasy font-bold text-base app-title">Nenhuma Árvore de Habilidades Disponível</h4>
+          <p class="text-xs app-muted mt-1">
+            ${
+              isMaster
+                ? 'Clique em "Exemplo (Geomancia)" ou "Nova Árvore" no topo para criar uma árvore de habilidades.'
+                : 'O Mestre ainda não liberou árvores de habilidades visíveis para os jogadores.'
+            }
+          </p>
+        </div>
+      `;
+      return;
+    }
+
+    tabsContainer.innerHTML = visibleTrees
+      .map((t) => {
+        const isSelected = t.id === activeTree?.id;
+        const prog = activeChar ? computeSkillTreeProgress(activeChar, t) : { percent: 0, isComplete: false };
+        return `
+          <button
+            type="button"
+            data-st-modal-select-tree="${escapeHtml(t.id)}"
+            class="px-3.5 py-2 rounded-xl font-serif-fantasy font-extrabold text-xs uppercase tracking-wider transition flex items-center gap-2 shrink-0 ${
+              isSelected
+                ? 'btn-gold shadow-lg'
+                : 'bg-black/45 text-amber-200/80 border border-amber-500/25 hover:border-amber-500/50 hover:text-amber-100'
+            }"
+          >
+            <iconify-icon icon="${prog.isComplete ? 'game-icons:laurel-crown' : 'game-icons:family-tree'}"></iconify-icon>
+            <span>${escapeHtml(t.name)}</span>
+            <span class="px-1.5 py-0.5 rounded text-[10px] font-mono font-black ${
+              prog.isComplete
+                ? 'bg-amber-300 text-black'
+                : isSelected
+                ? 'bg-black/30 text-amber-200'
+                : 'bg-amber-500/15 text-amber-300'
+            }">${prog.percent}%</span>
+            ${
+              t.hiddenForPlayers
+                ? '<iconify-icon icon="game-icons:eyeball" class="text-rose-300" title="Oculta para jogadores"></iconify-icon>'
+                : ''
+            }
+          </button>
+        `;
+      })
+      .join('');
+
+    if (!activeTree) return;
+
+    const progress = activeChar
+      ? computeSkillTreeProgress(activeChar, activeTree)
+      : { acquiredSteps: 0, totalSteps: 0, percent: 0, isComplete: false };
+
+    const completionEffectsBadges = (activeTree.completionEffects || [])
+      .map(
+        (ef) =>
+          `<span class="px-2.5 py-1 rounded-lg text-xs font-mono font-black ${
+            progress.isComplete
+              ? 'bg-amber-400/25 text-amber-100 border border-amber-300/60 shadow'
+              : 'bg-black/45 text-amber-300/80 border border-amber-500/30'
+          }">
+            <iconify-icon icon="game-icons:sparkles"></iconify-icon>
+            ${escapeHtml(formatEffectTargetLabel(ef.targetStat))}: ${ef.value >= 0 ? '+' : ''}${ef.value}${
+            ef.modifierType === 'PERCENT' ? '%' : ''
+          }
+          </span>`
+      )
+      .join('');
+
+    const nodes = Array.isArray(activeTree.nodes) ? activeTree.nodes : [];
+    const tierOrder = [
+      {
+        key: 'SUPREMA',
+        title: 'Constelação de Supremas',
+        subtitle: 'Habilidades definitivas de alto impacto e poder',
+        icon: 'game-icons:ifrit',
+        accentClass: 'text-rose-300 border-rose-500/40 bg-rose-950/20',
+      },
+      {
+        key: 'ATIVA',
+        title: 'Constelação de Habilidades Ativas',
+        subtitle: 'Posturas, feitiços, técnicas e ataques com melhorias progressivas',
+        icon: 'game-icons:crossed-swords',
+        accentClass: 'text-amber-300 border-amber-500/40 bg-amber-950/20',
+      },
+      {
+        key: 'PASSIVA',
+        title: 'Constelação de Habilidades Passivas',
+        subtitle: 'Efeitos permanentes ou condicionais de combate com ativação rápida',
+        icon: 'game-icons:dragon-shield',
+        accentClass: 'text-sky-300 border-sky-500/40 bg-sky-950/20',
+      },
+      {
+        key: 'TALENTO',
+        title: 'Constelação de Talentos (Multi-Rank)',
+        subtitle: 'Aprimoramentos empilháveis por nível que fortalecem diretamente a ficha',
+        icon: 'game-icons:sparkles',
+        accentClass: 'text-purple-300 border-purple-500/40 bg-purple-950/20',
+      },
+    ];
+
+    const tiersHtml = tierOrder
+      .map((tier) => {
+        const catNodes = nodes.filter((n) => String(n.category || 'TALENTO').toUpperCase() === tier.key);
+        if (catNodes.length === 0 && !isMaster) return '';
+        return `
+          <div class="constellation-tier-section p-4 sm:p-5 rounded-2xl space-y-3.5">
+            <div class="flex flex-wrap items-center justify-between gap-2 pb-2 border-b app-divider-border">
+              <div class="flex items-center gap-2.5">
+                <span class="w-8 h-8 rounded-xl border ${tier.accentClass} flex items-center justify-center text-lg">
+                  <iconify-icon icon="${tier.icon}"></iconify-icon>
+                </span>
+                <div>
+                  <h5 class="font-serif-fantasy font-black text-xs sm:text-sm uppercase tracking-wider gold-title">
+                    ${escapeHtml(tier.title)} (${catNodes.length})
+                  </h5>
+                  <p class="text-[11px] app-muted">${escapeHtml(tier.subtitle)}</p>
+                </div>
+              </div>
+              <div class="flex items-center gap-2">
+                ${
+                  isMaster
+                    ? `<span class="text-[10px] font-mono app-muted hidden sm:inline">Arraste os cards para reordenar</span>
+                       <button
+                         type="button"
+                         data-st-add-node-cat="${escapeHtml(tier.key)}"
+                         data-tree-id="${escapeHtml(activeTree.id)}"
+                         class="px-2.5 py-1 rounded-lg text-[10px] font-serif-fantasy font-bold uppercase btn-gold-outline flex items-center gap-1"
+                       >
+                         <iconify-icon icon="game-icons:plus"></iconify-icon>
+                         <span>＋ ${escapeHtml(tier.key)}</span>
+                       </button>`
+                    : ''
+                }
+              </div>
+            </div>
+
+            ${
+              catNodes.length === 0
+                ? `<div class="p-4 text-center text-xs app-muted italic border border-dashed app-divider-border rounded-xl">
+                    Nenhum nó na categoria ${escapeHtml(tier.key)}. Clique em "＋ ${escapeHtml(tier.key)}" para adicionar.
+                  </div>`
+                : `<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 constellation-nodes-grid" data-tree-id="${escapeHtml(
+                    activeTree.id
+                  )}">
+                    ${catNodes
+                      .map((node) => renderConstellationNodeCardHtml(activeChar, activeTree, node, canEditChar, isMaster))
+                      .join('')}
+                  </div>`
+            }
+          </div>
+        `;
+      })
+      .join('');
+
+    bodyContainer.innerHTML = `
+      <!-- Cabeçalho da Árvore + Progresso (X% Completa) + Efeito de Árvore Completa (100%) -->
+      <div class="skill-tree-completion-banner ${
+        progress.isComplete ? 'completion-active-gold' : ''
+      } p-4 sm:p-5 rounded-2xl space-y-3.5 transition-all">
+        <div class="flex flex-wrap items-start justify-between gap-4">
+          <div class="space-y-1 max-w-3xl">
+            <div class="flex flex-wrap items-center gap-2">
+              <h4 class="font-serif-fantasy font-black text-base sm:text-xl uppercase gold-title tracking-wider flex items-center gap-2">
+                <iconify-icon icon="game-icons:family-tree"></iconify-icon>
+                <span>${escapeHtml(activeTree.name)}</span>
+              </h4>
+              <span class="px-2.5 py-0.5 rounded-full text-xs font-mono font-black ${
+                progress.isComplete
+                  ? 'bg-amber-400 text-black shadow-lg'
+                  : 'bg-amber-500/20 text-amber-200 border border-amber-500/40'
+              }">
+                ${progress.percent}% Completa (${progress.acquiredSteps}/${progress.totalSteps})
+              </span>
+              ${
+                progress.isComplete
+                  ? `<span class="px-2.5 py-0.5 rounded-full text-[11px] font-serif-fantasy font-black uppercase bg-gradient-to-r from-amber-300 to-yellow-500 text-black flex items-center gap-1 shadow">
+                      <iconify-icon icon="game-icons:laurel-crown"></iconify-icon>
+                      <span>ÁRVORE 100% COMPLETA ATIVA!</span>
+                    </span>`
+                  : ''
+              }
+            </div>
+            <p class="text-xs app-muted leading-relaxed">
+              ${escapeHtml(activeTree.description || 'Adquira talentos, passivas, ativas e supremas livremente em qualquer ordem.')}
+            </p>
+          </div>
+
+          <!-- Barra Visual de Progresso -->
+          <div class="w-full sm:w-64 space-y-1.5">
+            <div class="flex items-center justify-between text-[11px] font-mono">
+              <span class="app-muted uppercase">Progresso da Árvore</span>
+              <strong class="${progress.isComplete ? 'text-amber-300' : 'gold-title'}">${progress.percent}%</strong>
+            </div>
+            <div class="w-full h-3 rounded-full bg-black/60 border border-amber-500/35 overflow-hidden p-0.5">
+              <div
+                class="h-full rounded-full transition-all duration-300 ${
+                  progress.isComplete
+                    ? 'bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 shadow-[0_0_12px_rgba(251,191,36,0.9)]'
+                    : 'bg-gradient-to-r from-amber-700 via-amber-500 to-amber-400'
+                }"
+                style="width: ${Math.min(100, Math.max(0, progress.percent))}%"
+              ></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bloco EFEITO DE ÁRVORE COMPLETA (100%) -->
+        <div class="p-3.5 rounded-xl ${
+          progress.isComplete
+            ? 'bg-gradient-to-r from-amber-500/25 via-yellow-500/15 to-amber-500/25 border border-amber-300/70'
+            : 'bg-black/45 border border-amber-500/25'
+        } flex flex-wrap items-center justify-between gap-3">
+          <div class="space-y-1">
+            <div class="flex items-center gap-1.5">
+              <iconify-icon icon="game-icons:laurel-crown" class="${
+                progress.isComplete ? 'text-amber-300 text-base animate-pulse' : 'gold-title text-sm'
+              }"></iconify-icon>
+              <span class="font-serif-fantasy font-black text-xs uppercase ${
+                progress.isComplete ? 'text-amber-200' : 'gold-title'
+              }">
+                EFEITO DE ÁRVORE COMPLETA (100%):
+              </span>
+              <span class="text-[10px] font-mono font-bold px-2 py-0.5 rounded ${
+                progress.isComplete
+                  ? 'bg-emerald-500/25 text-emerald-200 border border-emerald-400/50'
+                  : 'bg-slate-800 text-slate-400'
+              }">
+                ${progress.isComplete ? 'ATIVO NA FICHA' : 'BLOQUEADO (Requer 100%)'}
+              </span>
+            </div>
+            ${
+              activeTree.completionDescription
+                ? `<p class="text-xs ${progress.isComplete ? 'text-amber-100 font-semibold' : 'app-muted'}">${escapeHtml(
+                    activeTree.completionDescription
+                  )}</p>`
+                : ''
+            }
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            ${
+              completionEffectsBadges ||
+              '<span class="text-[11px] font-mono app-muted italic">Nenhum modificador configurado</span>'
+            }
+          </div>
+        </div>
+      </div>
+
+      <!-- As 4 Constelações da Árvore -->
+      <div class="space-y-5">
+        ${tiersHtml}
+      </div>
+    `;
+  }
+
+  function renderConstellationNodeCardHtml(char, tree, node, canEditChar, isMaster) {
+    const cat = String(node.category || 'TALENTO').toUpperCase();
+    const isTalent = cat === 'TALENTO';
+    const ns = char
+      ? getCharacterSkillNodeState(char, node)
+      : {
+          isTalent,
+          rank: 0,
+          maxRanks: Math.max(1, Number(node.maxRanks || 1)),
+          costPerRank: Math.max(0, Number(node.costPerRank ?? 1)),
+          unlocked: false,
+          upgrades: 0,
+          maxUpgrades: Math.max(0, Number(node.maxUpgrades || 0)),
+          unlockCost: Math.max(0, Number(node.unlockCost ?? 1)),
+          upgradeCost: Math.max(0, Number(node.upgradeCost ?? 1)),
+          enabled: true,
+          isAcquired: false,
+          isMaxed: false,
+        };
+
+    const availablePts = Number(char?.skillPoints || 0);
+
+    // Subtipo/Tag (ex: [ATIVA - POSTURA])
+    const catHeaderLabel = node.subtype
+      ? `[${cat} - ${String(node.subtype).toUpperCase()}]`
+      : `[${cat}]`;
+
+    const badgeColorMap = {
+      SUPREMA: 'bg-rose-500/20 text-rose-300 border-rose-500/40',
+      ATIVA: 'bg-amber-500/20 text-amber-300 border-amber-500/40',
+      PASSIVA: 'bg-sky-500/20 text-sky-300 border-sky-500/40',
+      TALENTO: 'bg-purple-500/20 text-purple-300 border-purple-500/40',
+    };
+    const catBadgeClass = badgeColorMap[cat] || badgeColorMap.TALENTO;
+
+    // Indicador de Rank / Melhoria
+    const progressLabel = isTalent
+      ? `Nível ${ns.rank}/${ns.maxRanks}`
+      : ns.unlocked
+      ? ns.maxUpgrades > 0
+        ? `Melhoria ${ns.upgrades}/${ns.maxUpgrades}`
+        : 'Liberada (Máx)'
+      : `Bloqueada${ns.maxUpgrades > 0 ? ` (0/${ns.maxUpgrades} Melhorias)` : ''}`;
+
+    // Efeitos matemáticos
+    const mult = isTalent ? Math.max(1, ns.rank) : 1;
+    const effectsHtml = (node.effects || [])
+      .map((ef) => {
+        const baseVal = Number(ef.value || 0);
+        const totalVal = Number((baseVal * mult).toFixed(2));
+        const unit = ef.modifierType === 'PERCENT' ? '%' : '';
+        return `<span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+          ${escapeHtml(formatEffectTargetLabel(ef.targetStat))}: ${baseVal >= 0 ? '+' : ''}${baseVal}${unit}${
+          isTalent && ns.rank > 1 ? ` (Total: ${totalVal >= 0 ? '+' : ''}${totalVal}${unit})` : ''
+        }
+        </span>`;
+      })
+      .join('');
+
+    // Metadados modulares de combate via função isolada renderSkillCombatTags(node)
+    const combatTagsHtml = renderSkillCombatTags(node);
+
+    // Botões de ação do jogador/mestre (Liberar, + Melhorar, - Reembolsar)
+    let actionButtonsHtml = '';
+    if (char && canEditChar) {
+      if (isTalent) {
+        const canBuyNext = ns.rank < ns.maxRanks && (availablePts >= ns.costPerRank || isMaster);
+        const nextBtnLabel =
+          ns.rank === 0
+            ? `Liberar (-${ns.costPerRank} pt${ns.costPerRank !== 1 ? 's' : ''}) [${ns.rank}/${ns.maxRanks}]`
+            : `＋ Melhorar (-${ns.costPerRank} pt${ns.costPerRank !== 1 ? 's' : ''}) [${ns.rank}/${ns.maxRanks}]`;
+
+        actionButtonsHtml = `
+          <div class="flex flex-wrap items-center gap-1.5 pt-2 border-t app-divider-border">
+            ${
+              ns.rank < ns.maxRanks
+                ? `<button
+                    type="button"
+                    data-skill-node-buy="${escapeHtml(node.id)}"
+                    data-tree-id="${escapeHtml(tree.id)}"
+                    data-char-id="${escapeHtml(char.id)}"
+                    ${!canBuyNext ? 'disabled' : ''}
+                    class="flex-1 py-1.5 px-2.5 rounded-xl font-serif-fantasy font-extrabold text-[11px] uppercase tracking-wider ${
+                      canBuyNext ? 'btn-gold' : 'bg-slate-800/80 text-slate-500 border border-slate-700 cursor-not-allowed'
+                    } transition"
+                  >
+                    ${escapeHtml(nextBtnLabel)}
+                  </button>`
+                : `<span class="flex-1 py-1.5 px-2.5 rounded-xl font-serif-fantasy font-black text-[11px] uppercase text-center bg-amber-500/20 text-amber-200 border border-amber-400/50">
+                    <iconify-icon icon="game-icons:laurel-crown"></iconify-icon> Nível Máximo (${ns.rank}/${ns.maxRanks})
+                  </span>`
+            }
+            ${
+              ns.rank > 0
+                ? `<button
+                    type="button"
+                    data-skill-node-refund="${escapeHtml(node.id)}"
+                    data-tree-id="${escapeHtml(tree.id)}"
+                    data-char-id="${escapeHtml(char.id)}"
+                    class="py-1.5 px-2.5 rounded-xl font-mono font-bold text-[11px] bg-rose-950/50 hover:bg-rose-600/30 text-rose-300 border border-rose-500/40 transition"
+                    title="Reembolsar 1 nível (+${ns.costPerRank} pt)"
+                  >
+                    － Reembolsar
+                  </button>`
+                : ''
+            }
+          </div>
+        `;
+      } else {
+        // PASSIVA, ATIVA ou SUPREMA
+        if (!ns.unlocked) {
+          const canUnlock = availablePts >= ns.unlockCost || isMaster;
+          actionButtonsHtml = `
+            <div class="flex flex-wrap items-center gap-1.5 pt-2 border-t app-divider-border">
+              <button
+                type="button"
+                data-skill-node-buy="${escapeHtml(node.id)}"
+                data-tree-id="${escapeHtml(tree.id)}"
+                data-char-id="${escapeHtml(char.id)}"
+                ${!canUnlock ? 'disabled' : ''}
+                class="w-full py-2 px-3 rounded-xl font-serif-fantasy font-extrabold text-xs uppercase tracking-wider ${
+                  canUnlock ? 'btn-gold' : 'bg-slate-800/80 text-slate-500 border border-slate-700 cursor-not-allowed'
+                } transition flex items-center justify-center gap-1.5"
+              >
+                <iconify-icon icon="game-icons:padlock-open"></iconify-icon>
+                <span>Liberar (-${ns.unlockCost} pt${ns.unlockCost !== 1 ? 's' : ''})</span>
+              </button>
+            </div>
+          `;
+        } else {
+          const hasUpgradesLeft = ns.upgrades < ns.maxUpgrades;
+          const canUpgrade = hasUpgradesLeft && (availablePts >= ns.upgradeCost || isMaster);
+          const refundPts = ns.upgrades > 0 ? ns.upgradeCost : ns.unlockCost;
+          actionButtonsHtml = `
+            <div class="flex flex-wrap items-center gap-1.5 pt-2 border-t app-divider-border">
+              ${
+                hasUpgradesLeft
+                  ? `<button
+                      type="button"
+                      data-skill-node-buy="${escapeHtml(node.id)}"
+                      data-tree-id="${escapeHtml(tree.id)}"
+                      data-char-id="${escapeHtml(char.id)}"
+                      ${!canUpgrade ? 'disabled' : ''}
+                      class="flex-1 py-1.5 px-2.5 rounded-xl font-serif-fantasy font-extrabold text-[11px] uppercase tracking-wider ${
+                        canUpgrade ? 'btn-gold' : 'bg-slate-800/80 text-slate-500 border border-slate-700 cursor-not-allowed'
+                      } transition"
+                    >
+                      ＋ Melhorar (-${ns.upgradeCost} pt${ns.upgradeCost !== 1 ? 's' : ''}) [${ns.upgrades}/${ns.maxUpgrades}]
+                    </button>`
+                  : `<span class="flex-1 py-1.5 px-2.5 rounded-xl font-serif-fantasy font-black text-[11px] uppercase text-center bg-amber-500/20 text-amber-200 border border-amber-400/50">
+                      <iconify-icon icon="game-icons:check-mark"></iconify-icon> ${
+                        ns.maxUpgrades > 0 ? `Melhoria Máx (${ns.upgrades}/${ns.maxUpgrades})` : 'Habilidade Liberada'
+                      }
+                    </span>`
+              }
+              <button
+                type="button"
+                data-skill-node-refund="${escapeHtml(node.id)}"
+                data-tree-id="${escapeHtml(tree.id)}"
+                data-char-id="${escapeHtml(char.id)}"
+                class="py-1.5 px-2.5 rounded-xl font-mono font-bold text-[11px] bg-rose-950/50 hover:bg-rose-600/30 text-rose-300 border border-rose-500/40 transition"
+                title="Reembolsar (+${refundPts} pts)"
+              >
+                － Reembolsar
+              </button>
+            </div>
+          `;
+        }
+      }
+    }
+
+    const cardStateClasses = [
+      'constellation-node-card p-4 rounded-2xl flex flex-col justify-between gap-3 relative',
+      ns.isAcquired ? 'node-unlocked' : '',
+      ns.isMaxed ? 'node-maxed' : '',
+      ns.isAcquired && !ns.enabled ? 'node-disabled-toggle' : '',
+      isMaster ? 'cursor-grab active:cursor-grabbing' : '',
+    ]
+      .filter(Boolean)
+      .join(' ');
+
+    return `
+      <div
+        class="${cardStateClasses}"
+        data-skill-node-card="${escapeHtml(node.id)}"
+        data-tree-id="${escapeHtml(tree.id)}"
+        ${isMaster ? 'draggable="true"' : ''}
+      >
+        <div class="space-y-2.5">
+          <!-- Topo: Categoria/Subtipo + Rank/Melhoria + Switch Ativa/Inativa + Botões Mestre -->
+          <div class="flex items-start justify-between gap-2">
+            <div class="space-y-1 min-w-0">
+              <div class="flex flex-wrap items-center gap-1.5">
+                <span class="px-2 py-0.5 rounded text-[10px] font-mono font-black uppercase border ${catBadgeClass}">
+                  ${escapeHtml(catHeaderLabel)}
+                </span>
+                <span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold ${
+                  ns.isMaxed
+                    ? 'bg-amber-400 text-black'
+                    : ns.isAcquired
+                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                    : 'bg-black/45 text-slate-400 border border-slate-700'
+                }">
+                  ${escapeHtml(progressLabel)}
+                </span>
+              </div>
+              <h6 class="font-serif-fantasy font-black text-sm sm:text-base app-title leading-snug">
+                ${escapeHtml(node.name)}
+              </h6>
+            </div>
+
+            <div class="flex items-center gap-1.5 shrink-0">
+              ${
+                ns.isAcquired && char && canEditChar
+                  ? `<label class="inline-flex items-center gap-1 cursor-pointer select-none px-2 py-1 rounded-lg bg-black/45 border app-divider-border" title="Ativar/Desativar efeito sem reembolsar pontos">
+                      <input
+                        type="checkbox"
+                        data-toggle-skill-node="${escapeHtml(node.id)}"
+                        data-char-id="${escapeHtml(char.id)}"
+                        ${ns.enabled ? 'checked' : ''}
+                        class="w-3.5 h-3.5 rounded accent-emerald-500 cursor-pointer"
+                      />
+                      <span class="text-[10px] font-mono font-bold ${
+                        ns.enabled ? 'text-emerald-300' : 'text-slate-400'
+                      }">${ns.enabled ? 'Ativa' : 'Inativa'}</span>
+                    </label>`
+                  : ''
+              }
+              ${
+                isMaster
+                  ? `<button
+                      type="button"
+                      data-edit-skill-node="${escapeHtml(node.id)}"
+                      data-tree-id="${escapeHtml(tree.id)}"
+                      class="w-7 h-7 rounded-lg app-icon-btn flex items-center justify-center text-xs"
+                      title="Editar Nó (Mestre)"
+                    >
+                      <iconify-icon icon="game-icons:quill-ink"></iconify-icon>
+                    </button>
+                    <button
+                      type="button"
+                      data-delete-skill-node="${escapeHtml(node.id)}"
+                      data-tree-id="${escapeHtml(tree.id)}"
+                      class="w-7 h-7 rounded-lg bg-rose-500/15 hover:bg-rose-500/30 text-rose-300 border border-rose-500/30 flex items-center justify-center text-xs"
+                      title="Excluir Nó (Mestre)"
+                    >
+                      <iconify-icon icon="game-icons:trash-can"></iconify-icon>
+                    </button>`
+                  : ''
+              }
+            </div>
+          </div>
+
+          <!-- Tags Modulares de Combate (Mana, PA, Usos, Cooldown) -->
+          ${combatTagsHtml}
+
+          <!-- Descrição Completa -->
+          <p class="text-xs app-muted leading-relaxed whitespace-pre-line">${escapeHtml(node.description || '')}</p>
+
+          <!-- Descrição da Melhoria (se houver) -->
+          ${
+            !isTalent && (node.maxUpgrades > 0 || node.upgradeDescription)
+              ? `<div class="p-2.5 rounded-xl bg-amber-950/25 border border-amber-500/30 text-[11px]">
+                  <div class="flex items-center justify-between font-mono font-bold text-amber-300 mb-0.5">
+                    <span><iconify-icon icon="game-icons:upgrade"></iconify-icon> Melhoria (${ns.upgrades}/${ns.maxUpgrades})</span>
+                    <span>Custo: ${ns.upgradeCost} pt${ns.upgradeCost !== 1 ? 's' : ''}/nível</span>
+                  </div>
+                  ${
+                    node.upgradeDescription
+                      ? `<p class="text-amber-100/90">${escapeHtml(node.upgradeDescription)}</p>`
+                      : ''
+                  }
+                </div>`
+              : ''
+          }
+
+          <!-- Efeitos Matemáticos na Ficha -->
+          ${
+            effectsHtml
+              ? `<div class="flex flex-wrap gap-1.5 pt-0.5">${effectsHtml}</div>`
+              : ''
+          }
+        </div>
+
+        ${actionButtonsHtml}
+      </div>
+    `;
+  }
+
+  function handleSkillNodePurchaseOrUpgrade(charId, treeId, nodeId) {
+    const char = state.characters.find((c) => c.id === charId);
+    const tree = (state.skillTrees || []).find((t) => t.id === treeId);
+    const node = (tree?.nodes || []).find((n) => n.id === nodeId);
+    if (!char || !tree || !node) return;
+
+    if (!canEditCharacter(char)) {
+      showToast('Você só pode adquirir habilidades para o seu próprio personagem!', 'warning');
+      return;
+    }
+
+    commitMutation(
+      (st, toasts) => {
+        const c = st.characters.find((x) => x.id === charId);
+        const tr = (st.skillTrees || []).find((x) => x.id === treeId);
+        const nd = (tr?.nodes || []).find((x) => x.id === nodeId);
+        if (!c || !tr || !nd) return false;
+
+        if (!c.skillTreeProgress || typeof c.skillTreeProgress !== 'object') {
+          c.skillTreeProgress = {};
+        }
+
+        const wasCompleteBefore = computeSkillTreeProgress(c, tr).isComplete;
+        const ns = getCharacterSkillNodeState(c, nd);
+        const availPts = Number(c.skillPoints || 0);
+
+        if (ns.isTalent) {
+          if (ns.rank >= ns.maxRanks) {
+            showToast('Este talento já atingiu o nível máximo!', 'warning');
+            return false;
+          }
+          if (availPts < ns.costPerRank && !isEffectiveMaster()) {
+            showToast(`Pontos de Talento insuficientes! Necessário: ${ns.costPerRank} pt(s).`, 'warning');
+            return false;
+          }
+          c.skillPoints = Math.max(0, availPts - ns.costPerRank);
+          const nextRank = ns.rank + 1;
+          c.skillTreeProgress[nd.id] = {
+            ...(c.skillTreeProgress[nd.id] || {}),
+            rank: nextRank,
+            enabled: c.skillTreeProgress[nd.id]?.enabled !== false,
+          };
+          toasts.push(`✨ Talento "${nd.name}" aprimorado para Nível ${nextRank}/${ns.maxRanks} em ${c.name}!`);
+        } else {
+          if (!ns.unlocked) {
+            if (availPts < ns.unlockCost && !isEffectiveMaster()) {
+              showToast(`Pontos de Talento insuficientes para liberar! Necessário: ${ns.unlockCost} pt(s).`, 'warning');
+              return false;
+            }
+            c.skillPoints = Math.max(0, availPts - ns.unlockCost);
+            c.skillTreeProgress[nd.id] = {
+              unlocked: true,
+              upgrades: 0,
+              enabled: true,
+            };
+            toasts.push(`🔓 Habilidade "${nd.name}" liberada para ${c.name}!`);
+          } else {
+            if (ns.upgrades >= ns.maxUpgrades) {
+              showToast('Esta habilidade já atingiu o limite máximo de melhorias!', 'warning');
+              return false;
+            }
+            if (availPts < ns.upgradeCost && !isEffectiveMaster()) {
+              showToast(`Pontos de Talento insuficientes para melhorar! Necessário: ${ns.upgradeCost} pt(s).`, 'warning');
+              return false;
+            }
+            c.skillPoints = Math.max(0, availPts - ns.upgradeCost);
+            const nextUpgrades = ns.upgrades + 1;
+            c.skillTreeProgress[nd.id] = {
+              ...(c.skillTreeProgress[nd.id] || {}),
+              unlocked: true,
+              upgrades: nextUpgrades,
+              enabled: c.skillTreeProgress[nd.id]?.enabled !== false,
+            };
+            toasts.push(`⬆️ Habilidade "${nd.name}" melhorada (${nextUpgrades}/${ns.maxUpgrades}) em ${c.name}!`);
+          }
+        }
+
+        recalculateCharacterDerived(c);
+        const isCompleteNow = computeSkillTreeProgress(c, tr).isComplete;
+        if (!wasCompleteBefore && isCompleteNow) {
+          toasts.push(`👑 Árvore "${tr.name}" 100% COMPLETA! Bônus de conclusão ativado em dourado na ficha de ${c.name}!`);
+        }
+        return true;
+      },
+      {
+        actionType: 'SKILL_TREE_BUY',
+        targetEntity: `${char.name} -> ${node.name}`,
+        summary: `Aquisição/Melhoria do nó "${node.name}" na árvore "${tree.name}".`,
+      }
+    );
+  }
+
+  function handleSkillNodeRefund(charId, treeId, nodeId) {
+    const char = state.characters.find((c) => c.id === charId);
+    const tree = (state.skillTrees || []).find((t) => t.id === treeId);
+    const node = (tree?.nodes || []).find((n) => n.id === nodeId);
+    if (!char || !tree || !node) return;
+
+    if (!canEditCharacter(char)) {
+      showToast('Você só pode reembolsar habilidades do seu próprio personagem!', 'warning');
+      return;
+    }
+
+    commitMutation(
+      (st, toasts) => {
+        const c = st.characters.find((x) => x.id === charId);
+        const tr = (st.skillTrees || []).find((x) => x.id === treeId);
+        const nd = (tr?.nodes || []).find((x) => x.id === nodeId);
+        if (!c || !tr || !nd) return false;
+        if (!c.skillTreeProgress || typeof c.skillTreeProgress !== 'object') return false;
+
+        const wasCompleteBefore = computeSkillTreeProgress(c, tr).isComplete;
+        const ns = getCharacterSkillNodeState(c, nd);
+
+        if (ns.isTalent) {
+          if (ns.rank <= 0) return false;
+          const nextRank = ns.rank - 1;
+          c.skillPoints = Number(c.skillPoints || 0) + ns.costPerRank;
+          if (nextRank <= 0) {
+            delete c.skillTreeProgress[nd.id];
+          } else {
+            c.skillTreeProgress[nd.id] = {
+              ...(c.skillTreeProgress[nd.id] || {}),
+              rank: nextRank,
+            };
+          }
+          toasts.push(`↩️ 1 nível de "${nd.name}" reembolsado (+${ns.costPerRank} pt) para ${c.name}.`);
+        } else {
+          if (!ns.unlocked) return false;
+          if (ns.upgrades > 0) {
+            const nextUpgrades = ns.upgrades - 1;
+            c.skillPoints = Number(c.skillPoints || 0) + ns.upgradeCost;
+            c.skillTreeProgress[nd.id] = {
+              ...(c.skillTreeProgress[nd.id] || {}),
+              unlocked: true,
+              upgrades: nextUpgrades,
+            };
+            toasts.push(`↩️ 1 melhoria de "${nd.name}" reembolsada (+${ns.upgradeCost} pts) para ${c.name}.`);
+          } else {
+            c.skillPoints = Number(c.skillPoints || 0) + ns.unlockCost;
+            delete c.skillTreeProgress[nd.id];
+            toasts.push(`↩️ Liberação de "${nd.name}" reembolsada (+${ns.unlockCost} pts) para ${c.name}.`);
+          }
+        }
+
+        recalculateCharacterDerived(c);
+        c.hp = Math.min(c.hp, c.maxHp);
+        c.armor = Math.min(c.armor, c.maxArmor);
+        c.mana = Math.min(c.mana, c.maxMana);
+
+        const isCompleteNow = computeSkillTreeProgress(c, tr).isComplete;
+        if (wasCompleteBefore && !isCompleteNow) {
+          toasts.push(`⚠️ Árvore "${tr.name}" caiu abaixo de 100%. O Efeito de Árvore Completa foi desativado.`);
+        }
+        return true;
+      },
+      {
+        actionType: 'SKILL_TREE_REFUND',
+        targetEntity: `${char.name} -> ${node.name}`,
+        summary: `Reembolso no nó "${node.name}" da árvore "${tree.name}".`,
+      }
+    );
+  }
+
+  function handleSkillNodeToggleEnabled(charId, nodeId, enabled) {
+    const char = state.characters.find((c) => c.id === charId);
+    if (!char || !canEditCharacter(char)) {
+      showToast('Sem permissão para alterar habilidades deste personagem.', 'warning');
+      return;
+    }
+
+    commitMutation(
+      (st, toasts) => {
+        const c = st.characters.find((x) => x.id === charId);
+        if (!c || !c.skillTreeProgress || !c.skillTreeProgress[nodeId]) return false;
+        c.skillTreeProgress[nodeId].enabled = Boolean(enabled);
+        recalculateCharacterDerived(c);
+        c.hp = Math.min(c.hp, c.maxHp);
+        c.armor = Math.min(c.armor, c.maxArmor);
+        c.mana = Math.min(c.mana, c.maxMana);
+        toasts.push(`Habilidade ${enabled ? 'ativada' : 'desativada'} na ficha de ${c.name}.`);
+        return true;
+      },
+      {
+        actionType: 'SKILL_TREE_TOGGLE',
+        targetEntity: `${char.name} (${nodeId})`,
+        summary: `Habilidade da árvore ${enabled ? 'ativada' : 'desativada'}.`,
+      }
+    );
+  }
+
+  function handleAdjustCharacterSkillPoints(charId, delta) {
+    if (!isEffectiveMaster()) return;
+    commitMutation(
+      (st, toasts) => {
+        const c = st.characters.find((x) => x.id === charId);
+        if (!c) return false;
+        c.skillPoints = Math.max(0, Number(c.skillPoints || 0) + Number(delta || 0));
+        toasts.push(
+          `Pontos de Talento de ${c.name}: ${c.skillPoints} (${delta >= 0 ? '+' : ''}${delta}).`
+        );
+        return true;
+      },
+      {
+        actionType: 'SKILL_POINTS_ADJUST',
+        targetEntity: `Personagem ID: ${charId}`,
+        summary: `Ajuste de Pontos de Talento (${delta >= 0 ? '+' : ''}${delta}).`,
+      }
+    );
+  }
+
+  function seedGeomanciaSkillTree() {
+    if (!isEffectiveMaster()) {
+      showToast('Apenas o Mestre pode carregar templates de Árvore de Habilidades!', 'warning');
+      return;
+    }
+    commitMutation(
+      (st, toasts) => {
+        if (!Array.isArray(st.skillTrees)) st.skillTrees = [];
+        const tpl = buildGeomanciaSkillTreeTemplate();
+        const existingIdx = st.skillTrees.findIndex(
+          (t) => t.id === 'tree_geomancia' || String(t.name || '').toLowerCase() === 'geomancia'
+        );
+        if (existingIdx >= 0) {
+          tpl.id = st.skillTrees[existingIdx].id;
+          st.skillTrees[existingIdx] = tpl;
+          state.activeSkillTreeId = tpl.id;
+          toasts.push('🪨 Árvore de Exemplo "Geomancia" restaurada/atualizada com sucesso!');
+        } else {
+          st.skillTrees.push(tpl);
+          state.activeSkillTreeId = tpl.id;
+          toasts.push('🪨 Árvore de Exemplo "Geomancia" adicionada com sucesso!');
+        }
+        for (const c of st.characters || []) {
+          recalculateCharacterDerived(c);
+        }
+        return true;
+      },
+      {
+        actionType: 'SKILL_TREE_SEED_GEOMANCIA',
+        targetEntity: 'Árvore: Geomancia',
+        summary: 'Árvore de exemplo Geomancia carregada.',
+      }
+    );
+  }
+
+  function createSkillTreeCompletionEffectRowElement(mod = {}) {
+    const row = document.createElement('div');
+    row.className = 'st-completion-effect-row grid grid-cols-1 sm:grid-cols-12 gap-2 items-center p-2 rounded-lg bg-black/40 border border-amber-500/25';
+    const currentTarget = mod.targetStat || 'CAPACIDADE_PESO';
+    const currentType = mod.modifierType || 'FLAT';
+    const currentVal = mod.value ?? 10;
+
+    row.innerHTML = `
+      <div class="sm:col-span-6">
+        <select data-st-comp-target class="w-full px-2.5 py-1.5 text-xs font-bold app-input">
+          ${renderEffectTargetSelectOptions(currentTarget)}
+        </select>
+      </div>
+      <div class="sm:col-span-3">
+        <select data-st-comp-type class="w-full px-2.5 py-1.5 text-xs font-mono font-bold app-input">
+          <option value="FLAT" ${currentType === 'FLAT' ? 'selected' : ''}>FLAT (+ / -)</option>
+          <option value="PERCENT" ${currentType === 'PERCENT' ? 'selected' : ''}>PORCENTAGEM (%)</option>
+        </select>
+      </div>
+      <div class="sm:col-span-2">
+        <input type="number" step="any" data-st-comp-val value="${currentVal}" class="w-full px-2.5 py-1.5 text-xs font-mono font-black app-input text-center" />
+      </div>
+      <div class="sm:col-span-1 flex justify-end">
+        <button type="button" data-remove-st-comp-effect class="w-7 h-7 rounded bg-rose-500/20 hover:bg-rose-500/40 text-rose-300 flex items-center justify-center text-xs" title="Remover Efeito">✕</button>
+      </div>
+    `;
+    row.querySelector('[data-remove-st-comp-effect]')?.addEventListener('click', () => row.remove());
+    return row;
+  }
+
+  function openSkillTreeFormModal(treeId = null) {
+    if (!isEffectiveMaster()) {
+      showToast('Apenas o Mestre pode configurar Árvores de Habilidades!', 'warning');
+      return;
+    }
+    const existing = treeId ? (state.skillTrees || []).find((t) => t.id === treeId) : null;
+    document.getElementById('st-form-id').value = existing ? existing.id : '';
+    document.getElementById('skill-tree-form-modal-title').textContent = existing
+      ? `Editar Árvore: ${existing.name}`
+      : 'Nova Árvore de Habilidades';
+    document.getElementById('st-form-name').value = existing ? existing.name || '' : '';
+    document.getElementById('st-form-desc').value = existing ? existing.description || '' : '';
+    document.getElementById('st-form-hidden').checked = Boolean(existing?.hiddenForPlayers);
+    document.getElementById('st-form-completion-desc').value = existing ? existing.completionDescription || '' : '';
+
+    const listEl = document.getElementById('st-completion-effects-list');
+    if (listEl) {
+      listEl.innerHTML = '';
+      const effects = Array.isArray(existing?.completionEffects) ? existing.completionEffects : [];
+      effects.forEach((ef) => listEl.appendChild(createSkillTreeCompletionEffectRowElement(ef)));
+    }
+
+    const delBtn = document.getElementById('btn-delete-skill-tree');
+    if (delBtn) delBtn.classList.toggle('hidden', !existing);
+
+    openModal('modal-skill-tree-form');
+  }
+
+  function handleSkillTreeFormSubmit(e) {
+    e.preventDefault();
+    if (!isEffectiveMaster()) return;
+
+    const treeId = document.getElementById('st-form-id')?.value.trim();
+    const name = document.getElementById('st-form-name')?.value.trim() || 'Árvore Sem Nome';
+    const description = document.getElementById('st-form-desc')?.value.trim() || '';
+    const hiddenForPlayers = Boolean(document.getElementById('st-form-hidden')?.checked);
+    const completionDescription = document.getElementById('st-form-completion-desc')?.value.trim() || '';
+
+    const completionEffects = [];
+    document.querySelectorAll('#st-completion-effects-list .st-completion-effect-row').forEach((row) => {
+      const targetStat = row.querySelector('[data-st-comp-target]')?.value;
+      const modifierType = row.querySelector('[data-st-comp-type]')?.value || 'FLAT';
+      const valRaw = Number(row.querySelector('[data-st-comp-val]')?.value || 0);
+      if (targetStat && Number.isFinite(valRaw) && valRaw !== 0) {
+        completionEffects.push({ targetStat, modifierType, value: valRaw });
+      }
+    });
+
+    commitMutation(
+      (st, toasts) => {
+        if (!Array.isArray(st.skillTrees)) st.skillTrees = [];
+        if (treeId) {
+          const target = st.skillTrees.find((t) => t.id === treeId);
+          if (!target) return false;
+          target.name = name;
+          target.description = description;
+          target.hiddenForPlayers = hiddenForPlayers;
+          target.completionDescription = completionDescription;
+          target.completionEffects = completionEffects;
+          toasts.push(`Árvore "${name}" atualizada!`);
+        } else {
+          const newTree = {
+            id: `tree_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+            name,
+            description,
+            hiddenForPlayers,
+            completionDescription,
+            completionEffects,
+            nodes: [],
+          };
+          st.skillTrees.push(newTree);
+          state.activeSkillTreeId = newTree.id;
+          toasts.push(`Árvore "${name}" criada com sucesso!`);
+        }
+        for (const c of st.characters || []) {
+          recalculateCharacterDerived(c);
+        }
+        return true;
+      },
+      {
+        actionType: treeId ? 'SKILL_TREE_UPDATE' : 'SKILL_TREE_CREATE',
+        targetEntity: `Árvore: ${name}`,
+        summary: `Árvore de Habilidades "${name}" salva.`,
+      }
+    );
+
+    closeModal('modal-skill-tree-form');
+  }
+
+  function deleteSkillTree(treeId) {
+    if (!isEffectiveMaster()) return;
+    const tree = (state.skillTrees || []).find((t) => t.id === treeId);
+    if (!tree) return;
+
+    commitMutation(
+      (st, toasts) => {
+        st.skillTrees = (st.skillTrees || []).filter((t) => t.id !== treeId);
+        if (state.activeSkillTreeId === treeId) {
+          state.activeSkillTreeId = st.skillTrees[0]?.id || null;
+        }
+        for (const c of st.characters || []) {
+          recalculateCharacterDerived(c);
+        }
+        toasts.push(`Árvore "${tree.name}" removida.`);
+        return true;
+      },
+      {
+        actionType: 'SKILL_TREE_DELETE',
+        targetEntity: `Árvore: ${tree.name}`,
+        summary: `Árvore "${tree.name}" excluída.`,
+      }
+    );
+    closeModal('modal-skill-tree-form');
+  }
+
+  function createSkillNodeEffectRowElement(mod = {}) {
+    const row = document.createElement('div');
+    row.className = 'sn-effect-row grid grid-cols-1 sm:grid-cols-12 gap-2 items-center p-2 rounded-lg bg-black/40 border app-divider-border';
+    const currentTarget = mod.targetStat || 'ARMADURA_MAX';
+    const currentType = mod.modifierType || 'FLAT';
+    const currentVal = mod.value ?? 1;
+
+    row.innerHTML = `
+      <div class="sm:col-span-6">
+        <select data-sn-eff-target class="w-full px-2.5 py-1.5 text-xs font-bold app-input">
+          ${renderEffectTargetSelectOptions(currentTarget)}
+        </select>
+      </div>
+      <div class="sm:col-span-3">
+        <select data-sn-eff-type class="w-full px-2.5 py-1.5 text-xs font-mono font-bold app-input">
+          <option value="FLAT" ${currentType === 'FLAT' ? 'selected' : ''}>FLAT (+ / -)</option>
+          <option value="PERCENT" ${currentType === 'PERCENT' ? 'selected' : ''}>PORCENTAGEM (%)</option>
+        </select>
+      </div>
+      <div class="sm:col-span-2">
+        <input type="number" step="any" data-sn-eff-val value="${currentVal}" class="w-full px-2.5 py-1.5 text-xs font-mono font-black app-input text-center" />
+      </div>
+      <div class="sm:col-span-1 flex justify-end">
+        <button type="button" data-remove-sn-effect class="w-7 h-7 rounded bg-rose-500/20 hover:bg-rose-500/40 text-rose-300 flex items-center justify-center text-xs" title="Remover Efeito">✕</button>
+      </div>
+    `;
+    row.querySelector('[data-remove-sn-effect]')?.addEventListener('click', () => row.remove());
+    return row;
+  }
+
+  function syncSkillNodeFormCategoryUI() {
+    const cat = String(document.getElementById('sn-form-category')?.value || 'TALENTO').toUpperCase();
+    const isTalent = cat === 'TALENTO';
+    const isActiveOrSupreme = cat === 'ATIVA' || cat === 'SUPREMA';
+
+    document.getElementById('sn-talent-ranks-section')?.classList.toggle('hidden', !isTalent);
+    document.getElementById('sn-unlock-upgrades-section')?.classList.toggle('hidden', isTalent);
+    document.getElementById('sn-combat-metadata-section')?.classList.toggle('hidden', !isActiveOrSupreme);
+
+    const effTitleEl = document.getElementById('sn-effects-builder-title');
+    const effHintEl = document.getElementById('sn-effects-builder-hint');
+    if (effTitleEl) {
+      effTitleEl.innerHTML = isTalent
+        ? `<iconify-icon icon="game-icons:lightning-branches"></iconify-icon> <span>EFEITOS POR NÍVEL (FLAT / %)</span>`
+        : `<iconify-icon icon="game-icons:lightning-branches"></iconify-icon> <span>EFEITOS SE ADQUIRIDA (FLAT / % — OPCIONAL)</span>`;
+    }
+    if (effHintEl) {
+      effHintEl.textContent = isTalent
+        ? 'Multiplicados automaticamente pelo nível atual adquirido (NívelAtual × ValorDoEfeito).'
+        : 'Aplicados na ficha quando a habilidade estiver liberada e com o switch Ativa ligado (opcional).';
+    }
+  }
+
+  function openSkillNodeFormModal(treeId, nodeId = null, defaultCategory = 'TALENTO') {
+    if (!isEffectiveMaster()) {
+      showToast('Apenas o Mestre pode criar ou editar nós da Árvore de Habilidades!', 'warning');
+      return;
+    }
+    const tree = (state.skillTrees || []).find((t) => t.id === treeId);
+    if (!tree) return;
+    const existing = nodeId ? (tree.nodes || []).find((n) => n.id === nodeId) : null;
+
+    document.getElementById('sn-form-tree-id').value = tree.id;
+    document.getElementById('sn-form-node-id').value = existing ? existing.id : '';
+    document.getElementById('skill-node-form-modal-title').textContent = existing
+      ? `Editar Nó: ${existing.name}`
+      : `Novo Nó em ${tree.name}`;
+
+    const cat = existing ? String(existing.category || 'TALENTO').toUpperCase() : defaultCategory;
+    document.getElementById('sn-form-category').value = cat;
+    document.getElementById('sn-form-name').value = existing ? existing.name || '' : '';
+    document.getElementById('sn-form-subtype').value = existing ? existing.subtype || '' : '';
+    document.getElementById('sn-form-desc').value = existing ? existing.description || '' : '';
+
+    document.getElementById('sn-form-max-ranks').value = String(existing?.maxRanks ?? 5);
+    document.getElementById('sn-form-cost-per-rank').value = String(existing?.costPerRank ?? 1);
+
+    document.getElementById('sn-form-unlock-cost').value = String(existing?.unlockCost ?? 4);
+    document.getElementById('sn-form-max-upgrades').value = String(existing?.maxUpgrades ?? 0);
+    document.getElementById('sn-form-upgrade-cost').value = String(existing?.upgradeCost ?? 2);
+    document.getElementById('sn-form-upgrade-desc').value = existing ? existing.upgradeDescription || '' : '';
+
+    document.getElementById('sn-form-mana-cost').value = existing ? existing.manaCost || '' : '';
+    document.getElementById('sn-form-pa-cost').value = existing ? existing.paCost || '' : '';
+    document.getElementById('sn-form-uses').value = existing ? existing.uses || '' : '';
+    document.getElementById('sn-form-cooldown').value = existing ? existing.cooldown || '' : '';
+
+    const effListEl = document.getElementById('sn-effects-list');
+    if (effListEl) {
+      effListEl.innerHTML = '';
+      const effects = Array.isArray(existing?.effects) ? existing.effects : [];
+      effects.forEach((ef) => effListEl.appendChild(createSkillNodeEffectRowElement(ef)));
+    }
+
+    const delBtn = document.getElementById('btn-delete-skill-node');
+    if (delBtn) delBtn.classList.toggle('hidden', !existing);
+
+    syncSkillNodeFormCategoryUI();
+    openModal('modal-skill-node-form');
+  }
+
+  function handleSkillNodeFormSubmit(e) {
+    e.preventDefault();
+    if (!isEffectiveMaster()) return;
+
+    const treeId = document.getElementById('sn-form-tree-id')?.value.trim();
+    const nodeId = document.getElementById('sn-form-node-id')?.value.trim();
+    const category = String(document.getElementById('sn-form-category')?.value || 'TALENTO').toUpperCase();
+    const name = document.getElementById('sn-form-name')?.value.trim() || 'Habilidade Sem Nome';
+    const subtype = document.getElementById('sn-form-subtype')?.value.trim() || '';
+    const description = document.getElementById('sn-form-desc')?.value.trim() || '';
+
+    const maxRanks = Math.max(1, Math.round(Number(document.getElementById('sn-form-max-ranks')?.value || 1)));
+    const costPerRank = Math.max(0, Math.round(Number(document.getElementById('sn-form-cost-per-rank')?.value ?? 1)));
+
+    const unlockCost = Math.max(0, Math.round(Number(document.getElementById('sn-form-unlock-cost')?.value ?? 1)));
+    const maxUpgrades = Math.max(0, Math.round(Number(document.getElementById('sn-form-max-upgrades')?.value || 0)));
+    const upgradeCost = Math.max(0, Math.round(Number(document.getElementById('sn-form-upgrade-cost')?.value ?? 1)));
+    const upgradeDescription = document.getElementById('sn-form-upgrade-desc')?.value.trim() || '';
+
+    const manaCost = document.getElementById('sn-form-mana-cost')?.value.trim() || '';
+    const paCost = document.getElementById('sn-form-pa-cost')?.value.trim() || '';
+    const uses = document.getElementById('sn-form-uses')?.value.trim() || '';
+    const cooldown = document.getElementById('sn-form-cooldown')?.value.trim() || '';
+
+    const effects = [];
+    document.querySelectorAll('#sn-effects-list .sn-effect-row').forEach((row) => {
+      const targetStat = row.querySelector('[data-sn-eff-target]')?.value;
+      const modifierType = row.querySelector('[data-sn-eff-type]')?.value || 'FLAT';
+      const valRaw = Number(row.querySelector('[data-sn-eff-val]')?.value || 0);
+      if (targetStat && Number.isFinite(valRaw) && valRaw !== 0) {
+        effects.push({ targetStat, modifierType, value: valRaw });
+      }
+    });
+
+    commitMutation(
+      (st, toasts) => {
+        const tree = (st.skillTrees || []).find((t) => t.id === treeId);
+        if (!tree) return false;
+        if (!Array.isArray(tree.nodes)) tree.nodes = [];
+
+        const nodePayload = {
+          id: nodeId || `node_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+          category,
+          name,
+          subtype,
+          description,
+          maxRanks: category === 'TALENTO' ? maxRanks : 1,
+          costPerRank: category === 'TALENTO' ? costPerRank : unlockCost,
+          unlockCost: category === 'TALENTO' ? costPerRank : unlockCost,
+          maxUpgrades: category === 'TALENTO' ? 0 : maxUpgrades,
+          upgradeCost: category === 'TALENTO' ? 0 : upgradeCost,
+          upgradeDescription: category === 'TALENTO' ? '' : upgradeDescription,
+          manaCost,
+          paCost,
+          uses,
+          cooldown,
+          effects,
+        };
+
+        if (nodeId) {
+          const idx = tree.nodes.findIndex((n) => n.id === nodeId);
+          if (idx >= 0) {
+            nodePayload.order = tree.nodes[idx].order ?? idx;
+            tree.nodes[idx] = nodePayload;
+          } else {
+            tree.nodes.push(nodePayload);
+          }
+          toasts.push(`Nó "${name}" atualizado em ${tree.name}!`);
+        } else {
+          nodePayload.order = tree.nodes.length;
+          tree.nodes.push(nodePayload);
+          toasts.push(`Nó "${name}" adicionado à árvore ${tree.name}!`);
+        }
+
+        for (const c of st.characters || []) {
+          recalculateCharacterDerived(c);
+        }
+        return true;
+      },
+      {
+        actionType: nodeId ? 'SKILL_NODE_UPDATE' : 'SKILL_NODE_CREATE',
+        targetEntity: `${name} (${category})`,
+        summary: `Nó "${name}" salvo na árvore.`,
+      }
+    );
+
+    closeModal('modal-skill-node-form');
+  }
+
+  function deleteSkillNode(treeId, nodeId) {
+    if (!isEffectiveMaster()) return;
+    const tree = (state.skillTrees || []).find((t) => t.id === treeId);
+    const node = (tree?.nodes || []).find((n) => n.id === nodeId);
+    if (!tree || !node) return;
+
+    commitMutation(
+      (st, toasts) => {
+        const tr = (st.skillTrees || []).find((t) => t.id === treeId);
+        if (!tr || !Array.isArray(tr.nodes)) return false;
+        tr.nodes = tr.nodes.filter((n) => n.id !== nodeId);
+        for (const c of st.characters || []) {
+          if (c.skillTreeProgress && c.skillTreeProgress[nodeId]) {
+            delete c.skillTreeProgress[nodeId];
+          }
+          recalculateCharacterDerived(c);
+        }
+        toasts.push(`Nó "${node.name}" removido de ${tr.name}.`);
+        return true;
+      },
+      {
+        actionType: 'SKILL_NODE_DELETE',
+        targetEntity: `Nó: ${node.name}`,
+        summary: `Nó "${node.name}" excluído da árvore "${tree.name}".`,
+      }
+    );
+    closeModal('modal-skill-node-form');
+  }
+
+  function reorderSkillTreeNodes(treeId, draggedNodeId, targetNodeId) {
+    if (!isEffectiveMaster() || !draggedNodeId || !targetNodeId || draggedNodeId === targetNodeId) return;
+    commitMutation(
+      (st) => {
+        const tree = (st.skillTrees || []).find((t) => t.id === treeId);
+        if (!tree || !Array.isArray(tree.nodes)) return false;
+        const fromIdx = tree.nodes.findIndex((n) => n.id === draggedNodeId);
+        const toIdx = tree.nodes.findIndex((n) => n.id === targetNodeId);
+        if (fromIdx < 0 || toIdx < 0) return false;
+        const [moved] = tree.nodes.splice(fromIdx, 1);
+        tree.nodes.splice(toIdx, 0, moved);
+        tree.nodes.forEach((n, idx) => {
+          n.order = idx;
+        });
+        return true;
+      },
+      {
+        actionType: 'SKILL_NODE_REORDER',
+        targetEntity: `Árvore ID: ${treeId}`,
+        summary: 'Reordenação visual de nós na Árvore de Habilidades.',
+      }
+    );
+  }
+
 

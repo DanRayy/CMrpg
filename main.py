@@ -858,15 +858,139 @@ def build_default_campaign_state() -> Dict[str, Any]:
             }
         ],
         "customPermissionPresets": [],
+        "skillTrees": build_default_skill_trees(),
         "undo_stack": [],
         "redo_stack": [],
     }
+
+
+def build_default_skill_trees() -> List[Dict[str, Any]]:
+    """Retorna a árvore de habilidades padrão de exemplo (Geomancia) pré-cadastrada."""
+    return [
+        {
+            "id": "tree_geomancia",
+            "name": "Geomancia",
+            "description": "Domínio telúrico focado em fortificação de armadura, postura defensiva inabalável e retaliação sísmica.",
+            "hiddenForPlayers": False,
+            "completionDescription": "Domínio completo da terra: +10 kg de Capacidade de Peso máxima na mochila.",
+            "completionEffects": [
+                {
+                    "targetStat": "CAPACIDADE_PESO",
+                    "modifierType": "FLAT",
+                    "value": 10,
+                }
+            ],
+            "nodes": [
+                {
+                    "id": "node_geo_passiva_1",
+                    "category": "PASSIVA",
+                    "name": "Geomancia",
+                    "subtype": "",
+                    "description": "Inicia batalhas com 10% de sua capacidade de armadura como armadura adicional, e aumenta sua defesa enquanto tem armadura em 8%+2. Se sua armadura for quebrada, causa 25+40% de seu ataque e arcana ao atacante, esse dano possui 50% de letalidade.",
+                    "unlockCost": 6,
+                    "maxRanks": 1,
+                    "costPerRank": 6,
+                    "maxUpgrades": 0,
+                    "upgradeCost": 0,
+                    "upgradeDescription": "",
+                    "manaCost": "",
+                    "paCost": "",
+                    "uses": "",
+                    "cooldown": "",
+                    "effects": [],
+                    "order": 0,
+                },
+                {
+                    "id": "node_geo_passiva_2",
+                    "category": "PASSIVA",
+                    "name": "Foco de Armadura",
+                    "subtype": "",
+                    "description": "Aumenta sua redução de dano em 10% enquanto tiver armadura, mas recebe 15%+1 de dano quando sofrer dano fora da armadura (efeitos não inclusos).",
+                    "unlockCost": 4,
+                    "maxRanks": 1,
+                    "costPerRank": 4,
+                    "maxUpgrades": 0,
+                    "upgradeCost": 0,
+                    "upgradeDescription": "",
+                    "manaCost": "",
+                    "paCost": "",
+                    "uses": "",
+                    "cooldown": "",
+                    "effects": [],
+                    "order": 1,
+                },
+                {
+                    "id": "node_geo_ativa_1",
+                    "category": "ATIVA",
+                    "name": "Armadura de Rochas",
+                    "subtype": "Postura",
+                    "description": "Recupera 10% de sua armadura máxima e um adicional de 65% de sua arcana, para si ou um aliado, enquanto mantiver a postura o alvo recebe 5 de defesa e 8% de resistência geral, mas se sua postura for quebrada você sofre 55 acúmulos de atordoamento.",
+                    "unlockCost": 4,
+                    "maxRanks": 1,
+                    "costPerRank": 4,
+                    "maxUpgrades": 2,
+                    "upgradeCost": 2,
+                    "upgradeDescription": "Recuperação com base em armadura +2%.",
+                    "manaCost": "35",
+                    "paCost": "2",
+                    "uses": "3",
+                    "cooldown": "",
+                    "effects": [],
+                    "order": 2,
+                },
+                {
+                    "id": "node_geo_talento_1",
+                    "category": "TALENTO",
+                    "name": "Blindagem",
+                    "subtype": "",
+                    "description": "Aumenta a armadura em 4 e defesa em 1.",
+                    "unlockCost": 1,
+                    "maxRanks": 5,
+                    "costPerRank": 1,
+                    "maxUpgrades": 0,
+                    "upgradeCost": 1,
+                    "upgradeDescription": "",
+                    "manaCost": "",
+                    "paCost": "",
+                    "uses": "",
+                    "cooldown": "",
+                    "effects": [
+                        {"targetStat": "ARMADURA", "modifierType": "FLAT", "value": 4},
+                        {"targetStat": "DEFESA", "modifierType": "FLAT", "value": 1},
+                    ],
+                    "order": 3,
+                },
+                {
+                    "id": "node_geo_talento_2",
+                    "category": "TALENTO",
+                    "name": "Vigor",
+                    "subtype": "",
+                    "description": "Aumenta o HP em 5.",
+                    "unlockCost": 1,
+                    "maxRanks": 5,
+                    "costPerRank": 1,
+                    "maxUpgrades": 0,
+                    "upgradeCost": 1,
+                    "upgradeDescription": "",
+                    "manaCost": "",
+                    "paCost": "",
+                    "uses": "",
+                    "cooldown": "",
+                    "effects": [
+                        {"targetStat": "VIDA", "modifierType": "FLAT", "value": 5},
+                    ],
+                    "order": 4,
+                },
+            ],
+        }
+    ]
 
 
 def normalize_character(
     raw: Dict[str, Any],
     items_catalog: List[Dict[str, Any]],
     room_settings: Dict[str, Any],
+    skill_trees: Optional[List[Dict[str, Any]]] = None,
 ) -> Dict[str, Any]:
     """Garante que o personagem possui todos os atributos, recursos vitais, 7 resistências, inventário e status derivados."""
     char = copy.deepcopy(raw or {})
@@ -893,14 +1017,16 @@ def normalize_character(
     char["reveladoParaJogadores"] = bool(char.get("reveladoParaJogadores", False))
 
     if char["isEnemy"]:
+        char["baseMaxWeight"] = 999
         char["maxWeight"] = 999
         if not char.get("avatar"):
             char["avatar"] = "monster-grasp"
     else:
-        raw_max_weight = float(char.get("maxWeight", 27))
-        char["maxWeight"] = int(raw_max_weight) if raw_max_weight.is_integer() else round(raw_max_weight, 2)
-        if char["maxWeight"] < 0:
-            char["maxWeight"] = 27
+        raw_base_weight = float(char.get("baseMaxWeight", char.get("maxWeight", 27)))
+        if raw_base_weight < 0:
+            raw_base_weight = 27.0
+        char["baseMaxWeight"] = int(raw_base_weight) if raw_base_weight.is_integer() else round(raw_base_weight, 2)
+        char["maxWeight"] = char["baseMaxWeight"]
 
     rounding_mode = room_settings.get("roundingMode", "ROUND_DOWN")
     char["level"] = max(1, int(char.get("level", 1)))
@@ -993,12 +1119,17 @@ def normalize_character(
     if not isinstance(char.get("talents"), list):
         char["talents"] = []
 
-    derived = compute_character_derived_stats(char, items_catalog, room_settings)
+    if not isinstance(char.get("skillTreeProgress"), dict):
+        char["skillTreeProgress"] = {}
+
+    derived = compute_character_derived_stats(char, items_catalog, room_settings, skill_trees)
     char["derived"] = derived
     char["maxHp"] = derived["effectiveMaxHp"]
     char["maxArmor"] = derived["effectiveMaxArmor"]
     char["maxMana"] = derived["effectiveMaxMana"]
     char["maxPa"] = derived["effectiveMaxPa"]
+    if not char["isEnemy"]:
+        char["maxWeight"] = derived.get("effectiveMaxWeight", char["baseMaxWeight"])
     char["regen"] = derived["effectiveRegen"]
     char["defense"] = derived["effectiveDefense"]
     char["attack"] = derived["effectiveAttack"]
@@ -1209,11 +1340,12 @@ class StateManager:
                 "quests": self.state["quests"],
                 "bestiary": self.state.get("bestiary", []),
                 "customPermissionPresets": self.state.get("customPermissionPresets", []),
+                "skillTrees": self.state.get("skillTrees", []),
             }
         )
 
     def _restore_core(self, snap: Dict[str, Any]) -> None:
-        for key in ("room", "members", "characters", "itemsCatalog", "npcs", "escrowSales", "battle", "quests", "bestiary", "customPermissionPresets"):
+        for key in ("room", "members", "characters", "itemsCatalog", "npcs", "escrowSales", "battle", "quests", "bestiary", "customPermissionPresets", "skillTrees"):
             if key in snap:
                 self.state[key] = copy.deepcopy(snap[key])
         self._recalculate_all()
@@ -1221,6 +1353,10 @@ class StateManager:
     def _recalculate_all(self) -> None:
         room = self.state.get("room") or {}
         catalog = self.state.get("itemsCatalog") or []
+        skill_trees = self.state.get("skillTrees")
+        if not isinstance(skill_trees, list):
+            skill_trees = build_default_skill_trees()
+            self.state["skillTrees"] = skill_trees
         for it in catalog:
             if not isinstance(it, dict):
                 continue
@@ -1235,7 +1371,7 @@ class StateManager:
                 it["descricao"] = "Consumível: regenera +20% de Mana ao usar."
                 it["effects"] = [{"targetStat": "REGEN_MANA", "modifierType": "PERCENT", "value": 20, "durationTurns": None}]
         chars = self.state.get("characters") or []
-        self.state["characters"] = [normalize_character(c, catalog, room) for c in chars]
+        self.state["characters"] = [normalize_character(c, catalog, room, skill_trees) for c in chars]
         for b in self.state.get("bestiary") or []:
             if isinstance(b, dict):
                 raw_elem = b.get("elementalResistances") or {}
@@ -1346,6 +1482,8 @@ class StateManager:
                         for k, v in default_state.items():
                             if k not in loaded:
                                 loaded[k] = copy.deepcopy(v)
+                        if not isinstance(loaded.get("skillTrees"), list):
+                            loaded["skillTrees"] = copy.deepcopy(default_state["skillTrees"])
                         # Remove menções antigas a "Dan Ray" do log inicial se existirem
                         loaded["auditLog"] = [
                             entry
@@ -1417,6 +1555,7 @@ class StateManager:
             "quests": self.state["quests"],
             "bestiary": self.state.get("bestiary", []),
             "customPermissionPresets": self.state.get("customPermissionPresets", []),
+            "skillTrees": self.state.get("skillTrees", []),
             "auditLog": self.state["auditLog"],
             "network": {
                 **HOST_NETWORK_INFO,
@@ -1444,7 +1583,7 @@ class StateManager:
                     self.undo_stack = self.undo_stack[-HISTORY_LIMIT:]
                 self.redo_stack.clear()
 
-            for key in ("room", "members", "characters", "itemsCatalog", "npcs", "escrowSales", "battle", "quests", "bestiary", "customPermissionPresets"):
+            for key in ("room", "members", "characters", "itemsCatalog", "npcs", "escrowSales", "battle", "quests", "bestiary", "customPermissionPresets", "skillTrees"):
                 if key in data and data[key] is not None:
                     self.state[key] = data[key]
 

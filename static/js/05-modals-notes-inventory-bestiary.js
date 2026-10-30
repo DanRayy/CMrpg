@@ -718,8 +718,124 @@
     const readonlyBadge = document.getElementById('skill-modal-readonly-badge');
     if (readonlyBadge) readonlyBadge.classList.toggle('hidden', canEdit);
 
+    renderSkillDetailTreeSkillsSection();
+
     openModal('modal-skill-detail');
     if (canEdit) setTimeout(() => textarea?.focus(), 50);
+  }
+
+  function renderSkillDetailTreeSkillsSection() {
+    const context = document.getElementById('skill-modal-context')?.value || 'sheet';
+    const slot = String(document.getElementById('skill-modal-slot')?.value || 'PASSIVA').toUpperCase();
+    const charId = document.getElementById('skill-modal-char-id')?.value || '';
+    const sectionEl = document.getElementById('skill-modal-tree-skills-section');
+    const countBadge = document.getElementById('skill-modal-tree-skills-count');
+    const listEl = document.getElementById('skill-modal-tree-skills-list');
+    if (!sectionEl || !listEl) return;
+
+    const targetCharId = charId || (context === 'form' ? document.getElementById('char-form-id')?.value || '' : '');
+    const char = state.characters.find((c) => c.id === targetCharId) || null;
+    if (!char) {
+      sectionEl.classList.add('hidden');
+      return;
+    }
+
+    sectionEl.classList.remove('hidden');
+    const canEdit = canEditCharacter(char);
+    const acquiredList = getCharacterAcquiredTreeSkillsByCategory(char, slot);
+    const activeCount = acquiredList.filter((item) => item.nodeState.enabled).length;
+
+    if (countBadge) {
+      countBadge.textContent = `${activeCount}/${acquiredList.length}`;
+    }
+
+    if (acquiredList.length === 0) {
+      listEl.innerHTML = `
+        <div class="p-3.5 rounded-xl bg-black/30 border border-dashed app-divider-border text-center text-xs app-muted italic">
+          Nenhuma habilidade <strong>${escapeHtml(slot)}</strong> adquirida nas Árvores de Habilidades para ${escapeHtml(char.name)}.
+        </div>
+      `;
+      return;
+    }
+
+    listEl.innerHTML = acquiredList
+      .map(({ tree, node, nodeState }) => {
+        const cat = String(node.category || slot).toUpperCase();
+        const subtypeTag = node.subtype ? `[${cat} - ${String(node.subtype).toUpperCase()}]` : `[${cat}]`;
+        const upgradeBadge =
+          nodeState.maxUpgrades > 0
+            ? `Melhoria ${nodeState.upgrades}/${nodeState.maxUpgrades}`
+            : 'Nível Base (Liberada)';
+        const combatTagsHtml = renderSkillCombatTags(node);
+        const effectsHtml = (node.effects || [])
+          .map(
+            (ef) =>
+              `<span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                ${escapeHtml(formatEffectTargetLabel(ef.targetStat))}: ${ef.value >= 0 ? '+' : ''}${ef.value}${
+                ef.modifierType === 'PERCENT' ? '%' : ''
+              }
+              </span>`
+          )
+          .join('');
+
+        return `
+          <div class="p-3.5 rounded-xl bg-black/45 border ${
+            nodeState.enabled ? 'border-amber-500/40' : 'border-slate-700/50 opacity-65'
+          } space-y-2">
+            <div class="flex flex-wrap items-start justify-between gap-2">
+              <div class="space-y-1 min-w-0">
+                <div class="flex flex-wrap items-center gap-1.5">
+                  <span class="px-2 py-0.5 rounded text-[10px] font-mono font-black uppercase bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                    ${escapeHtml(subtypeTag)}
+                  </span>
+                  <span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-purple-500/20 text-purple-200 border border-purple-500/35">
+                    <iconify-icon icon="game-icons:family-tree"></iconify-icon> ${escapeHtml(tree.name)}
+                  </span>
+                  <span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                    ${escapeHtml(upgradeBadge)}
+                  </span>
+                </div>
+                <h5 class="font-serif-fantasy font-black text-sm app-title">${escapeHtml(node.name)}</h5>
+              </div>
+
+              ${
+                canEdit
+                  ? `<label class="inline-flex items-center gap-1.5 cursor-pointer select-none px-2.5 py-1 rounded-lg bg-black/50 border app-divider-border shrink-0" title="Ativar/Desativar sem reembolsar pontos">
+                      <input
+                        type="checkbox"
+                        data-toggle-skill-node="${escapeHtml(node.id)}"
+                        data-char-id="${escapeHtml(char.id)}"
+                        ${nodeState.enabled ? 'checked' : ''}
+                        class="w-4 h-4 rounded accent-emerald-500 cursor-pointer"
+                      />
+                      <span class="text-[10px] font-mono font-bold ${
+                        nodeState.enabled ? 'text-emerald-300' : 'text-slate-400'
+                      }">${nodeState.enabled ? 'Ativa' : 'Inativa'}</span>
+                    </label>`
+                  : `<span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold ${
+                      nodeState.enabled ? 'bg-emerald-500/20 text-emerald-300' : 'bg-slate-800 text-slate-400'
+                    }">${nodeState.enabled ? 'Ativa' : 'Inativa'}</span>`
+              }
+            </div>
+
+            ${combatTagsHtml}
+
+            <p class="text-xs app-muted leading-relaxed whitespace-pre-line">${escapeHtml(node.description || '')}</p>
+
+            ${
+              nodeState.maxUpgrades > 0 || node.upgradeDescription
+                ? `<div class="p-2 rounded-lg bg-amber-950/25 border border-amber-500/30 text-[11px] text-amber-200">
+                    <strong class="font-mono uppercase text-[10px] text-amber-300">Melhoria (${nodeState.upgrades}/${nodeState.maxUpgrades}):</strong>
+                    <span>${escapeHtml(node.upgradeDescription || 'Aprimoramento progressivo da habilidade.')}</span>
+                  </div>`
+                : ''
+            }
+
+            ${effectsHtml ? `<div class="flex flex-wrap gap-1.5 pt-0.5">${effectsHtml}</div>` : ''}
+          </div>
+        `;
+      })
+      .join('');
   }
 
   function handleSkillDetailSubmit(e) {
@@ -824,7 +940,7 @@
       maxWeightBox.classList.toggle('hidden', !canEdit);
     }
     if (maxWeightInput && document.activeElement !== maxWeightInput) {
-      maxWeightInput.value = String(maxWeight);
+      maxWeightInput.value = String(char.baseMaxWeight ?? maxWeight);
     }
 
     const itemsById = {};

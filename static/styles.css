@@ -1348,3 +1348,132 @@ html[data-theme="light"] .battle-sidebar {
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 1;
 }
+
+/* ==========================================================================
+   Árvore de Habilidades — Constelações Diablo IV / Last Epoch / Path of Exile
+   ========================================================================== */
+.skill-tree-constellation-bg {
+  background-color: #0b0907;
+  background-image:
+    radial-gradient(circle at 20% 20%, rgba(212, 168, 83, 0.08) 0%, transparent 45%),
+    radial-gradient(circle at 80% 30%, rgba(139, 92, 246, 0.07) 0%, transparent 45%),
+    radial-gradient(circle at 50% 80%, rgba(245, 158, 11, 0.07) 0%, transparent 50%),
+    linear-gradient(rgba(212, 168, 83, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(212, 168, 83, 0.04) 1px, transparent 1px);
+  background-size: 100% 100%, 100% 100%, 100% 100%, 38px 38px, 38px 38px;
+  position: relative;
+}
+
+.skill-tree-completion-banner {
+  background: linear-gradient(135deg, rgba(20, 17, 13, 0.94) 0%, rgba(32, 25, 16, 0.9) 100%);
+  border: 1px solid rgba(212, 168, 83, 0.28);
+  border-radius: 14px;
+  transition: all 0.25s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.skill-tree-completion-banner.completion-active-gold {
+  background:
+    radial-gradient(circle at 15% 50%, rgba(251, 191, 36, 0.22), transparent 55%),
+    radial-gradient(circle at 85% 50%, rgba(245, 158, 11, 0.18), transparent 55%),
+    linear-gradient(135deg, rgba(45, 31, 9, 0.96) 0%, rgba(28, 19, 6, 0.96) 100%);
+  border: 2px solid #fbbf24 !important;
+  box-shadow: 0 0 28px rgba(251, 191, 36, 0.28), inset 0 0 18px rgba(251, 191, 36, 0.12);
+}
+
+.constellation-tier-section {
+  position: relative;
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(212, 168, 83, 0.07) 0%, rgba(14, 12, 10, 0.92) 70%);
+  border: 1px solid rgba(212, 168, 83, 0.2);
+  padding: 18px;
+  overflow: hidden;
+}
+
+.constellation-tier-section::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 3%;
+  right: 3%;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(212, 168, 83, 0.22) 15%,
+    rgba(240, 198, 116, 0.45) 50%,
+    rgba(212, 168, 83, 0.22) 85%,
+    transparent 100%
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+
+.constellation-tier-section::after {
+  content: "";
+  position: absolute;
+  top: 12%;
+  bottom: 12%;
+  left: 50%;
+  width: 1px;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(212, 168, 83, 0.22) 25%,
+    rgba(212, 168, 83, 0.35) 50%,
+    rgba(212, 168, 83, 0.22) 75%,
+    transparent 100%
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+
+.constellation-nodes-grid {
+  position: relative;
+  z-index: 1;
+}
+
+.constellation-node-card {
+  position: relative;
+  background: linear-gradient(180deg, rgba(26, 22, 17, 0.96) 0%, rgba(16, 13, 10, 0.98) 100%);
+  border: 1px solid rgba(255, 244, 224, 0.12);
+  border-radius: 14px;
+  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.constellation-node-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(212, 168, 83, 0.45);
+}
+
+.constellation-node-card.node-unlocked {
+  background: linear-gradient(180deg, rgba(35, 27, 15, 0.97) 0%, rgba(20, 16, 10, 0.98) 100%);
+  border: 1.5px solid rgba(212, 168, 83, 0.65);
+  box-shadow: 0 8px 24px -6px rgba(0, 0, 0, 0.75), 0 0 14px rgba(212, 168, 83, 0.14);
+}
+
+.constellation-node-card.node-maxed {
+  background:
+    radial-gradient(circle at 90% 10%, rgba(251, 191, 36, 0.16), transparent 50%),
+    linear-gradient(180deg, rgba(42, 31, 12, 0.98) 0%, rgba(22, 17, 9, 0.99) 100%);
+  border: 1.5px solid #fbbf24;
+  box-shadow: 0 10px 26px -6px rgba(0, 0, 0, 0.8), 0 0 18px rgba(251, 191, 36, 0.22);
+}
+
+.constellation-node-card.node-disabled-toggle {
+  opacity: 0.68;
+  border-style: dashed;
+}
+
+.constellation-node-card.skill-node-dragging {
+  opacity: 0.4;
+  transform: scale(0.96);
+}
+
+.constellation-node-card.skill-node-drop-over {
+  border: 2px dashed #fbbf24 !important;
+  box-shadow: 0 0 20px rgba(251, 191, 36, 0.35);
+}
+

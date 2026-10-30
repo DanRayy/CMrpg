@@ -673,6 +673,7 @@
               ensureMembersHavePermanentCursorColors();
             }
             if (Array.isArray(data.itemsCatalog)) state.itemsCatalog = data.itemsCatalog;
+            if (Array.isArray(data.skillTrees)) state.skillTrees = data.skillTrees;
             if (Array.isArray(data.characters)) {
               state.characters = data.characters;
               state.characters.forEach(recalculateCharacterDerived);
@@ -730,6 +731,7 @@
     shop: 'LOJA & MERCADORES',
     bestiary: 'BESTIÁRIO',
     quests: 'MISSÕES',
+    'skill-trees': 'ÁRVORE DE HABILIDADES',
     admin: 'ADMINISTRAÇÃO',
   };
 
@@ -803,6 +805,7 @@
     setTxt('badge-items-count', String(visibleItems.length));
     setTxt('badge-npcs-count', String(state.npcs.length));
     setTxt('badge-quests-count', String(state.quests.length));
+    setTxt('badge-skill-trees-count', String((state.skillTrees || []).length));
     const visibleBestiary = isEffectiveMaster() ? (state.bestiary || []) : (state.bestiary || []).filter((b) => b.reveladoParaJogadores);
     setTxt('badge-bestiary-count', String(visibleBestiary.length));
 

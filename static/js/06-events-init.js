@@ -820,6 +820,19 @@
         return;
       }
 
+      const openTreeBtn = e.target.closest('[data-open-char-skill-tree]');
+      if (openTreeBtn) {
+        openSkillTreeModal(openTreeBtn.getAttribute('data-open-char-skill-tree') || charId);
+        return;
+      }
+
+      const ptAdjBtn = e.target.closest('[data-sheet-skill-pt-adj]');
+      if (ptAdjBtn && isEffectiveMaster()) {
+        const delta = Number(ptAdjBtn.getAttribute('data-sheet-skill-pt-adj') || 0);
+        if (delta !== 0) handleAdjustCharacterSkillPoints(charId, delta);
+        return;
+      }
+
       const targetChar = state.characters.find((x) => x.id === charId);
       if (!targetChar || !canEditCharacter(targetChar)) return;
 
@@ -858,6 +871,17 @@
       handleInventoryItemAction(e, charId);
     });
 
+    document.getElementById('sheet-modal-body')?.addEventListener('change', (e) => {
+      const toggleInp = e.target.closest('[data-toggle-skill-node]');
+      if (toggleInp) {
+        const nodeId = toggleInp.getAttribute('data-toggle-skill-node');
+        const charId = toggleInp.getAttribute('data-char-id') || state.activeSheetCharId;
+        if (charId && nodeId) {
+          handleSkillNodeToggleEnabled(charId, nodeId, toggleInp.checked);
+        }
+      }
+    });
+
     // Eventos do Modal Dedicado de Inventário 3x(Infinito) (#modal-char-inventory)
     document.querySelectorAll('#inv-modal-type-filters [data-inv-filter]').forEach((btn) => {
       btn.addEventListener('click', () => {
@@ -893,9 +917,11 @@
         (st, toasts) => {
           const c = st.characters.find((x) => x.id === charId);
           if (!c) return false;
+          c.baseMaxWeight = nextMaxWeight;
           c.maxWeight = nextMaxWeight;
           if (c.initial) c.initial.maxWeight = nextMaxWeight;
-          toasts.push(`Limite de peso de ${c.name} atualizado para ${nextMaxWeight} kg!`);
+          recalculateCharacterDerived(c);
+          toasts.push(`Limite de peso base de ${c.name} atualizado para ${nextMaxWeight} kg (Total efetivo: ${c.maxWeight} kg)!`);
           return true;
         },
         {
@@ -2545,6 +2571,301 @@
       a.download = `${(state.room?.name || 'cmrpg').toLowerCase()}_backup.json`;
       a.click();
       URL.revokeObjectURL(url);
+    });
+
+    // -------------------------------------------------------------------------
+    // Eventos do Sistema de Árvore de Habilidades (Host Tab, Modal 96vw x 92vh, Forms e Drag & Drop)
+    // -------------------------------------------------------------------------
+    const confirmAndDeleteSkillTree = (treeId) => {
+      const tree = (state.skillTrees || []).find((t) => t.id === treeId);
+      if (!tree) return;
+      openConfirmModal({
+        icon: '<iconify-icon icon="game-icons:trash-can"></iconify-icon>',
+        title: `EXCLUIR ÁRVORE "${tree.name.toUpperCase()}"?`,
+        message: `Tem certeza que deseja excluir permanentemente a árvore "${tree.name}" e todos os seus ${(tree.nodes || []).length} nós?`,
+        confirmText: '<iconify-icon icon="game-icons:trash-can"></iconify-icon> <span>Excluir Árvore</span>',
+        onConfirm: () => deleteSkillTree(treeId),
+      });
+    };
+
+    const confirmAndDeleteSkillNode = (treeId, nodeId) => {
+      const tree = (state.skillTrees || []).find((t) => t.id === treeId);
+      const node = (tree?.nodes || []).find((n) => n.id === nodeId);
+      if (!tree || !node) return;
+      openConfirmModal({
+        icon: '<iconify-icon icon="game-icons:trash-can"></iconify-icon>',
+        title: `EXCLUIR NÓ "${node.name.toUpperCase()}"?`,
+        message: `Tem certeza que deseja remover a habilidade/talento "${node.name}" da árvore "${tree.name}"?`,
+        confirmText: '<iconify-icon icon="game-icons:trash-can"></iconify-icon> <span>Excluir Nó</span>',
+        onConfirm: () => deleteSkillNode(treeId, nodeId),
+      });
+    };
+
+    // Botões na Aba Exclusiva do Host (#tab-skill-trees)
+    document.getElementById('btn-seed-geomancia-tree')?.addEventListener('click', () => seedGeomanciaSkillTree());
+    document.getElementById('btn-open-skill-tree-constellation-host')?.addEventListener('click', () => {
+      openSkillTreeModal(null, state.activeSkillTreeId);
+    });
+    document.getElementById('btn-new-skill-tree')?.addEventListener('click', () => openSkillTreeFormModal(null));
+
+    document.getElementById('skill-trees-host-sidebar')?.addEventListener('click', (e) => {
+      const editBtn = e.target.closest('[data-edit-skill-tree]');
+      if (editBtn) {
+        e.stopPropagation();
+        openSkillTreeFormModal(editBtn.getAttribute('data-edit-skill-tree'));
+        return;
+      }
+      const delBtn = e.target.closest('[data-delete-skill-tree]');
+      if (delBtn) {
+        e.stopPropagation();
+        confirmAndDeleteSkillTree(delBtn.getAttribute('data-delete-skill-tree'));
+        return;
+      }
+      const selCard = e.target.closest('[data-select-host-tree]');
+      if (selCard) {
+        state.activeSkillTreeId = selCard.getAttribute('data-select-host-tree');
+        renderSkillTreesTab();
+      }
+    });
+
+    document.getElementById('skill-trees-host-editor')?.addEventListener('click', (e) => {
+      const editTreeBtn = e.target.closest('[data-edit-skill-tree]');
+      if (editTreeBtn) {
+        openSkillTreeFormModal(editTreeBtn.getAttribute('data-edit-skill-tree'));
+        return;
+      }
+      const openConstBtn = e.target.closest('[data-open-constellation-tree]');
+      if (openConstBtn) {
+        openSkillTreeModal(null, openConstBtn.getAttribute('data-open-constellation-tree'));
+        return;
+      }
+      const addNodeBtn = e.target.closest('[data-add-skill-node]');
+      if (addNodeBtn) {
+        openSkillNodeFormModal(addNodeBtn.getAttribute('data-add-skill-node'), null, 'TALENTO');
+        return;
+      }
+      const addNodeCatBtn = e.target.closest('[data-add-skill-node-cat]');
+      if (addNodeCatBtn) {
+        openSkillNodeFormModal(
+          addNodeCatBtn.getAttribute('data-tree-id') || state.activeSkillTreeId,
+          null,
+          addNodeCatBtn.getAttribute('data-add-skill-node-cat') || 'TALENTO'
+        );
+        return;
+      }
+      const editNodeBtn = e.target.closest('[data-edit-skill-node]');
+      if (editNodeBtn) {
+        openSkillNodeFormModal(
+          editNodeBtn.getAttribute('data-tree-id') || state.activeSkillTreeId,
+          editNodeBtn.getAttribute('data-edit-skill-node')
+        );
+        return;
+      }
+      const delNodeBtn = e.target.closest('[data-delete-skill-node]');
+      if (delNodeBtn) {
+        confirmAndDeleteSkillNode(
+          delNodeBtn.getAttribute('data-tree-id') || state.activeSkillTreeId,
+          delNodeBtn.getAttribute('data-delete-skill-node')
+        );
+      }
+    });
+
+    // Modal 14 (#modal-skill-detail): Integração com Habilidades Principais da Ficha
+    document.getElementById('btn-open-tree-from-skill-modal')?.addEventListener('click', () => {
+      const charId = document.getElementById('skill-modal-char-id')?.value || state.activeSheetCharId;
+      openSkillTreeModal(charId || null);
+    });
+
+    document.getElementById('skill-modal-tree-skills-list')?.addEventListener('change', (e) => {
+      const toggleInp = e.target.closest('[data-toggle-skill-node]');
+      if (toggleInp) {
+        const nodeId = toggleInp.getAttribute('data-toggle-skill-node');
+        const charId = toggleInp.getAttribute('data-char-id') || document.getElementById('skill-modal-char-id')?.value;
+        if (charId && nodeId) {
+          handleSkillNodeToggleEnabled(charId, nodeId, toggleInp.checked);
+        }
+      }
+    });
+
+    // Modal 20 (#modal-skill-tree — Constelação 96vw x 92vh)
+    document.getElementById('skill-tree-modal-char-select')?.addEventListener('change', (e) => {
+      state.activeSkillTreeCharId = e.target.value || null;
+      renderSkillTreeConstellationModal();
+    });
+
+    document.getElementById('btn-st-modal-sub-pt')?.addEventListener('click', () => {
+      if (state.activeSkillTreeCharId) handleAdjustCharacterSkillPoints(state.activeSkillTreeCharId, -1);
+    });
+    document.getElementById('btn-st-modal-add-pt')?.addEventListener('click', () => {
+      if (state.activeSkillTreeCharId) handleAdjustCharacterSkillPoints(state.activeSkillTreeCharId, 1);
+    });
+    document.getElementById('btn-st-modal-seed-geomancia')?.addEventListener('click', () => seedGeomanciaSkillTree());
+    document.getElementById('btn-st-modal-new-tree')?.addEventListener('click', () => openSkillTreeFormModal(null));
+    document.getElementById('btn-st-modal-edit-tree')?.addEventListener('click', () => {
+      if (state.activeSkillTreeId) openSkillTreeFormModal(state.activeSkillTreeId);
+    });
+    document.getElementById('btn-st-modal-add-node')?.addEventListener('click', () => {
+      if (state.activeSkillTreeId) openSkillNodeFormModal(state.activeSkillTreeId, null, 'TALENTO');
+    });
+
+    document.getElementById('skill-tree-modal-tabs')?.addEventListener('click', (e) => {
+      const tabBtn = e.target.closest('[data-st-modal-select-tree]');
+      if (tabBtn) {
+        state.activeSkillTreeId = tabBtn.getAttribute('data-st-modal-select-tree');
+        renderSkillTreeConstellationModal();
+      }
+    });
+
+    document.getElementById('skill-tree-modal-body')?.addEventListener('click', (e) => {
+      const buyBtn = e.target.closest('[data-skill-node-buy]');
+      if (buyBtn) {
+        handleSkillNodePurchaseOrUpgrade(
+          buyBtn.getAttribute('data-char-id') || state.activeSkillTreeCharId,
+          buyBtn.getAttribute('data-tree-id') || state.activeSkillTreeId,
+          buyBtn.getAttribute('data-skill-node-buy')
+        );
+        return;
+      }
+
+      const refundBtn = e.target.closest('[data-skill-node-refund]');
+      if (refundBtn) {
+        handleSkillNodeRefund(
+          refundBtn.getAttribute('data-char-id') || state.activeSkillTreeCharId,
+          refundBtn.getAttribute('data-tree-id') || state.activeSkillTreeId,
+          refundBtn.getAttribute('data-skill-node-refund')
+        );
+        return;
+      }
+
+      const addCatBtn = e.target.closest('[data-st-add-node-cat]');
+      if (addCatBtn) {
+        openSkillNodeFormModal(
+          addCatBtn.getAttribute('data-tree-id') || state.activeSkillTreeId,
+          null,
+          addCatBtn.getAttribute('data-st-add-node-cat') || 'TALENTO'
+        );
+        return;
+      }
+
+      const editNodeBtn = e.target.closest('[data-edit-skill-node]');
+      if (editNodeBtn) {
+        openSkillNodeFormModal(
+          editNodeBtn.getAttribute('data-tree-id') || state.activeSkillTreeId,
+          editNodeBtn.getAttribute('data-edit-skill-node')
+        );
+        return;
+      }
+
+      const delNodeBtn = e.target.closest('[data-delete-skill-node]');
+      if (delNodeBtn) {
+        confirmAndDeleteSkillNode(
+          delNodeBtn.getAttribute('data-tree-id') || state.activeSkillTreeId,
+          delNodeBtn.getAttribute('data-delete-skill-node')
+        );
+      }
+    });
+
+    document.getElementById('skill-tree-modal-body')?.addEventListener('change', (e) => {
+      const toggleInp = e.target.closest('[data-toggle-skill-node]');
+      if (toggleInp) {
+        const nodeId = toggleInp.getAttribute('data-toggle-skill-node');
+        const charId = toggleInp.getAttribute('data-char-id') || state.activeSkillTreeCharId;
+        if (charId && nodeId) {
+          handleSkillNodeToggleEnabled(charId, nodeId, toggleInp.checked);
+        }
+      }
+    });
+
+    // Drag & Drop de Nós pelo Mestre (tanto no Modal de Constelação quanto no Editor da Aba)
+    const bindSkillNodeDragAndDrop = (containerId) => {
+      const container = document.getElementById(containerId);
+      if (!container) return;
+
+      container.addEventListener('dragstart', (e) => {
+        if (!isEffectiveMaster()) return;
+        const card = e.target.closest('[data-skill-node-card]');
+        if (!card) return;
+        state.draggingSkillNodeId = card.getAttribute('data-skill-node-card');
+        state.draggingSkillNodeTreeId = card.getAttribute('data-tree-id') || state.activeSkillTreeId;
+        card.classList.add('skill-node-dragging');
+        if (e.dataTransfer) {
+          e.dataTransfer.effectAllowed = 'move';
+          e.dataTransfer.setData('text/plain', state.draggingSkillNodeId || '');
+        }
+      });
+
+      container.addEventListener('dragover', (e) => {
+        if (!isEffectiveMaster() || !state.draggingSkillNodeId) return;
+        const overCard = e.target.closest('[data-skill-node-card]');
+        if (!overCard) return;
+        e.preventDefault();
+        if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+        container.querySelectorAll('.skill-node-drop-over').forEach((el) => {
+          if (el !== overCard) el.classList.remove('skill-node-drop-over');
+        });
+        if (overCard.getAttribute('data-skill-node-card') !== state.draggingSkillNodeId) {
+          overCard.classList.add('skill-node-drop-over');
+        }
+      });
+
+      container.addEventListener('dragleave', (e) => {
+        const overCard = e.target.closest('[data-skill-node-card]');
+        if (overCard && !overCard.contains(e.relatedTarget)) {
+          overCard.classList.remove('skill-node-drop-over');
+        }
+      });
+
+      container.addEventListener('drop', (e) => {
+        if (!isEffectiveMaster() || !state.draggingSkillNodeId) return;
+        const targetCard = e.target.closest('[data-skill-node-card]');
+        container.querySelectorAll('.skill-node-drop-over, .skill-node-dragging').forEach((el) => {
+          el.classList.remove('skill-node-drop-over', 'skill-node-dragging');
+        });
+        if (!targetCard) return;
+        e.preventDefault();
+        const targetNodeId = targetCard.getAttribute('data-skill-node-card');
+        const treeId = targetCard.getAttribute('data-tree-id') || state.draggingSkillNodeTreeId || state.activeSkillTreeId;
+        const draggedId = state.draggingSkillNodeId;
+        state.draggingSkillNodeId = null;
+        state.draggingSkillNodeTreeId = null;
+        if (treeId && draggedId && targetNodeId && draggedId !== targetNodeId) {
+          reorderSkillTreeNodes(treeId, draggedId, targetNodeId);
+        }
+      });
+
+      container.addEventListener('dragend', () => {
+        state.draggingSkillNodeId = null;
+        state.draggingSkillNodeTreeId = null;
+        container.querySelectorAll('.skill-node-drop-over, .skill-node-dragging').forEach((el) => {
+          el.classList.remove('skill-node-drop-over', 'skill-node-dragging');
+        });
+      });
+    };
+
+    bindSkillNodeDragAndDrop('skill-tree-modal-body');
+    bindSkillNodeDragAndDrop('skill-trees-host-editor');
+
+    // Modal 21 (#modal-skill-tree-form) & Modal 22 (#modal-skill-node-form)
+    document.getElementById('btn-add-st-completion-effect')?.addEventListener('click', () => {
+      document
+        .getElementById('st-completion-effects-list')
+        ?.appendChild(createSkillTreeCompletionEffectRowElement());
+    });
+    document.getElementById('form-skill-tree')?.addEventListener('submit', handleSkillTreeFormSubmit);
+    document.getElementById('btn-delete-skill-tree')?.addEventListener('click', () => {
+      const treeId = document.getElementById('st-form-id')?.value.trim();
+      if (treeId) confirmAndDeleteSkillTree(treeId);
+    });
+
+    document.getElementById('sn-form-category')?.addEventListener('change', syncSkillNodeFormCategoryUI);
+    document.getElementById('btn-add-sn-effect')?.addEventListener('click', () => {
+      document.getElementById('sn-effects-list')?.appendChild(createSkillNodeEffectRowElement());
+    });
+    document.getElementById('form-skill-node')?.addEventListener('submit', handleSkillNodeFormSubmit);
+    document.getElementById('btn-delete-skill-node')?.addEventListener('click', () => {
+      const treeId = document.getElementById('sn-form-tree-id')?.value.trim();
+      const nodeId = document.getElementById('sn-form-node-id')?.value.trim();
+      if (treeId && nodeId) confirmAndDeleteSkillNode(treeId, nodeId);
     });
 
     // Fechar modais e confirmação

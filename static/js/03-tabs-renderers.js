@@ -1661,6 +1661,333 @@
       .join('');
   }
 
+  // ---------------------------------------------------------------------------
+  // ABA EXCLUSIVA DO HOST: ÁRVORE DE HABILIDADES (GESTÃO DE ÁRVORES E NÓS)
+  // ---------------------------------------------------------------------------
+  function renderSkillTreesTab() {
+    const container = document.getElementById('skill-trees-host-container');
+    if (!container) return;
+
+    const trees = Array.isArray(state.skillTrees) ? state.skillTrees : [];
+    if (trees.length === 0) {
+      container.innerHTML = `
+        <div class="fantasy-card p-10 text-center space-y-3 border border-dashed app-divider-border">
+          <div class="text-4xl gold-title flex justify-center">
+            <iconify-icon icon="game-icons:family-tree"></iconify-icon>
+          </div>
+          <h3 class="font-serif-fantasy text-base font-black uppercase gold-title">Nenhuma Árvore de Habilidades Cadastrada</h3>
+          <p class="text-xs app-muted max-w-lg mx-auto">
+            Crie uma nova árvore personalizada ou carregue imediatamente o template completo de <strong>Geomancia</strong> com efeito de 100% (+10 Capacidade de Peso), passivas, postura ativa com melhorias e talentos multi-rank.
+          </p>
+          <div class="flex flex-wrap items-center justify-center gap-2.5 pt-2">
+            <button type="button" data-host-seed-geomancia="true" class="px-4 py-2 rounded-lg text-xs font-serif-fantasy font-bold uppercase btn-gold-outline flex items-center gap-1.5">
+              <iconify-icon icon="game-icons:stone-sphere"></iconify-icon>
+              <span>Carregar Exemplo (Geomancia)</span>
+            </button>
+            <button type="button" data-host-create-tree="true" class="btn-gold px-5 py-2 rounded-lg text-xs font-serif-fantasy font-black uppercase flex items-center gap-1.5">
+              <iconify-icon icon="game-icons:sparkles"></iconify-icon>
+              <span>＋ Criar Primeira Árvore</span>
+            </button>
+          </div>
+        </div>
+      `;
+      return;
+    }
+
+    if (!state.activeSkillTreeId || !trees.some((t) => t.id === state.activeSkillTreeId)) {
+      state.activeSkillTreeId = trees[0].id;
+    }
+    const activeTree = trees.find((t) => t.id === state.activeSkillTreeId) || trees[0];
+    const nodes = Array.isArray(activeTree.nodes)
+      ? [...activeTree.nodes].sort((a, b) => Number(a.order ?? 0) - Number(b.order ?? 0))
+      : [];
+
+    const completionEffectsSummary = (activeTree.completionEffects || [])
+      .map(
+        (ef) =>
+          `${ef.value >= 0 ? '+' : ''}${ef.value}${ef.modifierType === 'PERCENT' ? '%' : ''} ${formatEffectTargetLabel(
+            ef.targetStat
+          )}`
+      )
+      .join(' • ');
+
+    const categoriesMeta = [
+      {
+        key: 'SUPREMA',
+        title: 'Constelação de Supremas',
+        icon: 'game-icons:crowned-explosion',
+        badgeClass: 'bg-amber-500/20 text-amber-300 border-amber-500/45',
+      },
+      {
+        key: 'ATIVA',
+        title: 'Constelação de Habilidades Ativas',
+        icon: 'game-icons:fire-spell-cast',
+        badgeClass: 'bg-rose-500/20 text-rose-300 border-rose-500/45',
+      },
+      {
+        key: 'PASSIVA',
+        title: 'Constelação de Habilidades Passivas',
+        icon: 'game-icons:dragon-shield',
+        badgeClass: 'bg-sky-500/20 text-sky-300 border-sky-500/45',
+      },
+      {
+        key: 'TALENTO',
+        title: 'Constelação de Talentos (Multi-Rank)',
+        icon: 'game-icons:sparkles',
+        badgeClass: 'bg-purple-500/20 text-purple-300 border-purple-500/45',
+      },
+    ];
+
+    container.innerHTML = `
+      <!-- Barra de Abas das Árvores Cadastradas -->
+      <div class="fantasy-card p-3 flex flex-wrap items-center justify-between gap-2">
+        <div class="flex flex-wrap items-center gap-2">
+          ${trees
+            .map((t) => {
+              const isSelected = t.id === activeTree.id;
+              const nCount = Array.isArray(t.nodes) ? t.nodes.length : 0;
+              const isHidden = Boolean(t.hiddenForPlayers || t.ocultarParaJogadores);
+              return `
+                <button
+                  type="button"
+                  data-host-select-tree="${escapeHtml(t.id)}"
+                  class="px-3.5 py-2 rounded-xl text-xs font-serif-fantasy font-bold uppercase transition flex items-center gap-2 ${
+                    isSelected ? 'btn-gold' : 'app-secondary-btn hover:border-amber-500/40'
+                  }"
+                >
+                  <iconify-icon icon="game-icons:family-tree"></iconify-icon>
+                  <span>${escapeHtml(t.name)}</span>
+                  <span class="px-1.5 py-0.5 rounded text-[10px] font-mono ${
+                    isSelected ? 'bg-black/25 text-black font-black' : 'bg-black/40 gold-title'
+                  }">${nCount} nós</span>
+                  ${
+                    isHidden
+                      ? `<span class="px-1.5 py-0.5 rounded text-[9px] font-mono bg-rose-900/80 text-rose-200 border border-rose-500/40" title="Oculta para jogadores">OCULTA</span>`
+                      : ''
+                  }
+                </button>
+              `;
+            })
+            .join('')}
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            data-host-edit-tree="${escapeHtml(activeTree.id)}"
+            class="px-3 py-1.5 rounded-lg text-xs font-bold btn-gold-outline flex items-center gap-1.5"
+          >
+            <iconify-icon icon="game-icons:quill-ink"></iconify-icon>
+            <span>Editar Árvore / Bônus 100%</span>
+          </button>
+          <button
+            type="button"
+            data-host-add-node="${escapeHtml(activeTree.id)}"
+            class="px-3.5 py-1.5 rounded-lg text-xs font-serif-fantasy font-black uppercase btn-gold flex items-center gap-1.5"
+          >
+            <iconify-icon icon="game-icons:plus"></iconify-icon>
+            <span>Adicionar Nó</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Card Principal da Árvore Selecionada + Efeito 100% -->
+      <div class="fantasy-card p-5 space-y-4">
+        <div class="flex flex-wrap items-start justify-between gap-4 pb-3 border-b app-divider-border">
+          <div class="space-y-1 max-w-3xl">
+            <div class="flex flex-wrap items-center gap-2">
+              <h3 class="font-serif-fantasy text-xl font-black uppercase gold-title flex items-center gap-2">
+                <iconify-icon icon="game-icons:family-tree"></iconify-icon>
+                <span>${escapeHtml(activeTree.name)}</span>
+              </h3>
+              ${
+                activeTree.hiddenForPlayers || activeTree.ocultarParaJogadores
+                  ? `<span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40"><iconify-icon icon="game-icons:eyeball"></iconify-icon> Oculta para Jogadores</span>`
+                  : `<span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/35"><iconify-icon icon="game-icons:check-mark"></iconify-icon> Visível para Jogadores</span>`
+              }
+            </div>
+            <p class="text-xs app-muted leading-relaxed">
+              ${escapeHtml(activeTree.description || 'Sem descrição temática informada.')}
+            </p>
+          </div>
+
+          <!-- Resumo do Efeito de Árvore Completa (100%) -->
+          <div class="p-3.5 rounded-xl bg-gradient-to-r from-amber-950/40 via-black/50 to-amber-900/30 border border-amber-500/45 min-w-[270px] max-w-md">
+            <div class="flex items-center justify-between gap-2 mb-1">
+              <span class="font-serif-fantasy font-black text-[11px] uppercase gold-title flex items-center gap-1.5">
+                <iconify-icon icon="game-icons:laurel-crown"></iconify-icon>
+                <span>EFEITO DE ÁRVORE COMPLETA (100%)</span>
+              </span>
+              <span class="px-1.5 py-0.5 rounded text-[9px] font-mono font-black bg-amber-500/20 text-amber-300 border border-amber-400/40">BÔNUS 100%</span>
+            </div>
+            ${
+              activeTree.completionDescription
+                ? `<p class="text-[11px] text-amber-100/90 leading-snug mb-1.5">${escapeHtml(activeTree.completionDescription)}</p>`
+                : ''
+            }
+            ${
+              completionEffectsSummary
+                ? `<div class="px-2 py-1 rounded bg-black/45 border border-amber-500/30 text-[11px] font-mono font-bold text-amber-300 flex items-center gap-1.5">
+                    <iconify-icon icon="game-icons:sparkles"></iconify-icon>
+                    <span>${escapeHtml(completionEffectsSummary)}</span>
+                  </div>`
+                : `<div class="text-[11px] font-mono app-muted italic">Nenhum modificador matemático configurado para 100%.</div>`
+            }
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between text-[11px] app-muted">
+          <span><iconify-icon icon="game-icons:move"></iconify-icon> <strong>Dica do Mestre:</strong> Arraste os cards de nós (Drag &amp; Drop) para personalizar a ordem visual nas constelações.</span>
+          <span class="font-mono font-bold gold-title">Total de Nós: ${nodes.length}</span>
+        </div>
+
+        <!-- 4 Seções de Constelação no Editor do Mestre -->
+        <div class="space-y-4">
+          ${categoriesMeta
+            .map((cat) => {
+              const catNodes = nodes.filter((n) => String(n.category || 'TALENTO').toUpperCase() === cat.key);
+              return `
+                <div class="constellation-tier-section space-y-3">
+                  <div class="relative z-10 flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-amber-500/20">
+                    <div class="flex items-center gap-2">
+                      <span class="px-2.5 py-1 rounded-lg text-xs font-serif-fantasy font-black uppercase border ${cat.badgeClass} flex items-center gap-1.5">
+                        <iconify-icon icon="${cat.icon}"></iconify-icon>
+                        <span>${cat.title}</span>
+                      </span>
+                      <span class="text-xs font-mono font-bold app-muted">(${catNodes.length})</span>
+                    </div>
+                    <button
+                      type="button"
+                      data-host-add-node="${escapeHtml(activeTree.id)}"
+                      data-host-node-cat="${cat.key}"
+                      class="px-2.5 py-1 rounded-lg text-[11px] font-bold btn-gold-outline flex items-center gap-1"
+                    >
+                      <iconify-icon icon="game-icons:plus"></iconify-icon>
+                      <span>＋ Adicionar ${cat.key === 'TALENTO' ? 'Talento' : cat.key === 'PASSIVA' ? 'Passiva' : cat.key === 'ATIVA' ? 'Ativa' : 'Suprema'}</span>
+                    </button>
+                  </div>
+
+                  ${
+                    catNodes.length === 0
+                      ? `<div class="relative z-10 p-4 rounded-xl bg-black/30 border border-dashed app-divider-border text-center text-xs app-muted">
+                          Nenhum nó cadastrado nesta categoria ainda.
+                        </div>`
+                      : `<div class="constellation-nodes-grid grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5" data-skill-nodes-dropzone="${escapeHtml(activeTree.id)}">
+                          ${catNodes
+                            .map((node) => renderHostSkillNodeCardHtml(activeTree, node))
+                            .join('')}
+                        </div>`
+                  }
+                </div>
+              `;
+            })
+            .join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  function renderHostSkillNodeCardHtml(tree, node) {
+    const cat = String(node.category || 'TALENTO').toUpperCase();
+    const subtypeLabel = node.subtype ? ` - ${String(node.subtype).toUpperCase()}` : '';
+    const badgeLabel = `[${cat}${subtypeLabel}]`;
+
+    const effectsSummary = (node.effects || node.modifiers || [])
+      .map(
+        (ef) =>
+          `${ef.value >= 0 ? '+' : ''}${ef.value}${ef.modifierType === 'PERCENT' ? '%' : ''} ${formatEffectTargetLabel(
+            ef.targetStat
+          )}`
+      )
+      .join(' • ');
+
+    let costMetaHtml = '';
+    if (cat === 'TALENTO') {
+      const maxR = Math.max(1, Number(node.maxRanks || 1));
+      const cRank = Math.max(0, Number(node.costPerRank ?? node.unlockCost ?? 1));
+      costMetaHtml = `
+        <span class="px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/40 font-mono font-bold text-[10px]">
+          Ranks: 0/${maxR} • Custo/Nv: ${cRank} pt(s)
+        </span>
+      `;
+    } else {
+      const uCost = Math.max(0, Number(node.unlockCost ?? 1));
+      const maxUpg = Math.max(0, Number(node.maxUpgrades || 0));
+      const upgCost = Math.max(0, Number(node.upgradeCost || 0));
+      costMetaHtml = `
+        <span class="px-2 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/35 font-mono font-bold text-[10px]">
+          Liberação: ${uCost} pt(s)${maxUpg > 0 ? ` • Melhorias: 0/${maxUpg} (${upgCost} pt/melhoria)` : ''}
+        </span>
+      `;
+    }
+
+    const combatTagsHtml = renderSkillCombatTags(node);
+
+    return `
+      <div
+        class="constellation-node-card p-3.5 flex flex-col justify-between gap-2.5 cursor-grab active:cursor-grabbing"
+        draggable="true"
+        data-skill-node-card="${escapeHtml(node.id)}"
+        data-skill-tree-id="${escapeHtml(tree.id)}"
+      >
+        <div class="space-y-2">
+          <div class="flex items-start justify-between gap-2">
+            <div class="min-w-0">
+              <div class="flex flex-wrap items-center gap-1.5 mb-0.5">
+                <span class="text-[10px] font-mono font-black gold-title">${escapeHtml(badgeLabel)}</span>
+                ${costMetaHtml}
+              </div>
+              <h4 class="font-serif-fantasy font-black text-sm app-title truncate" title="${escapeHtml(node.name)}">
+                ${escapeHtml(node.name)}
+              </h4>
+            </div>
+            <div class="flex items-center gap-1 shrink-0">
+              <button
+                type="button"
+                data-host-edit-node="${escapeHtml(node.id)}"
+                data-host-node-tree="${escapeHtml(tree.id)}"
+                class="w-7 h-7 rounded-lg app-icon-btn flex items-center justify-center text-xs"
+                title="Editar Nó"
+              >
+                <iconify-icon icon="game-icons:quill-ink"></iconify-icon>
+              </button>
+              <button
+                type="button"
+                data-host-delete-node="${escapeHtml(node.id)}"
+                data-host-node-tree="${escapeHtml(tree.id)}"
+                class="w-7 h-7 rounded-lg app-icon-btn text-rose-400 hover:text-rose-300 flex items-center justify-center text-xs"
+                title="Excluir Nó"
+              >
+                <iconify-icon icon="game-icons:trash-can"></iconify-icon>
+              </button>
+            </div>
+          </div>
+
+          ${combatTagsHtml}
+
+          <p class="text-[11px] app-label leading-relaxed whitespace-pre-wrap">${escapeHtml(node.description || '')}</p>
+
+          ${
+            node.upgradeDescription && Number(node.maxUpgrades || 0) > 0
+              ? `<div class="p-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-[11px] text-amber-200">
+                  <strong class="gold-title uppercase text-[10px] font-mono">Melhoria (+${Number(node.upgradeCost || 0)} pt):</strong> ${escapeHtml(node.upgradeDescription)}
+                </div>`
+              : ''
+          }
+
+          ${
+            effectsSummary
+              ? `<div class="px-2.5 py-1 rounded-lg bg-emerald-950/40 border border-emerald-500/35 text-[10px] font-mono font-bold text-emerald-300 flex items-center gap-1.5">
+                  <iconify-icon icon="game-icons:lightning-branches"></iconify-icon>
+                  <span>${cat === 'TALENTO' ? 'Por Nível: ' : 'Efeito: '}${escapeHtml(effectsSummary)}</span>
+                </div>`
+              : ''
+          }
+        </div>
+      </div>
+    `;
+  }
+
   function renderAll() {
     renderHeaderAndSidebarBadges();
     renderOverviewTab();
@@ -1669,6 +1996,7 @@
     renderShopTab();
     renderBestiaryTab();
     renderQuestsTab();
+    renderSkillTreesTab();
     renderAdminTab();
     renderBattleSidebar();
     refreshOpenModalsIfAny();
@@ -1696,6 +2024,7 @@
     }
     if (id === 'modal-char-sheet') state.activeSheetCharId = null;
     if (id === 'modal-char-inventory') state.activeInventoryCharId = null;
+    if (id === 'modal-skill-tree') state.activeSkillTreeModalCharId = null;
     refreshAllRemoteCursorsVisibility();
   }
 
@@ -1722,6 +2051,18 @@
       const char = state.characters.find((c) => c.id === state.activeInventoryCharId);
       if (char) renderCharacterInventoryModalContent(char);
       else closeModal('modal-char-inventory');
+    }
+    const skillTreeModal = document.getElementById('modal-skill-tree');
+    if (skillTreeModal && !skillTreeModal.classList.contains('hidden')) {
+      if (typeof renderSkillTreeConstellationModal === 'function') {
+        renderSkillTreeConstellationModal();
+      }
+    }
+    const skillDetailModal = document.getElementById('modal-skill-detail');
+    if (skillDetailModal && !skillDetailModal.classList.contains('hidden')) {
+      if (typeof renderSkillDetailTreeSkillsSection === 'function') {
+        renderSkillDetailTreeSkillsSection();
+      }
     }
     const charFormModal = document.getElementById('modal-char-form');
     if (charFormModal && !charFormModal.classList.contains('hidden')) {

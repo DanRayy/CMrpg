@@ -127,6 +127,17 @@
           </span>
         </button>
 
+        <button type="button" data-nav-tab="skill-trees" class="sidebar-nav-item master-only-el">
+          <span class="flex items-center gap-2.5">
+            <iconify-icon icon="game-icons:family-tree"></iconify-icon>
+            <span>ÁRVORE DE HABILIDADES</span>
+          </span>
+          <span class="flex items-center gap-1.5">
+            <span data-nav-cursors="skill-trees" class="sidebar-cursors-dots"></span>
+            <span id="badge-skill-trees-count" class="sidebar-badge">1</span>
+          </span>
+        </button>
+
         <button type="button" data-nav-tab="admin" class="sidebar-nav-item">
           <span class="flex items-center gap-2.5">
             <iconify-icon icon="game-icons:cog-lock" class="text-base"></iconify-icon>
@@ -750,6 +761,55 @@
         </div>
 
         <div id="quests-list-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+      </section>
+
+      <!-- ===================================================================== -->
+      <!-- ABA EXCLUSIVA DO HOST: ÁRVORE DE HABILIDADES (EDITOR E GESTÃO)        -->
+      <!-- ===================================================================== -->
+      <section id="tab-skill-trees" class="tab-section hidden space-y-5">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 class="font-serif-fantasy text-lg font-extrabold gold-title uppercase tracking-wider flex items-center gap-2">
+              <iconify-icon icon="game-icons:family-tree"></iconify-icon>
+              <span>Árvores de Habilidades &amp; Constelações (Mestre)</span>
+            </h2>
+            <p class="text-xs app-muted">
+              Crie e configure árvores completas com bônus de 100%, talentos multi-rank, passivas, ativas, supremas e reordene nós por Drag &amp; Drop.
+            </p>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              id="btn-seed-geomancia-tree"
+              class="px-3.5 py-2 text-xs font-serif-fantasy uppercase btn-gold-outline flex items-center gap-1.5"
+              title="Carregar ou restaurar a árvore de exemplo Geomancia completa"
+            >
+              <iconify-icon icon="game-icons:stone-sphere"></iconify-icon>
+              <span>Carregar Exemplo (Geomancia)</span>
+            </button>
+            <button
+              type="button"
+              id="btn-open-fullscreen-skill-tree-master"
+              class="px-3.5 py-2 text-xs font-serif-fantasy uppercase btn-gold-outline flex items-center gap-1.5"
+              title="Abrir o Modal Híbrido Quase Tela Cheia (96vw x 92vh) para testar/gerenciar nos personagens"
+            >
+              <iconify-icon icon="game-icons:computing"></iconify-icon>
+              <span>Abrir Modal Constelação (96vw)</span>
+            </button>
+            <button
+              type="button"
+              id="btn-create-skill-tree"
+              class="btn-gold px-4 py-2 text-xs font-serif-fantasy uppercase tracking-wider flex items-center gap-1.5"
+            >
+              <iconify-icon icon="game-icons:sparkles"></iconify-icon>
+              <span>＋ Nova Árvore</span>
+            </button>
+          </div>
+        </div>
+
+        <div id="skill-trees-host-container" class="space-y-5">
+          <!-- Renderizado dinamicamente pelo JS -->
+        </div>
       </section>
 
       <!-- ===================================================================== -->
@@ -2217,7 +2277,7 @@
   <!-- MODAL 14: DETALHES / EDIÇÃO DE HABILIDADE (PASSIVA, ATIVA, SUPREMA)       -->
   <!-- ========================================================================= -->
   <div id="modal-skill-detail" class="modal-backdrop hidden fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-6">
-    <div class="modal-panel w-[95vw] max-w-5xl h-[82vh] max-h-[88vh] rounded-2xl overflow-hidden flex flex-col">
+    <div class="modal-panel w-[95vw] max-w-5xl h-[86vh] max-h-[90vh] rounded-2xl overflow-hidden flex flex-col">
       <div class="px-6 py-4 border-b flex items-center justify-between app-modal-header shrink-0">
         <div class="flex items-center gap-3">
           <span id="skill-modal-icon" class="text-2xl flex items-center"><iconify-icon icon="game-icons:dragon-shield"></iconify-icon></span>
@@ -2229,15 +2289,43 @@
         <button type="button" data-close-modal="modal-skill-detail" class="w-9 h-9 rounded-lg flex items-center justify-center app-icon-btn text-base">✕</button>
       </div>
 
-      <form id="form-skill-detail" class="p-6 flex flex-col gap-4 text-xs flex-1 min-h-0">
+      <form id="form-skill-detail" class="p-6 flex flex-col gap-5 text-xs flex-1 min-h-0 overflow-y-auto app-scroll">
         <input type="hidden" id="skill-modal-slot" value="PASSIVA" />
         <input type="hidden" id="skill-modal-context" value="FORM" />
         <input type="hidden" id="skill-modal-char-id" value="" />
 
-        <div class="flex flex-col flex-1 min-h-0">
+        <!-- ÁREA 2 (ACIMA/INTEGRADA): Habilidades Adquiridas nas Árvores desta Categoria -->
+        <div id="skill-modal-tree-skills-section" class="p-4 rounded-xl bg-black/35 border border-amber-500/25 space-y-3 shrink-0">
+          <div class="flex flex-wrap items-center justify-between gap-2 pb-2 border-b app-divider-border">
+            <div class="flex items-center gap-2">
+              <iconify-icon icon="game-icons:family-tree" class="text-base gold-title"></iconify-icon>
+              <h4 id="skill-modal-tree-skills-heading" class="font-serif-fantasy font-extrabold uppercase gold-title tracking-wider text-xs sm:text-sm">
+                Habilidades Adquiridas nas Árvores
+              </h4>
+              <span id="skill-modal-tree-skills-count" class="px-2 py-0.5 rounded-full text-[10px] font-mono font-black bg-amber-500/15 text-amber-300 border border-amber-500/35">
+                0 da Árvore
+              </span>
+            </div>
+            <button
+              type="button"
+              id="btn-open-tree-from-skill-modal"
+              class="px-3 py-1 rounded-lg text-[11px] font-serif-fantasy font-bold uppercase btn-gold-outline flex items-center gap-1.5"
+            >
+              <iconify-icon icon="game-icons:family-tree"></iconify-icon>
+              <span>Abrir Árvore de Habilidades</span>
+            </button>
+          </div>
+          <div id="skill-modal-tree-skills-list" class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <!-- Cards de habilidades adquiridas na árvore renderizados via JS -->
+          </div>
+        </div>
+
+        <!-- ÁREA 1: Anotação Manual Padrão -->
+        <div class="flex flex-col flex-1 min-h-[220px]">
           <div class="flex items-center justify-between mb-2 shrink-0">
-            <label for="skill-modal-textarea" class="block font-bold uppercase tracking-wider app-label">
-              Texto / Descrição da Habilidade
+            <label for="skill-modal-textarea" class="block font-bold uppercase tracking-wider app-label flex items-center gap-1.5">
+              <iconify-icon icon="game-icons:quill-ink" class="gold-title"></iconify-icon>
+              <span>Anotação Manual / Texto Customizado da Habilidade</span>
             </label>
             <span id="skill-modal-readonly-badge" class="hidden px-2.5 py-0.5 rounded bg-amber-500/15 gold-title font-mono font-bold text-[11px]">
               <iconify-icon icon="game-icons:eyeball"></iconify-icon> <span>Somente Visualização</span>
@@ -2245,17 +2333,17 @@
           </div>
           <textarea
             id="skill-modal-textarea"
-            placeholder="Descreva os efeitos, custos, alcance e regras desta habilidade..."
-            class="w-full flex-1 min-h-[320px] px-4 py-3.5 text-sm sm:text-base leading-relaxed app-input resize-none overflow-y-auto"
+            placeholder="Descreva anotações livres, efeitos customizados, custos, alcance e regras extras desta habilidade..."
+            class="w-full flex-1 min-h-[180px] px-4 py-3.5 text-sm sm:text-base leading-relaxed app-input resize-y overflow-y-auto"
           ></textarea>
         </div>
 
-        <div class="pt-2 flex items-center justify-end gap-2.5 shrink-0">
+        <div class="pt-2 flex items-center justify-end gap-2.5 shrink-0 border-t app-divider-border">
           <button type="button" data-close-modal="modal-skill-detail" class="px-4 py-2.5 rounded-lg font-bold uppercase app-secondary-btn">
             Fechar
           </button>
           <button type="submit" id="btn-save-skill-detail" class="btn-gold px-6 py-2.5 font-serif-fantasy uppercase tracking-wider">
-            <iconify-icon icon="game-icons:save"></iconify-icon> <span>Salvar Habilidade</span>
+            <iconify-icon icon="game-icons:save"></iconify-icon> <span>Salvar Anotação Manual</span>
           </button>
         </div>
       </form>
@@ -3066,6 +3154,449 @@
           <span>Salvamento automático</span>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- MODAL 20: ÁRVORE DE HABILIDADES QUASE TELA CHEIA (96vw x 92vh)            -->
+  <!-- ========================================================================= -->
+  <div id="modal-skill-tree" class="modal-backdrop hidden fixed inset-0 z-[72] flex items-center justify-center p-2 sm:p-4">
+    <div class="modal-panel w-[96vw] max-w-[96vw] h-[92vh] max-h-[92vh] rounded-2xl overflow-hidden flex flex-col skill-tree-modal-shell">
+      <!-- Topbar do Modal de Árvore de Habilidades -->
+      <div class="px-5 py-3.5 border-b flex flex-wrap items-center justify-between gap-3 app-modal-header shrink-0">
+        <div class="flex flex-wrap items-center gap-3 min-w-0">
+          <div class="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-500/40 flex items-center justify-center text-2xl gold-title shrink-0">
+            <iconify-icon icon="game-icons:family-tree"></iconify-icon>
+          </div>
+          <div class="min-w-0">
+            <div class="flex flex-wrap items-center gap-2">
+              <h3 id="skill-tree-modal-title" class="font-serif-fantasy text-base sm:text-lg font-black uppercase gold-title tracking-wider">
+                ÁRVORE DE HABILIDADES
+              </h3>
+              <select
+                id="skill-tree-modal-char-select"
+                class="px-2.5 py-1 rounded-lg text-xs font-bold app-input max-w-[240px]"
+                title="Selecionar Personagem"
+              ></select>
+            </div>
+            <p id="skill-tree-modal-subtitle" class="text-[11px] font-mono app-muted truncate mt-0.5">
+              Adquira talentos, passivas, ativas e supremas livremente em qualquer ordem.
+            </p>
+          </div>
+        </div>
+
+        <!-- Pontos de Talento Disponíveis + Ações do Mestre + Fechar -->
+        <div class="flex flex-wrap items-center gap-2.5">
+          <div class="px-3.5 py-1.5 rounded-xl bg-purple-950/50 border border-purple-500/40 flex items-center gap-2">
+            <iconify-icon icon="game-icons:sparkles" class="text-purple-300 text-base"></iconify-icon>
+            <span class="text-xs font-bold text-purple-200 uppercase tracking-wider">Pontos de Talento:</span>
+            <span id="skill-tree-modal-points-badge" class="font-mono font-black text-base text-purple-300">0</span>
+            <div id="skill-tree-modal-master-pts-btns" class="hidden flex items-center gap-1 ml-1">
+              <button type="button" id="btn-st-modal-sub-pt" class="w-6 h-6 rounded bg-black/40 hover:bg-black/70 border border-purple-500/40 text-purple-200 font-mono font-black text-xs" title="Remover 1 Ponto de Talento (Mestre)">-1</button>
+              <button type="button" id="btn-st-modal-add-pt" class="w-6 h-6 rounded bg-purple-600 hover:bg-purple-500 text-white font-mono font-black text-xs" title="Conceder +1 Ponto de Talento (Mestre)">+1</button>
+            </div>
+          </div>
+
+          <div id="skill-tree-modal-master-toolbar" class="hidden flex flex-wrap items-center gap-1.5">
+            <button
+              type="button"
+              id="btn-st-modal-seed-geomancia"
+              class="px-2.5 py-1.5 rounded-lg text-[11px] font-serif-fantasy font-bold uppercase btn-gold-outline flex items-center gap-1"
+              title="Carregar ou restaurar a Árvore de Exemplo (Geomancia)"
+            >
+              <iconify-icon icon="game-icons:stone-sphere"></iconify-icon>
+              <span class="hidden md:inline">Exemplo (Geomancia)</span>
+            </button>
+            <button
+              type="button"
+              id="btn-st-modal-new-tree"
+              class="px-2.5 py-1.5 rounded-lg text-[11px] font-serif-fantasy font-bold uppercase btn-gold-outline flex items-center gap-1"
+            >
+              <iconify-icon icon="game-icons:plus"></iconify-icon>
+              <span>Nova Árvore</span>
+            </button>
+            <button
+              type="button"
+              id="btn-st-modal-edit-tree"
+              class="px-2.5 py-1.5 rounded-lg text-[11px] font-serif-fantasy font-bold uppercase app-secondary-btn flex items-center gap-1"
+            >
+              <iconify-icon icon="game-icons:quill-ink"></iconify-icon>
+              <span>Editar Árvore</span>
+            </button>
+            <button
+              type="button"
+              id="btn-st-modal-add-node"
+              class="px-3 py-1.5 rounded-lg text-[11px] font-serif-fantasy font-black uppercase btn-gold flex items-center gap-1"
+            >
+              <iconify-icon icon="game-icons:sparkles"></iconify-icon>
+              <span>＋ Novo Nó</span>
+            </button>
+          </div>
+
+          <button type="button" data-close-modal="modal-skill-tree" class="w-9 h-9 rounded-lg flex items-center justify-center app-icon-btn text-base" title="Fechar Árvore de Habilidades">✕</button>
+        </div>
+      </div>
+
+      <!-- Barra de Abas de Seleção de Árvore -->
+      <div id="skill-tree-modal-tabs" class="px-5 py-2.5 border-b app-divider-border bg-black/35 flex items-center gap-2 overflow-x-auto shrink-0">
+        <!-- Abas das árvores renderizadas via JS -->
+      </div>
+
+      <!-- Corpo Principal da Constelação (Scrollable) -->
+      <div id="skill-tree-modal-body" class="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 skill-tree-constellation-bg app-scroll">
+        <!-- Cabeçalho da Árvore Atual + Barra de Progresso 100% + Efeito de Árvore Completa + 4 Constelações -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- MODAL 21: CRIAR / EDITAR ÁRVORE DE HABILIDADES & EFEITO 100%              -->
+  <!-- ========================================================================= -->
+  <div id="modal-skill-tree-form" class="modal-backdrop hidden fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-4">
+    <div class="modal-panel w-full max-w-2xl rounded-2xl overflow-hidden flex flex-col max-h-[92vh]">
+      <div class="px-5 py-4 border-b flex items-center justify-between app-modal-header shrink-0">
+        <div class="flex items-center gap-2.5">
+          <iconify-icon icon="game-icons:family-tree" class="text-xl gold-title"></iconify-icon>
+          <h3 id="skill-tree-form-modal-title" class="font-serif-fantasy text-base font-black uppercase gold-title">
+            Configurar Árvore de Habilidades
+          </h3>
+        </div>
+        <button type="button" data-close-modal="modal-skill-tree-form" class="w-8 h-8 rounded-lg flex items-center justify-center app-icon-btn">✕</button>
+      </div>
+
+      <form id="form-skill-tree" class="p-5 overflow-y-auto space-y-4 text-xs flex-1 app-scroll">
+        <input type="hidden" id="st-form-id" value="" />
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 items-start">
+          <div class="sm:col-span-2">
+            <label for="st-form-name" class="block font-bold uppercase mb-1 gold-title">Nome da Árvore</label>
+            <input
+              id="st-form-name"
+              type="text"
+              required
+              placeholder="Ex: Geomancia, Piromancia, Berserker..."
+              class="w-full px-3 py-2 font-bold app-input"
+            />
+          </div>
+          <div class="pt-0 sm:pt-5">
+            <label class="flex items-center gap-2 cursor-pointer p-2.5 rounded-xl bg-black/30 border app-divider-border hover:border-amber-500/40 transition">
+              <input type="checkbox" id="st-form-hidden" class="w-4 h-4 rounded accent-amber-500 cursor-pointer" />
+              <span class="font-bold text-[11px] app-label">Ocultar Árvore para Jogadores</span>
+            </label>
+          </div>
+        </div>
+
+        <div>
+          <label for="st-form-desc" class="block font-bold uppercase mb-1 app-label">Descrição / Tema da Árvore</label>
+          <textarea
+            id="st-form-desc"
+            rows="2"
+            placeholder="Descreva a temática, estilo de combate ou lore desta árvore de habilidades..."
+            class="w-full px-3 py-2 app-input"
+          ></textarea>
+        </div>
+
+        <!-- Seção: EFEITO DE ÁRVORE COMPLETA (100%) -->
+        <div class="p-4 rounded-xl bg-gradient-to-br from-amber-950/35 via-black/45 to-amber-900/20 border border-amber-500/45 space-y-3">
+          <div class="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-amber-500/25">
+            <div>
+              <h4 class="font-serif-fantasy font-black text-xs sm:text-sm uppercase gold-title flex items-center gap-1.5">
+                <iconify-icon icon="game-icons:laurel-crown"></iconify-icon>
+                <span>EFEITO DE ÁRVORE COMPLETA (100%)</span>
+              </h4>
+              <p class="text-[10px] app-muted mt-0.5">
+                Ativado automaticamente em dourado quando o personagem adquirir 100% de todos os nós e todas as melhorias desta árvore.
+              </p>
+            </div>
+            <button
+              type="button"
+              id="btn-add-st-completion-effect"
+              class="px-3 py-1.5 rounded-lg text-[11px] font-bold btn-gold-outline flex items-center gap-1"
+            >
+              <iconify-icon icon="game-icons:plus"></iconify-icon>
+              <span>＋ Efeito se Completa</span>
+            </button>
+          </div>
+
+          <div>
+            <label for="st-form-completion-desc" class="block font-bold uppercase mb-1 app-label text-[11px]">
+              Descrição Textual do Bônus de 100% (Opcional)
+            </label>
+            <input
+              id="st-form-completion-desc"
+              type="text"
+              placeholder="Ex: Domínio completo da terra: +10 kg de Capacidade de Peso máxima."
+              class="w-full px-3 py-2 app-input text-xs"
+            />
+          </div>
+
+          <div class="space-y-1.5">
+            <label class="block font-serif-fantasy font-bold uppercase text-[10px] gold-title tracking-wider">
+              EFEITOS SE COMPLETA (FLAT / %)
+            </label>
+            <div id="st-completion-effects-list" class="space-y-2">
+              <!-- Linhas de modificadores de árvore 100% -->
+            </div>
+          </div>
+        </div>
+
+        <div class="pt-3 border-t app-divider-border flex items-center justify-between gap-2">
+          <button
+            type="button"
+            id="btn-delete-skill-tree"
+            class="hidden px-3.5 py-2 rounded-lg font-extrabold uppercase bg-rose-600/20 hover:bg-rose-600 text-rose-400 hover:text-white border border-rose-500/40 transition flex items-center gap-1.5"
+          >
+            <iconify-icon icon="game-icons:trash-can"></iconify-icon>
+            <span>Excluir Árvore</span>
+          </button>
+          <div class="flex items-center gap-2 ml-auto">
+            <button type="button" data-close-modal="modal-skill-tree-form" class="px-4 py-2 rounded-lg font-bold uppercase app-secondary-btn">
+              Cancelar
+            </button>
+            <button type="submit" class="btn-gold px-5 py-2 font-serif-fantasy uppercase tracking-wider">
+              <iconify-icon icon="game-icons:save"></iconify-icon>
+              <span>Salvar Árvore</span>
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- MODAL 22: CRIAR / EDITAR NÓ DA ÁRVORE (TALENTO, PASSIVA, ATIVA, SUPREMA)  -->
+  <!-- ========================================================================= -->
+  <div id="modal-skill-node-form" class="modal-backdrop hidden fixed inset-0 z-[82] flex items-center justify-center p-3 sm:p-4">
+    <div class="modal-panel w-full max-w-2xl rounded-2xl overflow-hidden flex flex-col max-h-[92vh]">
+      <div class="px-5 py-4 border-b flex items-center justify-between app-modal-header shrink-0">
+        <div class="flex items-center gap-2.5">
+          <iconify-icon icon="game-icons:sparkles" class="text-xl gold-title"></iconify-icon>
+          <h3 id="skill-node-form-modal-title" class="font-serif-fantasy text-base font-black uppercase gold-title">
+            Configurar Nó da Árvore
+          </h3>
+        </div>
+        <button type="button" data-close-modal="modal-skill-node-form" class="w-8 h-8 rounded-lg flex items-center justify-center app-icon-btn">✕</button>
+      </div>
+
+      <form id="form-skill-node" class="p-5 overflow-y-auto space-y-4 text-xs flex-1 app-scroll">
+        <input type="hidden" id="sn-form-tree-id" value="" />
+        <input type="hidden" id="sn-form-node-id" value="" />
+
+        <!-- Seleção de Categoria do Nó -->
+        <div>
+          <label for="sn-form-category" class="block font-bold uppercase mb-1 gold-title">Categoria do Nó</label>
+          <select id="sn-form-category" class="w-full px-3 py-2 font-bold app-input text-xs">
+            <option value="TALENTO">TALENTO (Empilhável / Multi-Rank por Nível)</option>
+            <option value="PASSIVA">PASSIVA (Habilidade Passiva c/ Switch e Integração na Ficha)</option>
+            <option value="ATIVA">ATIVA (Habilidade Ativa c/ Subtipo, Metadados e Melhorias)</option>
+            <option value="SUPREMA">SUPREMA (Habilidade Suprema c/ Subtipo, Metadados e Melhorias)</option>
+          </select>
+        </div>
+
+        <!-- Nome + Subtipo/Tag Opcional -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div id="sn-name-col" class="sm:col-span-2">
+            <label for="sn-form-name" class="block font-bold uppercase mb-1 app-label">Nome da Habilidade / Talento</label>
+            <input
+              id="sn-form-name"
+              type="text"
+              required
+              placeholder="Ex: Blindagem, Geomancia, Armadura de Rochas..."
+              class="w-full px-3 py-2 font-bold app-input"
+            />
+          </div>
+          <div id="sn-subtype-group">
+            <label for="sn-form-subtype" class="block font-bold uppercase mb-1 text-amber-300">Subtipo / Tag (Opcional)</label>
+            <input
+              id="sn-form-subtype"
+              type="text"
+              placeholder="Ex: Postura, Feitiço, Ataque"
+              class="w-full px-3 py-2 font-bold app-input"
+            />
+          </div>
+        </div>
+
+        <!-- Descrição Principal -->
+        <div>
+          <label for="sn-form-desc" class="block font-bold uppercase mb-1 app-label">Descrição Completa</label>
+          <textarea
+            id="sn-form-desc"
+            rows="3"
+            required
+            placeholder="Descreva os efeitos, regras condicionais ou funcionamento desta habilidade..."
+            class="w-full px-3 py-2 app-input leading-relaxed"
+          ></textarea>
+        </div>
+
+        <!-- Campos exclusivos de TALENTO (Multi-Rank) -->
+        <div id="sn-talent-ranks-section" class="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 rounded-xl bg-black/30 border app-divider-border">
+          <div>
+            <label for="sn-form-max-ranks" class="block font-bold uppercase mb-1 text-purple-300">
+              Melhorias / Níveis Máximos (Ranks)
+            </label>
+            <input
+              id="sn-form-max-ranks"
+              type="number"
+              min="1"
+              max="99"
+              step="1"
+              value="5"
+              class="w-full px-3 py-2 font-mono font-black app-input"
+            />
+            <span class="block text-[10px] app-muted mt-1">Quantas vezes este talento pode ser comprado (ex: 5 para 0/5 → 5/5).</span>
+          </div>
+          <div>
+            <label for="sn-form-cost-per-rank" class="block font-bold uppercase mb-1 gold-title">
+              Custo por Nível (Pts de Talento)
+            </label>
+            <input
+              id="sn-form-cost-per-rank"
+              type="number"
+              min="0"
+              step="1"
+              value="1"
+              class="w-full px-3 py-2 font-mono font-black app-input"
+            />
+            <span class="block text-[10px] app-muted mt-1">Pontos consumidos a cada nível adquirido.</span>
+          </div>
+        </div>
+
+        <!-- Campos de Liberação + Melhorias Extras (PASSIVA, ATIVA, SUPREMA) -->
+        <div id="sn-unlock-upgrades-section" class="hidden p-3.5 rounded-xl bg-black/30 border app-divider-border space-y-3">
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label for="sn-form-unlock-cost" class="block font-bold uppercase mb-1 gold-title">
+                Custo de Liberação (Base)
+              </label>
+              <input
+                id="sn-form-unlock-cost"
+                type="number"
+                min="0"
+                step="1"
+                value="4"
+                class="w-full px-3 py-2 font-mono font-black app-input"
+              />
+              <span class="block text-[10px] app-muted mt-0.5">Pts para desbloquear (Nível 1).</span>
+            </div>
+            <div>
+              <label for="sn-form-max-upgrades" class="block font-bold uppercase mb-1 text-purple-300">
+                Qtd. de Melhorias Extras
+              </label>
+              <input
+                id="sn-form-max-upgrades"
+                type="number"
+                min="0"
+                max="50"
+                step="1"
+                value="0"
+                class="w-full px-3 py-2 font-mono font-black app-input"
+              />
+              <span class="block text-[10px] app-muted mt-0.5">Ex: 2 exibe Melhoria 0/2.</span>
+            </div>
+            <div>
+              <label for="sn-form-upgrade-cost" class="block font-bold uppercase mb-1 text-amber-300">
+                Custo por Melhoria
+              </label>
+              <input
+                id="sn-form-upgrade-cost"
+                type="number"
+                min="0"
+                step="1"
+                value="2"
+                class="w-full px-3 py-2 font-mono font-black app-input"
+              />
+              <span class="block text-[10px] app-muted mt-0.5">Pts por cada melhoria extra.</span>
+            </div>
+          </div>
+
+          <div>
+            <label for="sn-form-upgrade-desc" class="block font-bold uppercase mb-1 app-label">
+              Descrição da Melhoria (Opcional)
+            </label>
+            <input
+              id="sn-form-upgrade-desc"
+              type="text"
+              placeholder="Ex: Recuperação com base em armadura +2%."
+              class="w-full px-3 py-2 app-input"
+            />
+          </div>
+        </div>
+
+        <!-- Bloco de Metadados de Combate (Modular e Opcional — ATIVA e SUPREMA) -->
+        <div id="sn-combat-metadata-section" class="hidden p-3.5 rounded-xl bg-indigo-950/20 border border-indigo-500/30 space-y-2.5">
+          <div class="flex items-center justify-between">
+            <h4 class="font-serif-fantasy font-extrabold uppercase text-[11px] text-indigo-300 flex items-center gap-1.5">
+              <iconify-icon icon="game-icons:crossed-swords"></iconify-icon>
+              <span>Metadados de Combate (Modular e Opcional)</span>
+            </h4>
+            <span class="text-[10px] app-muted">Deixe em branco os campos que não se aplicam</span>
+          </div>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+            <div>
+              <label for="sn-form-mana-cost" class="block font-bold mb-1 text-indigo-300 text-[11px]">Custo de Mana</label>
+              <input id="sn-form-mana-cost" type="text" placeholder="Ex: 35" class="w-full px-2.5 py-1.5 font-mono font-bold app-input" />
+            </div>
+            <div>
+              <label for="sn-form-pa-cost" class="block font-bold mb-1 text-amber-300 text-[11px]">Custo de PA</label>
+              <input id="sn-form-pa-cost" type="text" placeholder="Ex: 2" class="w-full px-2.5 py-1.5 font-mono font-bold app-input" />
+            </div>
+            <div>
+              <label for="sn-form-uses" class="block font-bold mb-1 text-emerald-300 text-[11px]">Usos</label>
+              <input id="sn-form-uses" type="text" placeholder="Ex: 3" class="w-full px-2.5 py-1.5 font-mono font-bold app-input" />
+            </div>
+            <div>
+              <label for="sn-form-cooldown" class="block font-bold mb-1 text-purple-300 text-[11px]">Recarga / Cooldown</label>
+              <input id="sn-form-cooldown" type="text" placeholder="Ex: 2 turnos" class="w-full px-2.5 py-1.5 font-mono font-bold app-input" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Construtor de Efeitos Matemáticos na Ficha (Por Nível ou Se Adquirida) -->
+        <div class="p-3.5 rounded-xl bg-black/30 border app-divider-border space-y-2.5">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h4 id="sn-effects-builder-title" class="font-serif-fantasy font-extrabold uppercase gold-title flex items-center gap-1.5">
+                <iconify-icon icon="game-icons:lightning-branches"></iconify-icon>
+                <span>EFEITOS POR NÍVEL (FLAT / %)</span>
+              </h4>
+              <p id="sn-effects-builder-hint" class="text-[10px] app-muted">
+                Multiplicados automaticamente pelo nível atual adquirido (NívelAtual × ValorDoEfeito).
+              </p>
+            </div>
+            <button
+              type="button"
+              id="btn-add-sn-effect"
+              class="px-2.5 py-1 rounded-lg text-[11px] font-bold btn-gold-outline flex items-center gap-1"
+            >
+              <iconify-icon icon="game-icons:plus"></iconify-icon>
+              <span>＋ Adicionar Efeito</span>
+            </button>
+          </div>
+          <div id="sn-effects-list" class="space-y-2">
+            <!-- Linhas de modificadores do nó -->
+          </div>
+        </div>
+
+        <div class="pt-3 border-t app-divider-border flex items-center justify-between gap-2">
+          <button
+            type="button"
+            id="btn-delete-skill-node"
+            class="hidden px-3.5 py-2 rounded-lg font-extrabold uppercase bg-rose-600/20 hover:bg-rose-600 text-rose-400 hover:text-white border border-rose-500/40 transition flex items-center gap-1.5"
+          >
+            <iconify-icon icon="game-icons:trash-can"></iconify-icon>
+            <span>Excluir Nó</span>
+          </button>
+          <div class="flex items-center gap-2 ml-auto">
+            <button type="button" data-close-modal="modal-skill-node-form" class="px-4 py-2 rounded-lg font-bold uppercase app-secondary-btn">
+              Cancelar
+            </button>
+            <button type="submit" class="btn-gold px-5 py-2 font-serif-fantasy uppercase tracking-wider">
+              <iconify-icon icon="game-icons:save"></iconify-icon>
+              <span>Salvar Nó</span>
+            </button>
+          </div>
+        </div>
+      </form>
     </div>
   </div>
 

@@ -50,6 +50,7 @@ VALID_EFFECT_TARGETS: List[str] = [
     "ARMADURA",
     "MANA",
     "PA",
+    "CAPACIDADE_PESO",
     "REGEN_VIDA",
     "REGEN_ARMADURA",
     "REGEN_MANA",
@@ -220,10 +221,12 @@ def compute_character_derived_stats(
     char: Dict[str, Any],
     items_catalog: List[Dict[str, Any]],
     room_settings: Dict[str, Any],
+    skill_trees: Optional[List[Dict[str, Any]]] = None,
 ) -> Dict[str, Any]:
     """
     Calcula carga (peso seletivo de itens equipados) e todos os status efetivos
-    do personagem combinando base + itens equipados + buffs ativos de consumíveis.
+    do personagem combinando base + itens equipados + buffs ativos de consumíveis +
+    talentos e árvores de habilidades (incluindo bônus de 100% de conclusão).
     """
     precedence = room_settings.get("statModifierPrecedence", "FLAT_FIRST")
     rounding_mode = room_settings.get("roundingMode", "ROUND_DOWN")
@@ -332,6 +335,134 @@ def compute_character_derived_stats(
             except (ValueError, TypeError):
                 pass
 
+    # Talentos legados da ficha (compatibilidade)
+    for tal in char.get("talents") or []:
+        if not isinstance(tal, dict):
+            continue
+        if tal.get("enabled") is False:
+            continue
+        for mod in (tal.get("modifiers") or tal.get("effects") or []):
+            if not isinstance(mod, dict):
+                continue
+            t_stat = mod.get("targetStat") or mod.get("stat")
+            if t_stat == "RESISTENCIA_GERAL":
+                t_stat = "RES_GERAL"
+            elif t_stat == "ACUMULOS_GERAIS":
+                t_stat = "ACUMULO_GERAL"
+            if t_stat not in flat_mods:
+                continue
+            try:
+                val = float(mod.get("value", 0))
+            except (ValueError, TypeError):
+                val = 0.0
+            m_type = str(mod.get("modifierType") or mod.get("mode") or "FLAT").upper()
+            if m_type in ("PERCENT", "PERCENTUAL", "%"):
+                pct_mods[t_stat] += val
+            else:
+                flat_mods[t_stat] += val
+
+    # Árvores de Habilidades (Nós adquiridos, Multi-Ranks e Efeito de Árvore Completa 100%)
+    char_progress = char.get("skillTreeProgress")
+    if not isinstance(char_progress, dict):
+        char_progress = {}
+
+    for tree in (skill_trees or []):
+        if not isinstance(tree, dict):
+            continue
+        nodes = tree.get("nodes") or []
+        if not isinstance(nodes, list) or len(nodes) == 0:
+            continue
+
+        total_steps = 0
+        acquired_steps = 0
+
+        for node in nodes:
+            if not isinstance(node, dict):
+                continue
+            node_id = str(node.get("id") or "")
+            if not node_id:
+                continue
+            cat = str(node.get("category") or "TALENTO").upper()
+            n_prog = char_progress.get(node_id)
+            if not isinstance(n_prog, dict):
+                n_prog = {}
+
+            if cat == "TALENTO":
+                try:
+                    max_ranks = max(1, int(node.get("maxRanks", 1) or 1))
+                except (ValueError, TypeError):
+                    max_ranks = 1
+                try:
+                    cur_rank = max(0, min(max_ranks, int(n_prog.get("rank", 0) or 0)))
+                except (ValueError, TypeError):
+                    cur_rank = 0
+                unlocked = cur_rank > 0
+                enabled = n_prog.get("enabled") is not False
+                total_steps += max_ranks
+                acquired_steps += cur_rank
+                mult = float(cur_rank)
+            else:
+                try:
+                    max_upgrades = max(0, int(node.get("maxUpgrades", 0) or 0))
+                except (ValueError, TypeError):
+                    max_upgrades = 0
+                try:
+                    raw_rank = int(n_prog.get("rank", 0) or 0)
+                except (ValueError, TypeError):
+                    raw_rank = 0
+                unlocked = bool(n_prog.get("unlocked") or raw_rank > 0)
+                try:
+                    cur_upgrades = max(0, min(max_upgrades, int(n_prog.get("upgrades", 0) or 0))) if unlocked else 0
+                except (ValueError, TypeError):
+                    cur_upgrades = 0
+                enabled = n_prog.get("enabled") is not False
+                total_steps += 1 + max_upgrades
+                acquired_steps += (1 if unlocked else 0) + cur_upgrades
+                mult = 1.0
+
+            if unlocked and enabled and mult > 0:
+                for eff in (node.get("effects") or node.get("modifiers") or []):
+                    if not isinstance(eff, dict):
+                        continue
+                    t_stat = eff.get("targetStat") or eff.get("stat")
+                    if t_stat == "RESISTENCIA_GERAL":
+                        t_stat = "RES_GERAL"
+                    elif t_stat == "ACUMULOS_GERAIS":
+                        t_stat = "ACUMULO_GERAL"
+                    if t_stat not in flat_mods:
+                        continue
+                    try:
+                        val = float(eff.get("value", 0)) * mult
+                    except (ValueError, TypeError):
+                        val = 0.0
+                    m_type = str(eff.get("modifierType") or eff.get("mode") or "FLAT").upper()
+                    if m_type in ("PERCENT", "PERCENTUAL", "%"):
+                        pct_mods[t_stat] += val
+                    else:
+                        flat_mods[t_stat] += val
+
+        # Regra de Ativação de 100% da Árvore
+        if total_steps > 0 and acquired_steps >= total_steps:
+            for c_eff in (tree.get("completionEffects") or []):
+                if not isinstance(c_eff, dict):
+                    continue
+                t_stat = c_eff.get("targetStat") or c_eff.get("stat")
+                if t_stat == "RESISTENCIA_GERAL":
+                    t_stat = "RES_GERAL"
+                elif t_stat == "ACUMULOS_GERAIS":
+                    t_stat = "ACUMULO_GERAL"
+                if t_stat not in flat_mods:
+                    continue
+                try:
+                    val = float(c_eff.get("value", 0))
+                except (ValueError, TypeError):
+                    val = 0.0
+                m_type = str(c_eff.get("modifierType") or c_eff.get("mode") or "FLAT").upper()
+                if m_type in ("PERCENT", "PERCENTUAL", "%"):
+                    pct_mods[t_stat] += val
+                else:
+                    flat_mods[t_stat] += val
+
     base_attrs = char.get("attributes") or {}
     effective_attrs: Dict[str, Dict[str, Any]] = {}
     for attr_name in CANONICAL_ATTRIBUTES:
@@ -358,6 +489,7 @@ def compute_character_derived_stats(
     base_max_armor = int(char.get("baseMaxArmor", char.get("maxArmor", 0)))
     base_max_mana = int(char.get("baseMaxMana", char.get("maxMana", 100)))
     base_max_pa = int(char.get("baseMaxPa", char.get("maxPa", 3)))
+    base_max_weight = float(char.get("baseMaxWeight", char.get("maxWeight", 27)))
     base_regen = float(char.get("baseRegen", char.get("regen", 20)))
     base_def = int(char.get("baseDefense", char.get("defense", 0)))
     base_atk = int(char.get("baseAttack", char.get("attack", 0)))
@@ -372,6 +504,7 @@ def compute_character_derived_stats(
 
     eff_max_mana = max(0, compute_stat_with_modifiers(base_max_mana, flat_mods["MANA"], pct_mods["MANA"], precedence, rounding_mode))
     eff_max_pa = max(0, compute_stat_with_modifiers(base_max_pa, flat_mods["PA"], pct_mods["PA"], precedence, rounding_mode))
+    eff_max_weight = max(0, compute_stat_with_modifiers(int(base_max_weight), flat_mods["CAPACIDADE_PESO"], pct_mods["CAPACIDADE_PESO"], precedence, rounding_mode))
     eff_regen = max(0, compute_stat_with_modifiers(base_regen, flat_mods["REGEN_MANA"], pct_mods["REGEN_MANA"], precedence, rounding_mode))
     eff_regen_vida = max(0, apply_rounding(flat_mods["REGEN_VIDA"] + (eff_max_hp * (pct_mods["REGEN_VIDA"] / 100.0)), rounding_mode))
     eff_regen_armadura = max(0, apply_rounding(flat_mods["REGEN_ARMADURA"] + (eff_max_armor * (pct_mods["REGEN_ARMADURA"] / 100.0)), rounding_mode))
@@ -443,6 +576,7 @@ def compute_character_derived_stats(
 
     return {
         "totalWeight": round(total_weight, 2),
+        "effectiveMaxWeight": eff_max_weight,
         "effectiveAttributes": effective_attrs,
         "effectiveElementalResistances": effective_elem_res,
         "effectiveResistances": effective_resistances,

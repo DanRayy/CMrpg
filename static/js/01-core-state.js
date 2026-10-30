@@ -109,6 +109,7 @@
     { group: 'Atributos Vitais & Combate', value: 'ARMADURA', label: 'Armadura Máxima' },
     { group: 'Atributos Vitais & Combate', value: 'MANA', label: 'Mana Máxima' },
     { group: 'Atributos Vitais & Combate', value: 'PA', label: 'Pontos de Ação (PA)' },
+    { group: 'Atributos Vitais & Combate', value: 'CAPACIDADE_PESO', label: 'Capacidade de Peso (kg)' },
     { group: 'Atributos Vitais & Combate', value: 'REGEN_VIDA', label: 'Regenerar Vida' },
     { group: 'Atributos Vitais & Combate', value: 'REGEN_ARMADURA', label: 'Regenerar Armadura' },
     { group: 'Atributos Vitais & Combate', value: 'REGEN_MANA', label: 'Regenerar Mana' },
@@ -147,6 +148,7 @@
     ARMADURA: 'ARMADURA',
     MANA: 'MANA',
     PA: 'PA',
+    CAPACIDADE_PESO: 'CAP. PESO (kg)',
     REGEN_VIDA: 'REGEN VIDA',
     REGEN_ARMADURA: 'REGEN ARMADURA',
     REGEN_MANA: 'REGEN MANA',
@@ -248,6 +250,15 @@
     quests: [],
     auditLog: [],
     customPermissionPresets: [],
+    skillTrees: [],
+
+    // Skill Trees UI state
+    activeSkillTreeId: null,
+    activeSkillTreeModalCharId: null,
+    activeSkillTreeModalTreeId: null,
+    editingSkillTreeId: null,
+    editingSkillNodeTreeId: null,
+    editingSkillNodeId: null,
 
     // UI Filters & Selections
     searchQuery: '',
@@ -556,6 +567,78 @@
       }
     }
 
+    // Talentos legados da ficha (compatibilidade)
+    for (const tal of char.talents || []) {
+      if (!tal || tal.enabled === false) continue;
+      for (const mod of tal.modifiers || tal.effects || []) {
+        let stat = mod.targetStat || mod.stat;
+        if (stat === 'RESISTENCIA_GERAL') stat = 'RES_GERAL';
+        else if (stat === 'ACUMULOS_GERAIS') stat = 'ACUMULO_GERAL';
+        if (!(stat in flatMods)) continue;
+        const val = Number(mod.value || 0);
+        const mode = String(mod.modifierType || mod.mode || 'FLAT').toUpperCase();
+        if (mode === 'PERCENT' || mode === 'PERCENTUAL' || mode === '%') {
+          pctMods[stat] += val;
+        } else {
+          flatMods[stat] += val;
+        }
+      }
+    }
+
+    // Árvores de Habilidades: Nós adquiridos, Multi-Ranks e Efeito de Árvore Completa (100%)
+    if (!char.skillTreeProgress || typeof char.skillTreeProgress !== 'object') {
+      char.skillTreeProgress = {};
+    }
+    const completedTreeIds = [];
+    for (const tree of state.skillTrees || []) {
+      if (!tree || !Array.isArray(tree.nodes) || tree.nodes.length === 0) continue;
+      let totalSteps = 0;
+      let acquiredSteps = 0;
+
+      for (const node of tree.nodes) {
+        if (!node || !node.id) continue;
+        const nState = getCharacterSkillNodeState(char, node);
+        totalSteps += nState.totalSteps;
+        acquiredSteps += nState.acquiredSteps;
+
+        if (nState.unlocked && nState.enabled) {
+          const mult = String(node.category || 'TALENTO').toUpperCase() === 'TALENTO' ? nState.rank : 1;
+          if (mult > 0) {
+            for (const eff of node.effects || node.modifiers || []) {
+              let stat = eff.targetStat || eff.stat;
+              if (stat === 'RESISTENCIA_GERAL') stat = 'RES_GERAL';
+              else if (stat === 'ACUMULOS_GERAIS') stat = 'ACUMULO_GERAL';
+              if (!(stat in flatMods)) continue;
+              const val = Number(eff.value || 0) * mult;
+              const mode = String(eff.modifierType || eff.mode || 'FLAT').toUpperCase();
+              if (mode === 'PERCENT' || mode === 'PERCENTUAL' || mode === '%') {
+                pctMods[stat] += val;
+              } else {
+                flatMods[stat] += val;
+              }
+            }
+          }
+        }
+      }
+
+      if (totalSteps > 0 && acquiredSteps >= totalSteps) {
+        completedTreeIds.push(tree.id);
+        for (const cEff of tree.completionEffects || []) {
+          let stat = cEff.targetStat || cEff.stat;
+          if (stat === 'RESISTENCIA_GERAL') stat = 'RES_GERAL';
+          else if (stat === 'ACUMULOS_GERAIS') stat = 'ACUMULO_GERAL';
+          if (!(stat in flatMods)) continue;
+          const val = Number(cEff.value || 0);
+          const mode = String(cEff.modifierType || cEff.mode || 'FLAT').toUpperCase();
+          if (mode === 'PERCENT' || mode === 'PERCENTUAL' || mode === '%') {
+            pctMods[stat] += val;
+          } else {
+            flatMods[stat] += val;
+          }
+        }
+      }
+    }
+
     const effectiveAttributes = {};
     char.attributes = char.attributes || {};
     for (const attr of CANONICAL_ATTRIBUTES) {
@@ -570,8 +653,8 @@
       };
     }
 
-    char.maxWeight =
-      Number.isFinite(Number(char.maxWeight)) && Number(char.maxWeight) >= 0 ? Number(char.maxWeight) : 27;
+    const rawBaseWeight = Number(char.baseMaxWeight ?? char.maxWeight ?? 27);
+    char.baseMaxWeight = Number.isFinite(rawBaseWeight) && rawBaseWeight >= 0 ? rawBaseWeight : 27;
     char.skillPassive = String(char.skillPassive || '').trim();
     char.skillActive = String(char.skillActive || '').trim();
     char.skillSupreme = String(char.skillSupreme || '').trim();
@@ -671,6 +754,9 @@
     const effMaxArmorRaw = effMaxArmor;
     const effMaxMana = Math.max(0, computeStatWithModifiers(char.baseMaxMana, flatMods.MANA, pctMods.MANA));
     const effMaxPa = Math.max(0, computeStatWithModifiers(char.baseMaxPa, flatMods.PA, pctMods.PA));
+    const effMaxWeight = char.isEnemy
+      ? 999
+      : Math.max(0, computeStatWithModifiers(char.baseMaxWeight, flatMods.CAPACIDADE_PESO || 0, pctMods.CAPACIDADE_PESO || 0));
     const effRegen = Math.max(0, computeStatWithModifiers(char.baseRegen, flatMods.REGEN_MANA, pctMods.REGEN_MANA));
     const effRegenVida = Math.max(0, applyRounding(flatMods.REGEN_VIDA + effMaxHp * (pctMods.REGEN_VIDA / 100)));
     const effRegenArmadura = Math.max(
@@ -704,6 +790,7 @@
     char.maxArmor = effMaxArmor;
     char.maxMana = effMaxMana;
     char.maxPa = effMaxPa;
+    char.maxWeight = effMaxWeight;
     char.regen = effRegen;
     char.defense = effDef;
     char.attack = effAtk;
@@ -714,6 +801,8 @@
 
     char.derived = {
       totalWeight: Number(totalWeight.toFixed(2)),
+      effectiveMaxWeight: effMaxWeight,
+      completedTreeIds,
       effectiveAttributes,
       effectiveElementalResistances,
       effectiveResistances,
@@ -1530,6 +1619,295 @@
     applyTheme(cur === 'dark' ? 'light' : 'dark');
   }
 
+  function buildGeomanciaSkillTreeTemplate() {
+    return {
+      id: 'tree_geomancia',
+      name: 'Geomancia',
+      description: 'Domínio telúrico focado em fortificação de armadura, postura defensiva inabalável e retaliação sísmica.',
+      hiddenForPlayers: false,
+      completionDescription: 'Domínio completo da terra: +10 kg de Capacidade de Peso máxima na mochila.',
+      completionEffects: [
+        { targetStat: 'CAPACIDADE_PESO', modifierType: 'FLAT', value: 10 },
+      ],
+      nodes: [
+        {
+          id: 'node_geo_passiva_1',
+          category: 'PASSIVA',
+          name: 'Geomancia',
+          subtype: '',
+          description:
+            'Inicia batalhas com 10% de sua capacidade de armadura como armadura adicional, e aumenta sua defesa enquanto tem armadura em 8%+2. Se sua armadura for quebrada, causa 25+40% de seu ataque e arcana ao atacante, esse dano possui 50% de letalidade.',
+          unlockCost: 6,
+          maxRanks: 1,
+          costPerRank: 6,
+          maxUpgrades: 0,
+          upgradeCost: 0,
+          upgradeDescription: '',
+          manaCost: '',
+          paCost: '',
+          uses: '',
+          cooldown: '',
+          effects: [],
+          order: 0,
+        },
+        {
+          id: 'node_geo_passiva_2',
+          category: 'PASSIVA',
+          name: 'Foco de Armadura',
+          subtype: '',
+          description:
+            'Aumenta sua redução de dano em 10% enquanto tiver armadura, mas recebe 15%+1 de dano quando sofrer dano fora da armadura (efeitos não inclusos).',
+          unlockCost: 4,
+          maxRanks: 1,
+          costPerRank: 4,
+          maxUpgrades: 0,
+          upgradeCost: 0,
+          upgradeDescription: '',
+          manaCost: '',
+          paCost: '',
+          uses: '',
+          cooldown: '',
+          effects: [],
+          order: 1,
+        },
+        {
+          id: 'node_geo_ativa_1',
+          category: 'ATIVA',
+          name: 'Armadura de Rochas',
+          subtype: 'Postura',
+          description:
+            'Recupera 10% de sua armadura máxima e um adicional de 65% de sua arcana, para si ou um aliado, enquanto mantiver a postura o alvo recebe 5 de defesa e 8% de resistência geral, mas se sua postura for quebrada você sofre 55 acúmulos de atordoamento.',
+          unlockCost: 4,
+          maxRanks: 1,
+          costPerRank: 4,
+          maxUpgrades: 2,
+          upgradeCost: 2,
+          upgradeDescription: 'Recuperação com base em armadura +2%.',
+          manaCost: '35',
+          paCost: '2',
+          uses: '3',
+          cooldown: '',
+          effects: [],
+          order: 2,
+        },
+        {
+          id: 'node_geo_talento_1',
+          category: 'TALENTO',
+          name: 'Blindagem',
+          subtype: '',
+          description: 'Aumenta a armadura em 4 e defesa em 1.',
+          unlockCost: 1,
+          maxRanks: 5,
+          costPerRank: 1,
+          maxUpgrades: 0,
+          upgradeCost: 1,
+          upgradeDescription: '',
+          manaCost: '',
+          paCost: '',
+          uses: '',
+          cooldown: '',
+          effects: [
+            { targetStat: 'ARMADURA', modifierType: 'FLAT', value: 4 },
+            { targetStat: 'DEFESA', modifierType: 'FLAT', value: 1 },
+          ],
+          order: 3,
+        },
+        {
+          id: 'node_geo_talento_2',
+          category: 'TALENTO',
+          name: 'Vigor',
+          subtype: '',
+          description: 'Aumenta o HP em 5.',
+          unlockCost: 1,
+          maxRanks: 5,
+          costPerRank: 1,
+          maxUpgrades: 0,
+          upgradeCost: 1,
+          upgradeDescription: '',
+          manaCost: '',
+          paCost: '',
+          uses: '',
+          cooldown: '',
+          effects: [
+            { targetStat: 'VIDA', modifierType: 'FLAT', value: 5 },
+          ],
+          order: 4,
+        },
+      ],
+    };
+  }
+
+  function getVisibleSkillTrees() {
+    const trees = Array.isArray(state.skillTrees) ? state.skillTrees : [];
+    if (isEffectiveMaster()) return trees;
+    return trees.filter((t) => t && !t.hiddenForPlayers && !t.ocultarParaJogadores);
+  }
+
+  function getCharacterSkillNodeState(char, node) {
+    if (!node || !node.id) {
+      return {
+        unlocked: false,
+        rank: 0,
+        upgrades: 0,
+        maxRanks: 1,
+        maxUpgrades: 0,
+        enabled: true,
+        acquiredSteps: 0,
+        totalSteps: 1,
+        unlockCost: 1,
+        upgradeCost: 1,
+        costPerRank: 1,
+      };
+    }
+    const rawProg = (char?.skillTreeProgress && char.skillTreeProgress[node.id]) || {};
+    const cat = String(node.category || 'TALENTO').toUpperCase();
+    const enabled = rawProg.enabled !== false;
+
+    if (cat === 'TALENTO') {
+      const maxRanks = Math.max(1, Math.round(Number(node.maxRanks || 1)));
+      const costPerRank = Math.max(0, Math.round(Number(node.costPerRank ?? node.unlockCost ?? 1)));
+      const rank = Math.max(0, Math.min(maxRanks, Math.round(Number(rawProg.rank || 0))));
+      const unlocked = rank > 0;
+      return {
+        unlocked,
+        rank,
+        upgrades: 0,
+        maxRanks,
+        maxUpgrades: 0,
+        enabled,
+        acquiredSteps: rank,
+        totalSteps: maxRanks,
+        unlockCost: costPerRank,
+        upgradeCost: costPerRank,
+        costPerRank,
+      };
+    }
+
+    const unlockCost = Math.max(0, Math.round(Number(node.unlockCost ?? node.costPerRank ?? 1)));
+    const maxUpgrades = Math.max(0, Math.round(Number(node.maxUpgrades || 0)));
+    const upgradeCost = Math.max(0, Math.round(Number(node.upgradeCost ?? 1)));
+    const unlocked = Boolean(rawProg.unlocked || Number(rawProg.rank || 0) > 0);
+    const upgrades = unlocked
+      ? Math.max(0, Math.min(maxUpgrades, Math.round(Number(rawProg.upgrades || 0))))
+      : 0;
+    const rank = unlocked ? 1 : 0;
+    const acquiredSteps = (unlocked ? 1 : 0) + upgrades;
+    const totalSteps = 1 + maxUpgrades;
+
+    return {
+      unlocked,
+      rank,
+      upgrades,
+      maxRanks: 1,
+      maxUpgrades,
+      enabled,
+      acquiredSteps,
+      totalSteps,
+      unlockCost,
+      upgradeCost,
+      costPerRank: unlockCost,
+    };
+  }
+
+  function computeSkillTreeProgress(char, tree) {
+    const nodes = Array.isArray(tree?.nodes) ? tree.nodes : [];
+    if (nodes.length === 0) {
+      return {
+        acquiredSteps: 0,
+        totalSteps: 0,
+        percent: 0,
+        isComplete: false,
+        unlockedNodesCount: 0,
+        totalNodesCount: 0,
+        spentPoints: 0,
+      };
+    }
+    let acquiredSteps = 0;
+    let totalSteps = 0;
+    let unlockedNodesCount = 0;
+    let spentPoints = 0;
+
+    for (const node of nodes) {
+      if (!node || !node.id) continue;
+      const st = getCharacterSkillNodeState(char, node);
+      acquiredSteps += st.acquiredSteps;
+      totalSteps += st.totalSteps;
+      if (st.unlocked) {
+        unlockedNodesCount += 1;
+        if (String(node.category || 'TALENTO').toUpperCase() === 'TALENTO') {
+          spentPoints += st.rank * st.costPerRank;
+        } else {
+          spentPoints += st.unlockCost + st.upgrades * st.upgradeCost;
+        }
+      }
+    }
+
+    const isComplete = totalSteps > 0 && acquiredSteps >= totalSteps;
+    const percent = totalSteps > 0 ? Math.min(100, Math.floor((acquiredSteps / totalSteps) * 100)) : 0;
+
+    return {
+      acquiredSteps,
+      totalSteps,
+      percent: isComplete ? 100 : percent,
+      isComplete,
+      unlockedNodesCount,
+      totalNodesCount: nodes.length,
+      spentPoints,
+    };
+  }
+
+  function getCharacterAcquiredTreeSkillsByCategory(char, category) {
+    const targetCat = String(category || '').toUpperCase();
+    const results = [];
+    if (!char) return results;
+    for (const tree of state.skillTrees || []) {
+      if (!tree || !Array.isArray(tree.nodes)) continue;
+      if (!isEffectiveMaster() && (tree.hiddenForPlayers || tree.ocultarParaJogadores)) continue;
+      for (const node of tree.nodes) {
+        if (!node || String(node.category || '').toUpperCase() !== targetCat) continue;
+        const nodeState = getCharacterSkillNodeState(char, node);
+        if (nodeState.unlocked) {
+          results.push({ tree, node, nodeState });
+        }
+      }
+    }
+    return results;
+  }
+
+  // Função auxiliar isolada para metadados de combate de habilidades (Mana, PA, Usos, Recarga)
+  function renderSkillCombatTags(node) {
+    if (!node) return '';
+    const badges = [];
+    const mana = String(node.manaCost ?? '').trim();
+    const pa = String(node.paCost ?? '').trim();
+    const uses = String(node.uses ?? '').trim();
+    const cooldown = String(node.cooldown ?? '').trim();
+
+    if (mana !== '' && mana !== '0') {
+      badges.push(
+        `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-mono font-extrabold bg-indigo-500/15 text-indigo-300 border border-indigo-500/40" title="Custo de Mana"><iconify-icon icon="game-icons:sparkles"></iconify-icon> Mana: ${escapeHtml(mana)}</span>`
+      );
+    }
+    if (pa !== '' && pa !== '0') {
+      badges.push(
+        `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-mono font-extrabold bg-amber-500/15 text-amber-300 border border-amber-500/40" title="Custo de Pontos de Ação (PA)"><iconify-icon icon="game-icons:lightning-helix"></iconify-icon> PA: ${escapeHtml(pa)}</span>`
+      );
+    }
+    if (uses !== '' && uses !== '0') {
+      badges.push(
+        `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-mono font-extrabold bg-emerald-500/15 text-emerald-300 border border-emerald-500/40" title="Limite de Usos"><iconify-icon icon="game-icons:Concentric-crescents"></iconify-icon> Usos: ${escapeHtml(uses)}</span>`
+      );
+    }
+    if (cooldown !== '' && cooldown !== '0') {
+      badges.push(
+        `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-mono font-extrabold bg-purple-500/15 text-purple-300 border border-purple-500/40" title="Recarga / Cooldown"><iconify-icon icon="game-icons:sands-of-time"></iconify-icon> Recarga: ${escapeHtml(cooldown)}</span>`
+      );
+    }
+
+    if (badges.length === 0) return '';
+    return `<div class="skill-combat-tags-bar flex flex-wrap items-center gap-1.5">${badges.join('')}</div>`;
+  }
+
   function saveStateToLocalStorage() {
     try {
       localStorage.setItem(STORAGE_KEY_CHARS, JSON.stringify(state.characters));
@@ -1546,6 +1924,8 @@
           battle: state.battle,
           quests: state.quests,
           auditLog: state.auditLog,
+          customPermissionPresets: state.customPermissionPresets,
+          skillTrees: state.skillTrees,
         })
       );
     } catch (_) {}
@@ -1698,6 +2078,9 @@
         permissions: masterFullPermissionsClient(),
       },
     ];
+    if (!Array.isArray(state.skillTrees) || state.skillTrees.length === 0) {
+      state.skillTrees = [buildGeomanciaSkillTreeTemplate()];
+    }
     state.characters.forEach(recalculateCharacterDerived);
   }
 
@@ -1738,6 +2121,9 @@
         const parsed = JSON.parse(rawFull);
         if (parsed && Array.isArray(parsed.characters) && parsed.characters.length > 0) {
           Object.assign(state, parsed);
+          if (!Array.isArray(state.skillTrees) || state.skillTrees.length === 0) {
+            state.skillTrees = [buildGeomanciaSkillTreeTemplate()];
+          }
           sanitizeLegacyMembersClient();
           state.characters.forEach(recalculateCharacterDerived);
           return;
@@ -1802,11 +2188,12 @@
       battle: state.battle,
       quests: state.quests,
       customPermissionPresets: state.customPermissionPresets,
+      skillTrees: state.skillTrees,
     });
   }
 
   function restoreCoreState(snap) {
-    for (const k of ['room', 'members', 'characters', 'itemsCatalog', 'npcs', 'escrowSales', 'bestiary', 'battle', 'quests', 'customPermissionPresets']) {
+    for (const k of ['room', 'members', 'characters', 'itemsCatalog', 'npcs', 'escrowSales', 'bestiary', 'battle', 'quests', 'customPermissionPresets', 'skillTrees']) {
       if (snap[k] !== undefined) state[k] = deepClone(snap[k]);
     }
     state.characters.forEach(recalculateCharacterDerived);
@@ -1878,6 +2265,7 @@
           battle: state.battle,
           quests: state.quests,
           customPermissionPresets: state.customPermissionPresets,
+          skillTrees: state.skillTrees,
           auditEntry,
           record_history: true,
           toasts,
