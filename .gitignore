@@ -30,4 +30,6 @@ backups/
 # Estado da aplicacao e arquivos temporarios de escrita atomica
 /state.json
 /state.json.tmp
+/state.json.*.bak
 *.tmp
+.pytest_cache/
