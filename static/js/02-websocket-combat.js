@@ -690,11 +690,11 @@
             handleIncomingCursorDisconnect(data);
             return;
           }
-          if (data.type === 'table_drag') {
+          if (data.type === 'table_drag' || data.type === 'REMOTE_CARD_DRAG') {
             if (typeof handleIncomingTableDrag === 'function') handleIncomingTableDrag(data);
             return;
           }
-          if (data.type === 'table_update') {
+          if (data.type === 'table_update' || data.type === 'REMOTE_CARD_DROP') {
             if (typeof handleIncomingTableUpdate === 'function') handleIncomingTableUpdate(data);
             return;
           }

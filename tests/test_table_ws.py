@@ -141,14 +141,27 @@ def test_multiplayer_permissions_and_concurrent_collisions(tmp_path: Path) -> No
         _drain_until_type(ws_p1, "state_sync")
         _drain_until_type(ws_p2, "state_sync")
 
-        # 1. Player 1 tries to move Player 2's character -> FORBIDDEN
-        orig_p2_pos = copy.deepcopy(main.state_manager.state["table"]["positions"]["char_default_2"])
-        ws_p1.send_json({"type": "table_move", "charId": "char_default_2", "x": 2200, "y": 2200})
-        rej1 = _drain_until_type(ws_p1, "table_move_rejected")
-        assert rej1["reason"] == "forbidden"
-        assert main.state_manager.state["table"]["positions"]["char_default_2"] == orig_p2_pos
+        # 1. Universal drag permission: Player 1 CAN move Player 2's character
+        ws_p1.send_json({
+            "type": "REMOTE_CARD_DRAG",
+            "cardId": "char_default_2",
+            "x": 2180,
+            "y": 2180,
+            "user": "Jogador Um",
+        })
+        drag_preview = _drain_until_type(ws_m, "REMOTE_CARD_DRAG")
+        assert drag_preview["cardId"] == "char_default_2"
+        assert drag_preview["user"] == "Jogador Um"
+        assert drag_preview["x"] == 2180
+        assert drag_preview["y"] == 2180
 
-        # 2. Player 1 tries to move Enemy -> FORBIDDEN
+        ws_p1.send_json({"type": "REMOTE_CARD_DROP", "cardId": "char_default_2", "x": 2200, "y": 2200})
+        upd_p1_move = _drain_until_type(ws_m, "table_update")
+        assert upd_p1_move["charId"] == "char_default_2"
+        assert upd_p1_move["position"] == {"x": 2200, "y": 2200}
+        assert main.state_manager.state["table"]["positions"]["char_default_2"] == {"x": 2200, "y": 2200}
+
+        # 2. Strict enemy block: Player 1 tries to move Enemy -> FORBIDDEN
         orig_enemy_pos = copy.deepcopy(main.state_manager.state["table"]["positions"]["char_enemy_test_1"])
         ws_p1.send_json({"type": "table_move", "charId": "char_enemy_test_1", "x": 900, "y": 400})
         rej2 = _drain_until_type(ws_p1, "table_move_rejected")

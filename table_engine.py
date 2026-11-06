@@ -428,31 +428,12 @@ def can_move_card(
     if is_master:
         return True
 
-    # Jogadores jamais podem mover inimigos
+    # Jogadores comuns jamais podem mover inimigos
     if is_enemy_character(char):
         return False
 
-    char_id = str(char.get("id") or "")
-    owner_member_id = str(char.get("ownerMemberId") or "").strip()
-    owner_id = str(char.get("ownerId") or "").strip()
-    owner_ip = str(char.get("ownerIp") or "").strip()
-
-    if member_id and (owner_member_id == member_id or owner_id == member_id):
-        return True
-    if client_ip and owner_ip and owner_ip == client_ip:
-        return True
-    if member_obj is not None:
-        mem_char_id = str(member_obj.get("characterId") or "").strip()
-        mem_id = str(member_obj.get("id") or "").strip()
-        mem_ip = str(member_obj.get("ip") or "").strip()
-        if char_id and mem_char_id == char_id:
-            return True
-        if mem_id and (owner_member_id == mem_id or owner_id == mem_id):
-            return True
-        if mem_ip and owner_ip and owner_ip == mem_ip:
-            return True
-
-    return False
+    # Permissão universal: qualquer jogador pode mover cards de personagens (mesmo não vinculados)
+    return True
 
 
 def _default_spawn_slot(

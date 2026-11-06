@@ -2032,7 +2032,7 @@ async def lifespan(app_instance: FastAPI) -> AsyncIterator[None]:
 app = FastAPI(
     title="CMrpg Server",
     description="Sistema de Gestão de RPG Local via Radmin VPN.",
-    version="1.11.0",
+    version="1.11.1",
     lifespan=lifespan,
 )
 
@@ -2209,8 +2209,9 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                     },
                 )
 
-            elif msg_type == "table_drag":
-                char_id = str(data.get("charId") or data.get("id") or "").strip()
+            elif msg_type in ("table_drag", "REMOTE_CARD_DRAG"):
+                char_id = str(data.get("cardId") or data.get("charId") or data.get("id") or "").strip()
+                user_name = str(data.get("user") or "")
                 if char_id:
                     preview = state_manager.preview_table_drag(
                         char_id=char_id,
@@ -2222,16 +2223,18 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                         await ws_manager.broadcast_except(
                             websocket,
                             {
-                                "type": "table_drag",
+                                "type": "REMOTE_CARD_DRAG",
+                                "cardId": preview["charId"],
                                 "charId": preview["charId"],
                                 "x": preview["x"],
                                 "y": preview["y"],
+                                "user": user_name,
                                 "memberId": member_id,
                             },
                         )
 
-            elif msg_type == "table_move":
-                char_id = str(data.get("charId") or data.get("id") or "").strip()
+            elif msg_type in ("table_move", "REMOTE_CARD_DROP"):
+                char_id = str(data.get("cardId") or data.get("charId") or data.get("id") or "").strip()
                 if char_id:
                     res = await state_manager.move_table_card(
                         char_id=char_id,
@@ -2243,6 +2246,7 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                         await ws_manager.broadcast(
                             {
                                 "type": "table_update",
+                                "cardId": res["charId"],
                                 "charId": res["charId"],
                                 "position": res["position"],
                                 "rev": res["rev"],
@@ -2253,6 +2257,7 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                         await websocket.send_json(
                             {
                                 "type": "table_move_rejected",
+                                "cardId": char_id,
                                 "charId": char_id,
                                 "reason": res.get("reason", "forbidden"),
                                 "position": res.get("position"),

@@ -21,7 +21,7 @@ const MESA_SPAWN_GAP_Y = 44;
 const MESA_SPAWN_MARGIN_X = 120;
 const MESA_SPAWN_MARGIN_Y = 90;
 
-const MESA_DRAG_THROTTLE_MS = 80;
+const MESA_DRAG_THROTTLE_MS = 35;
 const MESA_DRAG_THRESHOLD_PX = 4;
 
 // ===========================================================================
@@ -915,6 +915,17 @@ function buildMesaObstaclesForChar(excludeCharId) {
   return obstacles;
 }
 
+function getMesaLocalUserName() {
+  try {
+    if (typeof getActiveMember === 'function') {
+      const mem = getActiveMember();
+      if (mem && (mem.name || mem.nickname)) return mem.name || mem.nickname;
+    }
+  } catch (_) {}
+  if (typeof isEffectiveMaster === 'function' && isEffectiveMaster()) return 'Mestre';
+  return 'Jogador';
+}
+
 function sendMesaDragPreviewThrottled(charId, x, y) {
   if (!state.wsConnected || !state.ws || state.ws.readyState !== WebSocket.OPEN) return;
   const now = performance.now();
@@ -925,13 +936,17 @@ function sendMesaDragPreviewThrottled(charId, x, y) {
   mesaDrag.lastSentX = x;
   mesaDrag.lastSentY = y;
 
+  const userName = getMesaLocalUserName();
+
   try {
     state.ws.send(
       JSON.stringify({
-        type: 'table_drag',
+        type: 'REMOTE_CARD_DRAG',
+        cardId: charId,
         charId,
         x: Math.round(x),
         y: Math.round(y),
+        user: userName,
       })
     );
   } catch (_) {}
@@ -948,7 +963,8 @@ function sendMesaFinalMove(charId, x, y) {
     try {
       state.ws.send(
         JSON.stringify({
-          type: 'table_move',
+          type: 'REMOTE_CARD_DROP',
+          cardId: charId,
           charId,
           x: Math.round(x),
           y: Math.round(y),
@@ -961,8 +977,10 @@ function sendMesaFinalMove(charId, x, y) {
 // ===========================================================================
 // Handlers de Mensagens WebSocket da Mesa
 // ===========================================================================
+const mesaRemoteDragWatchdogs = new Map();
+
 function handleIncomingTableDrag(data) {
-  const charId = data.charId || data.id;
+  const charId = data.cardId || data.charId || data.id;
   if (!charId) return;
   if (mesaDrag.charId === charId && mesaDrag.movedBeyondThreshold) return;
 
@@ -973,13 +991,34 @@ function handleIncomingTableDrag(data) {
   const tokensLayer = document.getElementById('mesa-tokens-layer');
   const tokenEl = tokensLayer?.querySelector(`.mesa-token[data-token-char-id="${CSS.escape(charId)}"]`);
   if (tokenEl && Number.isFinite(data.x) && Number.isFinite(data.y)) {
+    tokenEl.classList.add('mesa-token-remote-dragging');
     tokenEl.style.transform = `translate3d(${Math.round(data.x)}px, ${Math.round(data.y)}px, 0)`;
+
+    const userName = String(data.user || 'Jogador');
+    let badgeEl = tokenEl.querySelector('.mesa-remote-drag-badge');
+    if (!badgeEl) {
+      badgeEl = document.createElement('div');
+      badgeEl.className = 'mesa-remote-drag-badge';
+      tokenEl.appendChild(badgeEl);
+    }
+    badgeEl.textContent = `Arrastando: ${userName}`;
+
+    if (mesaRemoteDragWatchdogs.has(charId)) {
+      clearTimeout(mesaRemoteDragWatchdogs.get(charId));
+    }
+    const timer = setTimeout(() => {
+      tokenEl.classList.remove('mesa-token-remote-dragging');
+      const b = tokenEl.querySelector('.mesa-remote-drag-badge');
+      if (b) b.remove();
+      mesaRemoteDragWatchdogs.delete(charId);
+    }, 400);
+    mesaRemoteDragWatchdogs.set(charId, timer);
   }
 }
 
 function handleIncomingTableUpdate(data) {
-  const charId = data.charId || data.id;
-  const pos = data.position;
+  const charId = data.cardId || data.charId || data.id;
+  const pos = data.position || (Number.isFinite(data.x) && Number.isFinite(data.y) ? { x: data.x, y: data.y } : null);
   if (!charId || !pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.y)) return;
 
   const tbl = ensureClientTableState();
@@ -989,11 +1028,19 @@ function handleIncomingTableUpdate(data) {
   }
   saveStateToLocalStorage();
 
+  if (mesaRemoteDragWatchdogs.has(charId)) {
+    clearTimeout(mesaRemoteDragWatchdogs.get(charId));
+    mesaRemoteDragWatchdogs.delete(charId);
+  }
+
   if (mesaDrag.charId === charId && mesaDrag.movedBeyondThreshold) return;
 
   const tokensLayer = document.getElementById('mesa-tokens-layer');
   const tokenEl = tokensLayer?.querySelector(`.mesa-token[data-token-char-id="${CSS.escape(charId)}"]`);
   if (tokenEl) {
+    tokenEl.classList.remove('mesa-token-remote-dragging');
+    const badge = tokenEl.querySelector('.mesa-remote-drag-badge');
+    if (badge) badge.remove();
     tokenEl.style.transform = `translate3d(${Math.round(pos.x)}px, ${Math.round(pos.y)}px, 0)`;
   }
 }
@@ -1114,16 +1161,7 @@ function initMesaBoardEvents() {
     if (!char) return;
 
     if (!canMoveCharacterOnMesa(char)) {
-      const now = performance.now();
-      if (now - mesaForbiddenToastAt > 1800) {
-        mesaForbiddenToastAt = now;
-        showToast(
-          char.isEnemy
-            ? 'Somente o Mestre pode movimentar inimigos na Mesa.'
-            : 'Você só pode movimentar os personagens vinculados a você.',
-          'warning'
-        );
-      }
+      // Bloqueio silencioso para inimigos por não-hosts
       return;
     }
 
@@ -1282,6 +1320,16 @@ function initMesaBoardEvents() {
     zoomMesaAtScreenPoint(MESA_DEFAULT_ZOOM);
   });
 
+  // Seletor de Qualidade Gráfica da Mesa
+  const qualitySelect = document.getElementById('select-mesa-render-quality');
+  if (qualitySelect) {
+    qualitySelect.value = getMesaRenderQuality();
+    qualitySelect.addEventListener('change', (e) => {
+      setMesaRenderQuality(e.target.value);
+    });
+  }
+  setMesaRenderQuality(getMesaRenderQuality());
+
   // Busca na barra da Mesa: destaca e centraliza no personagem buscado
   const searchInput = document.getElementById('search-input');
   searchInput?.addEventListener('keydown', (e) => {
@@ -1299,6 +1347,67 @@ function initMesaBoardEvents() {
   });
 }
 
+// ===========================================================================
+// Qualidade Gráfica e Super-Sampling no Zoom Máximo
+// ===========================================================================
+const STORAGE_KEY_MESA_QUALITY = 'cmrpg_render_quality';
+
+function getMesaRenderQuality() {
+  try {
+    const val = localStorage.getItem(STORAGE_KEY_MESA_QUALITY);
+    if (val === '1' || val === '1.5' || val === '2') return val;
+  } catch (_) {}
+  return '1.5';
+}
+
+function setMesaRenderQuality(qualityStr) {
+  const q = qualityStr === '1' || qualityStr === '2' ? qualityStr : '1.5';
+  try {
+    localStorage.setItem(STORAGE_KEY_MESA_QUALITY, q);
+  } catch (_) {}
+
+  const viewport = document.getElementById('mesa-viewport');
+  if (viewport) {
+    viewport.classList.remove('mesa-quality-1x', 'mesa-quality-15x', 'mesa-quality-2x');
+    if (q === '1') viewport.classList.add('mesa-quality-1x');
+    else if (q === '2') viewport.classList.add('mesa-quality-2x');
+    else viewport.classList.add('mesa-quality-15x');
+  }
+
+  const select = document.getElementById('select-mesa-render-quality');
+  if (select && select.value !== q) {
+    select.value = q;
+  }
+}
+
+/**
+ * Função utilitária para buffers Canvas com super-sampling nítido em zoom elevado.
+ * Multiplica as dimensões internas por window.devicePixelRatio * zoomFactor * qualityMultiplier.
+ */
+function applyCanvasSuperSampling(canvas, zoomFactor = 1) {
+  if (!canvas) return;
+  const quality = parseFloat(getMesaRenderQuality()) || 1.5;
+  const dpr = (window.devicePixelRatio || 1) * quality;
+  const rect = canvas.getBoundingClientRect();
+  const displayW = rect.width || canvas.clientWidth || 300;
+  const displayH = rect.height || canvas.clientHeight || 150;
+  const z = Math.max(1, Number(zoomFactor) || 1);
+  const targetW = Math.round(displayW * dpr * z);
+  const targetH = Math.round(displayH * dpr * z);
+
+  if (canvas.width !== targetW || canvas.height !== targetH) {
+    canvas.width = targetW;
+    canvas.height = targetH;
+    canvas.style.width = `${displayW}px`;
+    canvas.style.height = `${displayH}px`;
+  }
+  const ctx = canvas.getContext('2d');
+  if (ctx) {
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+  }
+}
+
 // Exportação para testes automatizados em Node.js
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
@@ -1314,5 +1423,8 @@ if (typeof module !== 'undefined' && module.exports) {
     reconcileMesaTableStateClient,
     enterMesaBattleClient,
     exitMesaBattleClient,
+    getMesaRenderQuality,
+    setMesaRenderQuality,
+    applyCanvasSuperSampling,
   };
 }

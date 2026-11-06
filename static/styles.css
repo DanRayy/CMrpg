@@ -1428,6 +1428,11 @@ iconify-icon {
   user-select: none;
   touch-action: none;
   cursor: default;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 .mesa-viewport.mesa-space-pan-ready {
@@ -1446,6 +1451,10 @@ iconify-icon {
   height: 3000px;
   transform-origin: 0 0;
   will-change: transform;
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
   border: 3px solid rgba(212, 168, 83, 0.68);
   border-radius: 18px;
   background:
@@ -1624,6 +1633,13 @@ iconify-icon {
   width: 420px;
   transform-origin: 0 0;
   will-change: transform;
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
   pointer-events: auto;
   z-index: 10;
   transition: box-shadow 0.15s ease, opacity 0.18s ease;
@@ -1689,6 +1705,83 @@ iconify-icon {
   font-size: 10px;
   font-weight: 700;
   backdrop-filter: blur(6px);
+}
+
+/* Arraste Remoto Fluido a 60 FPS com Aceleração de Hardware */
+.mesa-token-remote-dragging {
+  will-change: transform;
+  transition: transform 0.08s cubic-bezier(0.2, 0.8, 0.2, 1);
+  pointer-events: none;
+  z-index: 55 !important;
+}
+
+.mesa-token-remote-dragging .char-card {
+  border-color: #38bdf8 !important;
+  box-shadow:
+    0 18px 42px -8px rgba(0, 0, 0, 0.92),
+    0 0 0 2px rgba(56, 189, 248, 0.75),
+    0 0 24px rgba(56, 189, 248, 0.35) !important;
+}
+
+.mesa-remote-drag-badge {
+  position: absolute;
+  top: -24px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  background: rgba(14, 116, 144, 0.94);
+  border: 1px solid rgba(56, 189, 248, 0.7);
+  border-radius: 9999px;
+  color: #f0f9ff;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+  pointer-events: none;
+  z-index: 70;
+  animation: mesaFadeIn 0.15s ease-out;
+}
+
+@keyframes mesaFadeIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 4px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+/* Níveis de Qualidade Gráfica e Super-Sampling no Zoom */
+.mesa-quality-1x .mesa-world,
+.mesa-quality-1x .mesa-token {
+  image-rendering: auto;
+}
+
+.mesa-quality-15x .mesa-world,
+.mesa-quality-15x .mesa-token,
+.mesa-quality-15x .mesa-token .char-card {
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.mesa-quality-2x .mesa-world,
+.mesa-quality-2x .mesa-token,
+.mesa-quality-2x .mesa-token .char-card {
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 

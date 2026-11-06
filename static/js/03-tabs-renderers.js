@@ -5,7 +5,7 @@
     if (!char) return false;
     if (isEffectiveMaster()) return true;
     if (char.isEnemy || char.type === 'enemy' || char.bestiaryId) return false;
-    return isCharacterOwner(char);
+    return true; // Permissão universal: qualquer jogador pode mover cards de personagens (exceto inimigos)
   }
 
   function buildCharacterCardHtml(char, opts = {}) {
