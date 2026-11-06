@@ -1343,44 +1343,6 @@ iconify-icon {
   overflow: hidden;
 }
 
-.constellation-tier-section::before {
-  content: "";
-  position: absolute;
-  top: 50%;
-  left: 3%;
-  right: 3%;
-  height: 2px;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(212, 168, 83, 0.22) 15%,
-    rgba(240, 198, 116, 0.45) 50%,
-    rgba(212, 168, 83, 0.22) 85%,
-    transparent 100%
-  );
-  pointer-events: none;
-  z-index: 0;
-}
-
-.constellation-tier-section::after {
-  content: "";
-  position: absolute;
-  top: 12%;
-  bottom: 12%;
-  left: 50%;
-  width: 1px;
-  background: linear-gradient(
-    180deg,
-    transparent 0%,
-    rgba(212, 168, 83, 0.22) 25%,
-    rgba(212, 168, 83, 0.35) 50%,
-    rgba(212, 168, 83, 0.22) 75%,
-    transparent 100%
-  );
-  pointer-events: none;
-  z-index: 0;
-}
-
 .constellation-nodes-grid {
   position: relative;
   z-index: 1;

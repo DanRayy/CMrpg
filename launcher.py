@@ -8,6 +8,7 @@ Desenvolvido com a Standard Library do Python (sem dependencias externas).
 import os
 import sys
 import json
+import datetime
 import urllib.request
 import zipfile
 import io
@@ -222,7 +223,14 @@ def update_project(root_dir, repo="DanRayy/CMrpg"):
 
                 for member in z.namelist():
                     rel = member[len(root_in_zip) + 1 :]
-                    if not rel or rel == "state.json" or rel.startswith(".git") or rel.startswith("venv"):
+                    if (
+                        not rel
+                        or rel == "state.json"
+                        or rel == "state.json.tmp"
+                        or rel.startswith("backups")
+                        or rel.startswith(".git")
+                        or rel.startswith("venv")
+                    ):
                         continue
                     if member.endswith("/"):
                         os.makedirs(os.path.join(root_dir, rel), exist_ok=True)
@@ -431,6 +439,82 @@ def display_network_ips():
     print(f"{DARK_YELLOW}============================================================{RESET}\n")
 
 
+def create_and_rotate_state_backup(root_dir, max_backups=15):
+    """
+    Cria um backup automático do state.json em backups/state_YYYY-MM-DD_HH-MM-SS.json
+    (apenas se o arquivo existir, tiver > 0 bytes e conteúdo diferente do último backup)
+    e rotaciona mantendo no máximo os 15 backups mais recentes.
+    """
+    state_path = os.path.join(root_dir, "state.json")
+    if not os.path.isfile(state_path):
+        return
+
+    try:
+        if os.path.getsize(state_path) <= 0:
+            return
+        with open(state_path, "rb") as f:
+            current_bytes = f.read()
+        if not current_bytes.strip():
+            return
+    except Exception as e:
+        print(f"{YELLOW}[AVISO] Nao foi possivel ler state.json para backup automatico: {e}{RESET}")
+        return
+
+    backups_dir = os.path.join(root_dir, "backups")
+    try:
+        os.makedirs(backups_dir, exist_ok=True)
+    except Exception as e:
+        print(f"{YELLOW}[AVISO] Nao foi possivel criar pasta backups/: {e}{RESET}")
+        return
+
+    def list_sorted_backups():
+        entries = []
+        try:
+            for fname in os.listdir(backups_dir):
+                if fname.startswith("state_") and fname.endswith(".json"):
+                    fpath = os.path.join(backups_dir, fname)
+                    if os.path.isfile(fpath):
+                        entries.append(fpath)
+        except Exception:
+            pass
+        entries.sort(key=lambda p: (os.path.getmtime(p), os.path.basename(p)))
+        return entries
+
+    existing_backups = list_sorted_backups()
+
+    # Evitar duplicatas idênticas ao último backup salvo
+    should_copy = True
+    if existing_backups:
+        latest_backup = existing_backups[-1]
+        try:
+            with open(latest_backup, "rb") as lf:
+                if lf.read() == current_bytes:
+                    should_copy = False
+        except Exception:
+            should_copy = True
+
+    if should_copy:
+        ts = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        backup_name = f"state_{ts}.json"
+        backup_path = os.path.join(backups_dir, backup_name)
+        try:
+            shutil.copy2(state_path, backup_path)
+            print(f"{GREEN}[OK] Backup automatico criado: backups/{backup_name}{RESET}")
+        except Exception as e:
+            print(f"{YELLOW}[AVISO] Falha ao gravar backup automatico ({e}).{RESET}")
+    else:
+        print(f"{GRAY}[i] Backup automatico: state.json inalterado desde o ultimo backup.{RESET}")
+
+    # Rotação de limite: manter apenas os max_backups (15) mais recentes
+    all_backups = list_sorted_backups()
+    while len(all_backups) > max_backups:
+        oldest = all_backups.pop(0)
+        try:
+            os.remove(oldest)
+        except Exception:
+            pass
+
+
 def main():
     root_dir = os.path.abspath(os.path.dirname(__file__))
     os.chdir(root_dir)
@@ -456,6 +540,9 @@ def main():
     check_and_configure_firewall()
     venv_python = ensure_venv_and_dependencies(root_dir, selected_option)
     display_network_ips()
+
+    # E. Backup automatico leve com rotacao (maximo 15 backups) antes de iniciar o Uvicorn
+    create_and_rotate_state_backup(root_dir, max_backups=15)
 
     # Abrir navegador e iniciar Uvicorn
     if "--dry-run" in sys.argv:

@@ -4,11 +4,14 @@ import asyncio
 import copy
 import datetime
 import json
+import os
 import socket
 import subprocess
+import time
 import uuid
+from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, AsyncIterator, Dict, List, Optional
 
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
@@ -26,10 +29,52 @@ from rules_engine import (
 
 BASE_DIR = Path(__file__).resolve().parent
 STATE_FILE = BASE_DIR / "state.json"
+STATE_TMP_FILE = BASE_DIR / "state.json.tmp"
+BACKUPS_DIR = BASE_DIR / "backups"
 STATIC_DIR = BASE_DIR / "static"
 
 HISTORY_LIMIT = 6
+SAVE_DEBOUNCE_SECONDS = 0.3
+save_lock = asyncio.Lock()
 elem_keys = ELEMENTAL_RESISTANCE_TYPES
+
+
+def _write_state_atomic_sync(
+    state_data: Dict[str, Any],
+    file_path: Path = STATE_FILE,
+) -> None:
+    """
+    Escrita atômica física em disco:
+    1. Grava o JSON formatado em state.json.tmp com encoding='utf-8'.
+    2. Executa f.flush() e os.fsync(f.fileno()) antes de fechar o arquivo.
+    3. Substitui state.json usando os.replace com até 3 tentativas e time.sleep(0.05)
+       para contornar bloqueios transitórios no Windows (PermissionError / WinError 5).
+    """
+    tmp_path = file_path.with_name(f"{file_path.name}.tmp")
+    serialized = json.dumps(state_data, ensure_ascii=False, indent=2)
+
+    with open(tmp_path, "w", encoding="utf-8") as f:
+        f.write(serialized)
+        f.flush()
+        os.fsync(f.fileno())
+
+    last_err: Optional[Exception] = None
+    for attempt in range(3):
+        try:
+            os.replace(str(tmp_path), str(file_path))
+            last_err = None
+            break
+        except PermissionError as exc:
+            last_err = exc
+            if attempt < 2:
+                time.sleep(0.05)
+        except OSError as exc:
+            last_err = exc
+            if attempt < 2:
+                time.sleep(0.05)
+
+    if last_err is not None:
+        raise last_err
 
 
 def get_host_ips() -> Dict[str, Any]:
@@ -1204,11 +1249,14 @@ class StateManager:
     def __init__(self, file_path: Path) -> None:
         self.file_path = file_path
         self.lock = asyncio.Lock()
+        self.save_lock = save_lock
         self.state: Dict[str, Any] = {}
         self.undo_stack: List[Dict[str, Any]] = []
         self.redo_stack: List[Dict[str, Any]] = []
         self.connected_ips_counts: Dict[str, int] = {}
-        self._load_or_initialize()
+        self._dirty: bool = False
+        self._debounce_task: Optional[asyncio.Task[None]] = None
+        self.load_state()
 
     def _snapshot_core(self) -> Dict[str, Any]:
         return copy.deepcopy(
@@ -1353,36 +1401,80 @@ class StateManager:
         async with self.lock:
             self.connected_ips_counts = copy.deepcopy(counts_by_ip)
             self._recalculate_all()
-            self._save_sync()
+            self._schedule_debounced_save()
             return self.get_sync_payload()
 
-    def _load_or_initialize(self) -> None:
+    def _try_restore_from_latest_backup(self) -> Optional[Dict[str, Any]]:
+        """Procura e carrega o backup válido mais recente em backups/ caso state.json esteja corrompido ou vazio."""
+        if not BACKUPS_DIR.exists() or not BACKUPS_DIR.is_dir():
+            return None
+
+        backup_files = sorted(
+            BACKUPS_DIR.glob("*.json"),
+            key=lambda p: (p.stat().st_mtime if p.exists() else 0.0, p.name),
+            reverse=True,
+        )
+        for b_file in backup_files:
+            try:
+                if not b_file.is_file() or b_file.stat().st_size <= 0:
+                    continue
+                raw_backup = b_file.read_text(encoding="utf-8").strip()
+                if not raw_backup:
+                    continue
+                parsed = json.loads(raw_backup)
+                if isinstance(parsed, dict) and "characters" in parsed:
+                    print(
+                        f"[CMrpg] RECUPERAÇÃO AUTOMÁTICA: state.json restaurado com sucesso a partir do backup '{b_file.name}'!"
+                    )
+                    return parsed
+            except Exception as b_exc:
+                print(f"[CMrpg] Aviso: backup '{b_file.name}' inválido ({b_exc}), tentando anterior...")
+
+        return None
+
+    def _apply_loaded_dict(self, loaded: Dict[str, Any], default_state: Dict[str, Any]) -> None:
+        for k, v in default_state.items():
+            if k not in loaded:
+                loaded[k] = copy.deepcopy(v)
+        if not isinstance(loaded.get("skillTrees"), list):
+            loaded["skillTrees"] = copy.deepcopy(default_state["skillTrees"])
+        loaded["auditLog"] = [
+            entry
+            for entry in (loaded.get("auditLog") or [])
+            if "Dan Ray" not in str(entry.get("actorName", ""))
+        ]
+        if not loaded["auditLog"]:
+            loaded["auditLog"] = copy.deepcopy(default_state["auditLog"])
+        self.state = loaded
+        self.undo_stack = (loaded.get("undo_stack") or [])[-HISTORY_LIMIT:]
+        self.redo_stack = (loaded.get("redo_stack") or [])[-HISTORY_LIMIT:]
+        self._recalculate_all()
+        self._save_sync()
+
+    def load_state(self) -> None:
         default_state = build_default_campaign_state()
         if self.file_path.exists():
             try:
+                file_size = self.file_path.stat().st_size
+                if file_size <= 0:
+                    raise json.JSONDecodeError("Arquivo state.json vazio (0 bytes)", "", 0)
                 raw_text = self.file_path.read_text(encoding="utf-8").strip()
-                if raw_text:
-                    loaded = json.loads(raw_text)
-                    if isinstance(loaded, dict) and "characters" in loaded:
-                        for k, v in default_state.items():
-                            if k not in loaded:
-                                loaded[k] = copy.deepcopy(v)
-                        if not isinstance(loaded.get("skillTrees"), list):
-                            loaded["skillTrees"] = copy.deepcopy(default_state["skillTrees"])
-                        # Remove menções antigas a "Dan Ray" do log inicial se existirem
-                        loaded["auditLog"] = [
-                            entry
-                            for entry in (loaded.get("auditLog") or [])
-                            if "Dan Ray" not in str(entry.get("actorName", ""))
-                        ]
-                        if not loaded["auditLog"]:
-                            loaded["auditLog"] = copy.deepcopy(default_state["auditLog"])
-                        self.state = loaded
-                        self.undo_stack = (loaded.get("undo_stack") or [])[-HISTORY_LIMIT:]
-                        self.redo_stack = (loaded.get("redo_stack") or [])[-HISTORY_LIMIT:]
-                        self._recalculate_all()
-                        self._save_sync()
-                        return
+                if not raw_text:
+                    raise json.JSONDecodeError("Arquivo state.json em branco", "", 0)
+                loaded = json.loads(raw_text)
+                if isinstance(loaded, dict) and "characters" in loaded:
+                    self._apply_loaded_dict(loaded, default_state)
+                    return
+                raise ValueError("Estrutura raiz de state.json inválida (ausência de 'characters').")
+            except (json.JSONDecodeError, ValueError, OSError) as exc:
+                print(
+                    f"[CMrpg] ALERTA: state.json corrompido ou vazio ({exc}). Tentando restaurar automaticamente do último backup em 'backups/'..."
+                )
+                restored = self._try_restore_from_latest_backup()
+                if restored is not None:
+                    self._apply_loaded_dict(restored, default_state)
+                    return
+                print("[CMrpg] Nenhum backup válido encontrado em 'backups/'. Inicializando estado padrão.")
             except Exception as exc:
                 print(f"[CMrpg] Aviso ao carregar state.json, usando estado padrão: {exc}")
 
@@ -1392,15 +1484,68 @@ class StateManager:
         self._recalculate_all()
         self._save_sync()
 
-    def _save_sync(self) -> None:
+    def _load_or_initialize(self) -> None:
+        self.load_state()
+
+    def _prepare_state_for_persistence(self) -> Dict[str, Any]:
         self.state["undo_stack"] = self.undo_stack[-HISTORY_LIMIT:]
         self.state["redo_stack"] = self.redo_stack[-HISTORY_LIMIT:]
-        tmp_path = self.file_path.with_suffix(".json.tmp")
-        tmp_path.write_text(
-            json.dumps(self.state, ensure_ascii=False, indent=2),
-            encoding="utf-8",
-        )
-        tmp_path.replace(self.file_path)
+        return copy.deepcopy(self.state)
+
+    def _save_sync(self) -> None:
+        snapshot = self._prepare_state_for_persistence()
+        self._dirty = False
+        _write_state_atomic_sync(snapshot, self.file_path)
+
+    def _schedule_debounced_save(self) -> None:
+        """
+        Marca o estado como modificado em RAM e agenda a gravação assíncrona em segundo plano
+        com debounce de 0.3s, liberando o broadcast do WebSocket em 0ms.
+        """
+        self.state["undo_stack"] = self.undo_stack[-HISTORY_LIMIT:]
+        self.state["redo_stack"] = self.redo_stack[-HISTORY_LIMIT:]
+        self._dirty = True
+
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            self._save_sync()
+            return
+
+        if self._debounce_task is not None and not self._debounce_task.done():
+            self._debounce_task.cancel()
+
+        self._debounce_task = loop.create_task(self._debounced_save_worker())
+
+    async def _debounced_save_worker(self) -> None:
+        try:
+            await asyncio.sleep(SAVE_DEBOUNCE_SECONDS)
+            await self.flush_pending_save()
+        except asyncio.CancelledError:
+            return
+        except Exception as exc:
+            print(f"[CMrpg] Erro ao salvar state.json em background: {exc}")
+
+    async def flush_pending_save(self, force: bool = False) -> None:
+        """
+        Executa imediatamente qualquer gravação pendente (ou forçada no shutdown)
+        usando asyncio.to_thread(_write_state_atomic_sync) protegido por save_lock.
+        """
+        current_task = asyncio.current_task()
+        if (
+            self._debounce_task is not None
+            and self._debounce_task is not current_task
+            and not self._debounce_task.done()
+        ):
+            self._debounce_task.cancel()
+            self._debounce_task = None
+
+        async with self.save_lock:
+            if not self._dirty and not force:
+                return
+            snapshot = self._prepare_state_for_persistence()
+            self._dirty = False
+            await asyncio.to_thread(_write_state_atomic_sync, snapshot, self.file_path)
 
     def add_audit_entry(
         self,
@@ -1489,7 +1634,7 @@ class StateManager:
                 if isinstance(t, str) and t.strip() and t not in merged_toasts:
                     merged_toasts.append(t.strip())
 
-            self._save_sync()
+            self._schedule_debounced_save()
             return self.get_sync_payload(toasts=merged_toasts)
 
     async def undo(self) -> Optional[Dict[str, Any]]:
@@ -1502,7 +1647,7 @@ class StateManager:
                 self.redo_stack = self.redo_stack[-HISTORY_LIMIT:]
             self._restore_core(prev)
             self.add_audit_entry("Mestre", "UNDO", "Campanha", "Desfez a última alteração de estado (Undo).")
-            self._save_sync()
+            self._schedule_debounced_save()
             return self.get_sync_payload()
 
     async def redo(self) -> Optional[Dict[str, Any]]:
@@ -1515,7 +1660,7 @@ class StateManager:
                 self.undo_stack = self.undo_stack[-HISTORY_LIMIT:]
             self._restore_core(nxt)
             self.add_audit_entry("Mestre", "REDO", "Campanha", "Refez a alteração de estado (Redo).")
-            self._save_sync()
+            self._schedule_debounced_save()
             return self.get_sync_payload()
 
 
@@ -1588,10 +1733,21 @@ class ConnectionManager:
             self.disconnect(dead)
 
 
+state_manager = StateManager(STATE_FILE)
+ws_manager = ConnectionManager()
+
+
+@asynccontextmanager
+async def lifespan(app_instance: FastAPI) -> AsyncIterator[None]:
+    yield
+    await state_manager.flush_pending_save(force=True)
+
+
 app = FastAPI(
     title="CMrpg Server",
     description="Sistema de Gestão de RPG Local via Radmin VPN.",
     version="2.1.0",
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -1601,9 +1757,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-state_manager = StateManager(STATE_FILE)
-ws_manager = ConnectionManager()
 
 
 @app.get("/api/whoami")

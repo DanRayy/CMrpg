@@ -25,6 +25,9 @@ Thumbs.db
 # Backups e pacotes compactados locais
 *.rar
 *.zip
+backups/
 
-# Estado da aplicacao
+# Estado da aplicacao e arquivos temporarios de escrita atomica
 /state.json
+/state.json.tmp
+*.tmp
