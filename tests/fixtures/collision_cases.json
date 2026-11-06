@@ -1,0 +1,160 @@
+[
+  {
+    "name": "free_move_no_obstacles",
+    "w": 420,
+    "h": 468,
+    "desired": { "x": 800, "y": 900 },
+    "current": { "x": 700, "y": 850 },
+    "region": { "min_x": 0, "max_x": 4380, "min_y": 0, "max_y": 2532 },
+    "obstacles": [],
+    "expected": { "x": 800, "y": 900 }
+  },
+  {
+    "name": "clamp_top_left_world_bounds",
+    "w": 420,
+    "h": 468,
+    "desired": { "x": -150, "y": -80 },
+    "current": { "x": 20, "y": 20 },
+    "region": { "min_x": 0, "max_x": 4380, "min_y": 0, "max_y": 2532 },
+    "obstacles": [],
+    "expected": { "x": 0, "y": 0 }
+  },
+  {
+    "name": "clamp_bottom_right_world_bounds",
+    "w": 420,
+    "h": 468,
+    "desired": { "x": 4700, "y": 2900 },
+    "current": { "x": 4300, "y": 2400 },
+    "region": { "min_x": 0, "max_x": 4380, "min_y": 0, "max_y": 2532 },
+    "obstacles": [],
+    "expected": { "x": 4380, "y": 2532 }
+  },
+  {
+    "name": "battle_enemy_cannot_cross_divider_downward",
+    "w": 420,
+    "h": 468,
+    "desired": { "x": 600, "y": 1300 },
+    "current": { "x": 600, "y": 900 },
+    "region": { "min_x": 0, "max_x": 4380, "min_y": 0, "max_y": 1032 },
+    "obstacles": [],
+    "expected": { "x": 600, "y": 1032 }
+  },
+  {
+    "name": "battle_player_cannot_cross_divider_upward",
+    "w": 420,
+    "h": 468,
+    "desired": { "x": 600, "y": 1200 },
+    "current": { "x": 600, "y": 1600 },
+    "region": { "min_x": 0, "max_x": 4380, "min_y": 1500, "max_y": 2532 },
+    "obstacles": [],
+    "expected": { "x": 600, "y": 1500 }
+  },
+  {
+    "name": "collide_from_left_stops_at_left_edge",
+    "w": 420,
+    "h": 468,
+    "desired": { "x": 200, "y": 500 },
+    "current": { "x": 40, "y": 500 },
+    "region": { "min_x": 0, "max_x": 4380, "min_y": 0, "max_y": 2532 },
+    "obstacles": [
+      { "x": 500, "y": 500, "w": 420, "h": 468 }
+    ],
+    "expected": { "x": 80, "y": 500 }
+  },
+  {
+    "name": "collide_from_right_stops_at_right_edge",
+    "w": 420,
+    "h": 468,
+    "desired": { "x": 800, "y": 500 },
+    "current": { "x": 960, "y": 500 },
+    "region": { "min_x": 0, "max_x": 4380, "min_y": 0, "max_y": 2532 },
+    "obstacles": [
+      { "x": 500, "y": 500, "w": 420, "h": 468 }
+    ],
+    "expected": { "x": 920, "y": 500 }
+  },
+  {
+    "name": "collide_from_top_stops_at_top_edge",
+    "w": 420,
+    "h": 468,
+    "desired": { "x": 500, "y": 150 },
+    "current": { "x": 500, "y": 10 },
+    "region": { "min_x": 0, "max_x": 4380, "min_y": 0, "max_y": 2532 },
+    "obstacles": [
+      { "x": 500, "y": 500, "w": 420, "h": 468 }
+    ],
+    "expected": { "x": 500, "y": 32 }
+  },
+  {
+    "name": "collide_from_bottom_stops_at_bottom_edge",
+    "w": 420,
+    "h": 468,
+    "desired": { "x": 500, "y": 850 },
+    "current": { "x": 500, "y": 1000 },
+    "region": { "min_x": 0, "max_x": 4380, "min_y": 0, "max_y": 2532 },
+    "obstacles": [
+      { "x": 500, "y": 500, "w": 420, "h": 468 }
+    ],
+    "expected": { "x": 500, "y": 968 }
+  },
+  {
+    "name": "diagonal_slide_along_left_edge",
+    "w": 420,
+    "h": 468,
+    "desired": { "x": 250, "y": 580 },
+    "current": { "x": 80, "y": 500 },
+    "region": { "min_x": 0, "max_x": 4380, "min_y": 0, "max_y": 2532 },
+    "obstacles": [
+      { "x": 500, "y": 500, "w": 420, "h": 468 }
+    ],
+    "expected": { "x": 80, "y": 580 }
+  },
+  {
+    "name": "diagonal_slide_along_top_edge",
+    "w": 420,
+    "h": 468,
+    "desired": { "x": 560, "y": 200 },
+    "current": { "x": 500, "y": 32 },
+    "region": { "min_x": 0, "max_x": 4380, "min_y": 0, "max_y": 2532 },
+    "obstacles": [
+      { "x": 500, "y": 500, "w": 420, "h": 468 }
+    ],
+    "expected": { "x": 560, "y": 32 }
+  },
+  {
+    "name": "round_top_left_corner_smoothly",
+    "w": 420,
+    "h": 468,
+    "desired": { "x": 200, "y": 20 },
+    "current": { "x": 80, "y": 40 },
+    "region": { "min_x": 0, "max_x": 4380, "min_y": 0, "max_y": 2532 },
+    "obstacles": [
+      { "x": 500, "y": 500, "w": 420, "h": 468 }
+    ],
+    "expected": { "x": 200, "y": 20 }
+  },
+  {
+    "name": "variable_height_tall_card_collision",
+    "w": 420,
+    "h": 620,
+    "desired": { "x": 500, "y": 300 },
+    "current": { "x": 500, "y": 100 },
+    "region": { "min_x": 0, "max_x": 4380, "min_y": 0, "max_y": 2380 },
+    "obstacles": [
+      { "x": 500, "y": 800, "w": 420, "h": 360 }
+    ],
+    "expected": { "x": 500, "y": 180 }
+  },
+  {
+    "name": "direct_drop_without_current_pos_projects_nearest",
+    "w": 420,
+    "h": 468,
+    "desired": { "x": 480, "y": 500 },
+    "current": null,
+    "region": { "min_x": 0, "max_x": 4380, "min_y": 0, "max_y": 2532 },
+    "obstacles": [
+      { "x": 500, "y": 500, "w": 420, "h": 468 }
+    ],
+    "expected": { "x": 80, "y": 500 }
+  }
+]
