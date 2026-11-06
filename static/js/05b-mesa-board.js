@@ -470,6 +470,18 @@ function exitMesaBattleClient(targetState) {
   tbl.battle.active = false;
 }
 
+function reconcileMesaTableStateClient(targetState) {
+  return ensureClientTableState(targetState);
+}
+
+function centerMesaOnCard(charId) {
+  if (!charId || typeof state === 'undefined') return;
+  const target = (state.characters || []).find((c) => c.id === charId);
+  if (target) {
+    centerMesaCameraOnCards([target], Math.max(mesaCamera.zoom, 0.8));
+  }
+}
+
 // ===========================================================================
 // Controle de Câmera e Zoom Independente por Usuário
 // ===========================================================================
@@ -1298,5 +1310,9 @@ if (typeof module !== 'undefined' && module.exports) {
     mesaSlideMove,
     mesaNearestFree,
     mesaResolveMove,
+    ensureClientTableState,
+    reconcileMesaTableStateClient,
+    enterMesaBattleClient,
+    exitMesaBattleClient,
   };
 }

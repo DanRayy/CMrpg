@@ -224,3 +224,60 @@ def test_battle_activation_guards_and_region_enforcement(tmp_path: Path) -> None
         upd_enemy = _drain_until_type(ws_m, "table_update")
         enemy_h = main.state_manager.state["table"]["sizes"]["char_enemy_test_1"]["h"]
         assert upd_enemy["position"]["y"] + enemy_h <= 1500
+
+
+def test_undo_redo_restores_deleted_character_position_on_mesa(tmp_path: Path) -> None:
+    _setup_isolated_state(tmp_path)
+    client_master = TestClient(main.app, client=("127.0.0.1", 53010))
+
+    with client_master.websocket_connect("/ws") as ws_m:
+        _drain_until_type(ws_m, "state_sync")
+
+        # Move char_default_1 to a custom position (1850, 2100)
+        ws_m.send_json({"type": "table_move", "charId": "char_default_1", "x": 1850, "y": 2100})
+        upd = _drain_until_type(ws_m, "table_update")
+        assert upd["position"] == {"x": 1850, "y": 2100}
+
+        # Delete char_default_1 with record_history=True
+        remaining_chars = [c for c in main.state_manager.state["characters"] if c.get("id") != "char_default_1"]
+        ws_m.send_json({
+            "type": "update_state",
+            "characters": remaining_chars,
+            "record_history": True,
+        })
+        sync_after_del = _drain_until_type(ws_m, "state_sync")
+        assert "char_default_1" not in sync_after_del["table"]["positions"]
+
+        # Undo deletion -> char_default_1 must return at its exact previous position (1850, 2100)
+        ws_m.send_json({"type": "undo"})
+        sync_after_undo = _drain_until_type(ws_m, "state_sync")
+        assert sync_after_undo["table"]["positions"].get("char_default_1") == {"x": 1850, "y": 2100}
+
+
+def test_static_assets_and_mesa_markup(tmp_path: Path) -> None:
+    _setup_isolated_state(tmp_path)
+    client = TestClient(main.app, client=("127.0.0.1", 53020))
+
+    resp_html = client.get("/")
+    assert resp_html.status_code == 200
+    html = resp_html.text
+    assert 'data-nav-tab="mesa"' in html
+    assert 'id="tab-mesa"' in html
+    assert 'id="mesa-viewport"' in html
+    assert 'id="mesa-world"' in html
+    assert 'id="mesa-tokens-layer"' in html
+    assert 'js/05b-mesa-board.js' in html
+
+    for asset in [
+        "/styles.css",
+        "/js/01-core-state.js",
+        "/js/02-websocket-combat.js",
+        "/js/03-tabs-renderers.js",
+        "/js/04-modals-character-buffs.js",
+        "/js/05-modals-notes-inventory-bestiary.js",
+        "/js/05b-mesa-board.js",
+        "/js/06-events-init.js",
+    ]:
+        r = client.get(asset)
+        assert r.status_code == 200, f"Asset {asset} returned {r.status_code}"
+

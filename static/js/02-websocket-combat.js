@@ -186,8 +186,8 @@
         const vr = vp.getBoundingClientRect();
         if (vr.width > 0 && vr.height > 0 && clientX >= vr.left && clientX <= vr.right && clientY >= vr.top && clientY <= vr.bottom) {
           const zoom = Number(mesaCamera.zoom || 0.75);
-          const wx = (clientX - vr.left - Number(mesaCamera.panX || 0)) / zoom;
-          const wy = (clientY - vr.top - Number(mesaCamera.panY || 0)) / zoom;
+          const wx = (clientX - vr.left - Number(mesaCamera.x || 0)) / zoom;
+          const wy = (clientY - vr.top - Number(mesaCamera.y || 0)) / zoom;
           return {
             region: 'mesa',
             modalId: '',
@@ -257,8 +257,8 @@
         const vr = vp.getBoundingClientRect();
         if (vr.width > 0 && vr.height > 0) {
           const zoom = Number(mesaCamera.zoom || 0.75);
-          x = vr.left + Number(mesaCamera.panX || 0) + Number(cursor.wx) * zoom;
-          y = vr.top + Number(mesaCamera.panY || 0) + Number(cursor.wy) * zoom;
+          x = vr.left + Number(mesaCamera.x || 0) + Number(cursor.wx) * zoom;
+          y = vr.top + Number(mesaCamera.y || 0) + Number(cursor.wy) * zoom;
         }
       }
     } else if (cursor.region === 'main') {
