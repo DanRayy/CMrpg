@@ -26,10 +26,25 @@ from rules_engine import (
     compute_character_derived_stats,
     evaluate_damage_pipeline,
 )
+from table_engine import (
+    DEFAULT_WORLD_HEIGHT,
+    DEFAULT_WORLD_WIDTH,
+    build_default_table_state,
+    can_move_card,
+    get_allowed_region,
+    get_public_table_payload,
+    is_enemy_character,
+    nearest_free,
+    overlaps_any,
+    reconcile as reconcile_table_state,
+    resolve_move,
+    sanitize_size,
+    sanitize_view,
+)
 
 BASE_DIR = Path(__file__).resolve().parent
-STATE_FILE = BASE_DIR / "state.json"
-STATE_TMP_FILE = BASE_DIR / "state.json.tmp"
+STATE_FILE = Path(os.environ.get("CMRPG_STATE_FILE", str(BASE_DIR / "state.json"))).resolve()
+STATE_TMP_FILE = STATE_FILE.with_name(f"{STATE_FILE.name}.tmp")
 BACKUPS_DIR = BASE_DIR / "backups"
 STATIC_DIR = BASE_DIR / "static"
 
@@ -904,6 +919,7 @@ def build_default_campaign_state() -> Dict[str, Any]:
         ],
         "customPermissionPresets": [],
         "skillTrees": build_default_skill_trees(),
+        "table": build_default_table_state(),
         "undo_stack": [],
         "redo_stack": [],
     }
@@ -1330,6 +1346,8 @@ class StateManager:
                 p["name"] = c_obj["name"]
                 p["isDead"] = bool(c_obj.get("isDead", False))
 
+        reconcile_table_state(self.state)
+
     def _apply_live_connections_to_members(self) -> None:
         """Sincroniza os IPs conectados no momento com a lista de membros da sala."""
         host_ip = HOST_NETWORK_INFO["preferred_ip"]
@@ -1433,6 +1451,15 @@ class StateManager:
         return None
 
     def _apply_loaded_dict(self, loaded: Dict[str, Any], default_state: Dict[str, Any]) -> None:
+        needs_pre_mesa_backup = "table" not in loaded and self.file_path.exists()
+        if needs_pre_mesa_backup:
+            try:
+                bak_path = self.file_path.with_name(f"{self.file_path.name}.pre-1.11.0.bak")
+                if not bak_path.exists():
+                    bak_path.write_text(self.file_path.read_text(encoding="utf-8"), encoding="utf-8")
+            except Exception as bak_exc:
+                print(f"[CMrpg] Aviso ao criar backup pre-1.11.0: {bak_exc}")
+
         for k, v in default_state.items():
             if k not in loaded:
                 loaded[k] = copy.deepcopy(v)
@@ -1586,6 +1613,7 @@ class StateManager:
             "bestiary": self.state.get("bestiary", []),
             "customPermissionPresets": self.state.get("customPermissionPresets", []),
             "skillTrees": self.state.get("skillTrees", []),
+            "table": get_public_table_payload(self.state.get("table") or {}),
             "auditLog": self.state["auditLog"],
             "network": {
                 **HOST_NETWORK_INFO,
@@ -1597,6 +1625,259 @@ class StateManager:
             "redo_count": len(self.redo_stack),
             "toasts": toasts or [],
         }
+
+    def get_member_table_view(self, member_id: str) -> Optional[Dict[str, float]]:
+        views = (self.state.get("table") or {}).get("views")
+        if isinstance(views, dict) and isinstance(views.get(member_id), dict):
+            return copy.deepcopy(views[member_id])
+        return None
+
+    async def move_table_card(
+        self,
+        char_id: str,
+        desired_x: Any,
+        desired_y: Any,
+        identity: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        async with self.lock:
+            reconcile_table_state(self.state)
+            table = self.state["table"]
+            chars = self.state.get("characters") or []
+            char = next((c for c in chars if isinstance(c, dict) and str(c.get("id")) == char_id), None)
+            if char is None:
+                return {
+                    "ok": False,
+                    "reason": "not_found",
+                    "charId": char_id,
+                    "rev": table.get("rev", 1),
+                    "table": get_public_table_payload(table),
+                }
+
+            if not can_move_card(char, identity, self.state.get("members") or []):
+                return {
+                    "ok": False,
+                    "reason": "forbidden",
+                    "charId": char_id,
+                    "position": copy.deepcopy(table["positions"].get(char_id)),
+                    "rev": table.get("rev", 1),
+                    "table": get_public_table_payload(table),
+                }
+
+            try:
+                dx = float(desired_x)
+                dy = float(desired_y)
+            except (TypeError, ValueError):
+                return {
+                    "ok": False,
+                    "reason": "invalid_coords",
+                    "charId": char_id,
+                    "position": copy.deepcopy(table["positions"].get(char_id)),
+                    "rev": table.get("rev", 1),
+                }
+
+            world = table.get("world") or {}
+            world_w = int(world.get("w", DEFAULT_WORLD_WIDTH))
+            world_h = int(world.get("h", DEFAULT_WORLD_HEIGHT))
+            sz = sanitize_size(table["sizes"].get(char_id))
+            table["sizes"][char_id] = sz
+            battle_info = table.get("battle") or {}
+            region = get_allowed_region(
+                world_w=world_w,
+                world_h=world_h,
+                card_w=sz["w"],
+                card_h=sz["h"],
+                battle_active=bool(battle_info.get("active", False)),
+                battle_split=int(battle_info.get("split", world_h // 2)),
+                is_enemy=is_enemy_character(char),
+            )
+
+            obstacles: List[Dict[str, int]] = []
+            for other_id, other_pos in (table.get("positions") or {}).items():
+                if other_id == char_id or not isinstance(other_pos, dict):
+                    continue
+                other_sz = sanitize_size(table["sizes"].get(other_id))
+                obstacles.append(
+                    {
+                        "id": other_id,
+                        "x": int(round(other_pos.get("x", 0))),
+                        "y": int(round(other_pos.get("y", 0))),
+                        "w": other_sz["w"],
+                        "h": other_sz["h"],
+                    }
+                )
+
+            cur_pos = table["positions"].get(char_id)
+            cur_tuple = (
+                (int(round(cur_pos["x"])), int(round(cur_pos["y"])))
+                if isinstance(cur_pos, dict) and "x" in cur_pos and "y" in cur_pos
+                else None
+            )
+            nx, ny = resolve_move(dx, dy, sz["w"], sz["h"], obstacles, region, current_pos=cur_tuple)
+            table["positions"][char_id] = {"x": nx, "y": ny}
+            table["rev"] = int(table.get("rev", 1)) + 1
+            self._schedule_debounced_save()
+            return {
+                "ok": True,
+                "charId": char_id,
+                "position": {"x": nx, "y": ny},
+                "rev": table["rev"],
+            }
+
+    def preview_table_drag(
+        self,
+        char_id: str,
+        desired_x: Any,
+        desired_y: Any,
+        identity: Dict[str, Any],
+    ) -> Optional[Dict[str, Any]]:
+        table = self.state.get("table")
+        if not isinstance(table, dict):
+            return None
+        chars = self.state.get("characters") or []
+        char = next((c for c in chars if isinstance(c, dict) and str(c.get("id")) == char_id), None)
+        if char is None or not can_move_card(char, identity, self.state.get("members") or []):
+            return None
+        try:
+            dx = float(desired_x)
+            dy = float(desired_y)
+        except (TypeError, ValueError):
+            return None
+
+        world = table.get("world") or {}
+        world_w = int(world.get("w", DEFAULT_WORLD_WIDTH))
+        world_h = int(world.get("h", DEFAULT_WORLD_HEIGHT))
+        sz = sanitize_size((table.get("sizes") or {}).get(char_id))
+        battle_info = table.get("battle") or {}
+        region = get_allowed_region(
+            world_w=world_w,
+            world_h=world_h,
+            card_w=sz["w"],
+            card_h=sz["h"],
+            battle_active=bool(battle_info.get("active", False)),
+            battle_split=int(battle_info.get("split", world_h // 2)),
+            is_enemy=is_enemy_character(char),
+        )
+        obstacles: List[Dict[str, int]] = []
+        for other_id, other_pos in (table.get("positions") or {}).items():
+            if other_id == char_id or not isinstance(other_pos, dict):
+                continue
+            other_sz = sanitize_size((table.get("sizes") or {}).get(other_id))
+            obstacles.append(
+                {
+                    "id": other_id,
+                    "x": int(round(other_pos.get("x", 0))),
+                    "y": int(round(other_pos.get("y", 0))),
+                    "w": other_sz["w"],
+                    "h": other_sz["h"],
+                }
+            )
+        cur_pos = (table.get("positions") or {}).get(char_id)
+        cur_tuple = (
+            (int(round(cur_pos["x"])), int(round(cur_pos["y"])))
+            if isinstance(cur_pos, dict) and "x" in cur_pos and "y" in cur_pos
+            else None
+        )
+        nx, ny = resolve_move(dx, dy, sz["w"], sz["h"], obstacles, region, current_pos=cur_tuple)
+        return {"charId": char_id, "x": nx, "y": ny}
+
+    async def update_table_sizes(
+        self,
+        raw_sizes: Dict[str, Any],
+        is_master: bool = False,
+    ) -> Optional[Dict[str, Any]]:
+        if not isinstance(raw_sizes, dict) or not raw_sizes:
+            return None
+        async with self.lock:
+            reconcile_table_state(self.state)
+            table = self.state["table"]
+            sizes = table["sizes"]
+            positions = table["positions"]
+            chars_by_id = {
+                str(c["id"]): c
+                for c in (self.state.get("characters") or [])
+                if isinstance(c, dict) and c.get("id")
+            }
+            bestiary_by_id = {
+                str(b["id"]): b
+                for b in (self.state.get("bestiary") or [])
+                if isinstance(b, dict) and b.get("id")
+            }
+
+            any_changed = False
+            for cid, raw_sz in raw_sizes.items():
+                cid_str = str(cid)
+                char = chars_by_id.get(cid_str)
+                if char is None:
+                    continue
+                clean_sz = sanitize_size(raw_sz)
+                cur_sz = sanitize_size(sizes.get(cid_str))
+                if not is_master and is_enemy_character(char):
+                    b_ref = bestiary_by_id.get(str(char.get("bestiaryId") or ""))
+                    is_revealed = (
+                        bool(b_ref.get("reveladoParaJogadores"))
+                        if b_ref is not None
+                        else bool(char.get("reveladoParaJogadores"))
+                    )
+                    if not is_revealed:
+                        clean_sz["h"] = max(cur_sz["h"], clean_sz["h"])
+
+                if abs(clean_sz["w"] - cur_sz["w"]) <= 1 and abs(clean_sz["h"] - cur_sz["h"]) <= 1:
+                    continue
+                sizes[cid_str] = clean_sz
+                any_changed = True
+
+            if not any_changed:
+                return None
+
+            # Verifica se o crescimento de algum card gerou sobreposição ou saiu da região
+            world = table.get("world") or {}
+            world_w = int(world.get("w", DEFAULT_WORLD_WIDTH))
+            world_h = int(world.get("h", DEFAULT_WORLD_HEIGHT))
+            battle_info = table.get("battle") or {}
+            battle_active = bool(battle_info.get("active", False))
+            split = int(battle_info.get("split", world_h // 2))
+
+            placed: List[Dict[str, int]] = []
+            for cid_str, char in chars_by_id.items():
+                pos = positions.get(cid_str)
+                if not isinstance(pos, dict):
+                    continue
+                sz = sanitize_size(sizes.get(cid_str))
+                region = get_allowed_region(
+                    world_w=world_w,
+                    world_h=world_h,
+                    card_w=sz["w"],
+                    card_h=sz["h"],
+                    battle_active=battle_active,
+                    battle_split=split,
+                    is_enemy=is_enemy_character(char),
+                )
+                px = max(region["min_x"], min(region["max_x"], int(round(pos.get("x", 0)))))
+                py = max(region["min_y"], min(region["max_y"], int(round(pos.get("y", 0)))))
+                if overlaps_any(px, py, sz["w"], sz["h"], placed):
+                    px, py = nearest_free(px, py, sz["w"], sz["h"], placed, region, gap=0)
+                positions[cid_str] = {"x": px, "y": py}
+                placed.append({"id": cid_str, "x": px, "y": py, "w": sz["w"], "h": sz["h"]})
+
+            table["rev"] = int(table.get("rev", 1)) + 1
+            self._schedule_debounced_save()
+            return get_public_table_payload(table)
+
+    async def save_table_view(self, member_id: str, raw_view: Dict[str, Any]) -> Dict[str, float]:
+        async with self.lock:
+            reconcile_table_state(self.state)
+            table = self.state["table"]
+            world = table.get("world") or {}
+            clean_v = sanitize_view(
+                raw_view,
+                int(world.get("w", DEFAULT_WORLD_WIDTH)),
+                int(world.get("h", DEFAULT_WORLD_HEIGHT)),
+            )
+            views = table.setdefault("views", {})
+            if views.get(member_id) != clean_v:
+                views[member_id] = clean_v
+                self._schedule_debounced_save()
+            return clean_v
 
     async def update_full_state(
         self,
@@ -1704,14 +1985,19 @@ class ConnectionManager:
             ws: WebSocket = entry["ws"]
             is_host: bool = entry["is_host"]
             ip: str = entry["ip"]
+            member_id = "host_master" if is_host else f"ip_{ip}"
             try:
                 msg = dict(base_message)
                 msg["identity"] = {
                     "client_ip": ip,
                     "is_host": is_host,
                     "role": "MESTRE" if is_host else "JOGADOR",
-                    "member_id": "host_master" if is_host else f"ip_{ip}",
+                    "member_id": member_id,
                 }
+                if msg.get("type") == "state_sync":
+                    saved_view = state_manager.get_member_table_view(member_id)
+                    if saved_view is not None:
+                        msg["table_view"] = saved_view
                 await ws.send_json(msg)
             except Exception:
                 stale.append(ws)
@@ -1780,13 +2066,17 @@ async def get_state(request: Request) -> JSONResponse:
     raw_ip = request.client.host if request.client else "127.0.0.1"
     is_host = is_client_host_master(raw_ip)
     canonical_ip = get_canonical_member_ip(raw_ip)
+    member_id = "host_master" if is_host else f"ip_{canonical_ip}"
     payload = state_manager.get_sync_payload()
     payload["identity"] = {
         "client_ip": canonical_ip,
         "is_host": is_host,
         "role": "MESTRE" if is_host else "JOGADOR",
-        "member_id": "host_master" if is_host else f"ip_{canonical_ip}",
+        "member_id": member_id,
     }
+    saved_view = state_manager.get_member_table_view(member_id)
+    if saved_view is not None:
+        payload["table_view"] = saved_view
     return JSONResponse(content=payload)
 
 
@@ -1830,6 +2120,27 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
 
             msg_type = data.get("type")
 
+            members_list = state_manager.state.get("members") or []
+            member_obj = next(
+                (
+                    m
+                    for m in members_list
+                    if isinstance(m, dict) and (m.get("id") == member_id or m.get("ip") == canonical_ip)
+                ),
+                None,
+            )
+            is_master_role = bool(
+                is_host
+                or member_id == "host_master"
+                or (member_obj and str(member_obj.get("role") or "").upper() == "MESTRE")
+            )
+            identity_dict = {
+                "client_ip": canonical_ip,
+                "is_host": is_host,
+                "role": "MESTRE" if is_master_role else "JOGADOR",
+                "member_id": member_id,
+            }
+
             if msg_type == "ping":
                 await websocket.send_json({"type": "pong"})
 
@@ -1838,22 +2149,7 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                 client_id = str(data.get("clientId") or conn_id).strip()
                 conn_entry["client_id"] = client_id
 
-                members_list = state_manager.state.get("members") or []
-                member_obj = next(
-                    (
-                        m
-                        for m in members_list
-                        if m.get("id") == member_id or m.get("ip") == canonical_ip
-                    ),
-                    None,
-                )
-
-                is_master = bool(
-                    is_host
-                    or member_id == "host_master"
-                    or (member_obj and str(member_obj.get("role") or "").upper() == "MESTRE")
-                    or bool(data.get("isMaster"))
-                )
+                is_master = bool(is_master_role or bool(data.get("isMaster")))
 
                 client_color = str(data.get("color") or "").strip()
                 if is_master:
@@ -1895,6 +2191,8 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                     "relY": float(data.get("relY", 0.5)),
                     "vw": float(data.get("vw", 0.5)),
                     "vh": float(data.get("vh", 0.5)),
+                    "wx": float(data.get("wx", 0.0)),
+                    "wy": float(data.get("wy", 0.0)),
                 }
                 await ws_manager.broadcast_except(websocket, cursor_packet)
 
@@ -1911,19 +2209,125 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                     },
                 )
 
+            elif msg_type == "table_drag":
+                char_id = str(data.get("charId") or data.get("id") or "").strip()
+                if char_id:
+                    preview = state_manager.preview_table_drag(
+                        char_id=char_id,
+                        desired_x=data.get("x", 0),
+                        desired_y=data.get("y", 0),
+                        identity=identity_dict,
+                    )
+                    if preview is not None:
+                        await ws_manager.broadcast_except(
+                            websocket,
+                            {
+                                "type": "table_drag",
+                                "charId": preview["charId"],
+                                "x": preview["x"],
+                                "y": preview["y"],
+                                "memberId": member_id,
+                            },
+                        )
+
+            elif msg_type == "table_move":
+                char_id = str(data.get("charId") or data.get("id") or "").strip()
+                if char_id:
+                    res = await state_manager.move_table_card(
+                        char_id=char_id,
+                        desired_x=data.get("x", 0),
+                        desired_y=data.get("y", 0),
+                        identity=identity_dict,
+                    )
+                    if res.get("ok"):
+                        await ws_manager.broadcast(
+                            {
+                                "type": "table_update",
+                                "charId": res["charId"],
+                                "position": res["position"],
+                                "rev": res["rev"],
+                                "actorMemberId": member_id,
+                            }
+                        )
+                    else:
+                        await websocket.send_json(
+                            {
+                                "type": "table_move_rejected",
+                                "charId": char_id,
+                                "reason": res.get("reason", "forbidden"),
+                                "position": res.get("position"),
+                                "rev": res.get("rev", 1),
+                                "table": res.get("table"),
+                            }
+                        )
+
+            elif msg_type == "table_sizes":
+                raw_sizes = data.get("sizes")
+                if isinstance(raw_sizes, dict):
+                    updated_table = await state_manager.update_table_sizes(
+                        raw_sizes=raw_sizes,
+                        is_master=is_master_role,
+                    )
+                    if updated_table is not None:
+                        await ws_manager.broadcast(
+                            {
+                                "type": "table_sync",
+                                "table": updated_table,
+                            }
+                        )
+
+            elif msg_type == "table_view":
+                raw_view = data.get("view") if isinstance(data.get("view"), dict) else data
+                saved_view = await state_manager.save_table_view(member_id, raw_view)
+                await websocket.send_json({"type": "table_view_saved", "view": saved_view})
+
             elif msg_type == "get_state":
                 payload = await state_manager.update_live_connections(ws_manager.get_counts_by_ip())
-                payload["identity"] = {
-                    "client_ip": canonical_ip,
-                    "is_host": is_host,
-                    "role": "MESTRE" if is_host else "JOGADOR",
-                    "member_id": member_id,
-                }
+                payload["identity"] = identity_dict
+                saved_view = state_manager.get_member_table_view(member_id)
+                if saved_view is not None:
+                    payload["table_view"] = saved_view
                 await websocket.send_json(payload)
 
             elif msg_type == "update_state":
                 record_history = bool(data.get("record_history", True))
                 client_toasts = data.get("toasts") if isinstance(data.get("toasts"), list) else []
+
+                # Validação de permissões no servidor para ações restritas da Mesa
+                if not is_master_role:
+                    perms = (member_obj or {}).get("permissions") or {}
+                    can_summon = bool(perms.get("bestiary_summon", False))
+                    can_manage_battle = bool(perms.get("combat_manage_battle", False))
+
+                    if not can_summon and isinstance(data.get("characters"), list):
+                        old_chars_list = state_manager.state.get("characters") or []
+                        old_enemies_by_id = {
+                            str(c["id"]): c
+                            for c in old_chars_list
+                            if isinstance(c, dict) and c.get("id") and is_enemy_character(c)
+                        }
+                        sanitized_chars: List[Dict[str, Any]] = []
+                        seen_enemy_ids: set[str] = set()
+                        for inc_c in data["characters"]:
+                            if not isinstance(inc_c, dict):
+                                continue
+                            cid = str(inc_c.get("id") or "")
+                            if is_enemy_character(inc_c):
+                                # Jogador sem bestiary_summon não pode invocar novo inimigo
+                                if cid in old_enemies_by_id:
+                                    sanitized_chars.append(inc_c)
+                                    seen_enemy_ids.add(cid)
+                            else:
+                                sanitized_chars.append(inc_c)
+                        # Garante que inimigos existentes não sejam despachados por jogador sem permissão
+                        for eid, e_obj in old_enemies_by_id.items():
+                            if eid not in seen_enemy_ids:
+                                sanitized_chars.append(copy.deepcopy(e_obj))
+                        data["characters"] = sanitized_chars
+
+                    if not can_manage_battle and isinstance(data.get("battle"), dict):
+                        cur_battle = state_manager.state.get("battle") or {}
+                        data["battle"]["isActive"] = bool(cur_battle.get("isActive", False))
 
                 incoming_battle = data.get("battle")
                 if isinstance(incoming_battle, dict) and incoming_battle.get("isActive"):
