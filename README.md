@@ -12,6 +12,11 @@ Desenvolvido para proporcionar uma experiência fluida, o sistema atende tanto a
 
 ## • Principais Funcionalidades
 
+### • Aba "Mesa" — Tabuleiro Virtual Compartilhado (v1.11.0)
+- **Posicionamento Livre e Colisão Real (AABB):** Movimente os cards de personagens e inimigos livremente em um tabuleiro `4800 × 3000 px` sem sobreposição entre fichas e respeitando os limites físicos da Mesa.
+- **Câmera e Zoom Individuais:** Zoom suave na posição do cursor (`25%` a `150%`) e movimentação da câmera com botão do meio do mouse ou `Espaço + arrastar`, sem afetar a câmera dos demais jogadores.
+- **Modo de Batalha Integrado:** Divisão horizontal automática da Mesa em Zona Superior (Inimigos) e Zona Inferior (Personagens) ao iniciar um combate, com reposicionamento inteligente sem colisões.
+
 ### • Combate Tático e Fila de Turnos
 - **Iniciativa Dinâmica:** Ordenação automática e reordenável por Drag & Drop.
 - **Pipeline de Dano:** Aplicação rápida ou tática com cálculo automático de resistências (Física, Mágica e Elementais: Fogo, Gelo, Raio, Luz e Trevas).

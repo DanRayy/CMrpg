@@ -78,5 +78,13 @@ Este documento registra as fases de desenvolvimento do Sistema de Gestão de RPG
     ├── [x] Concessão de XP e Atributos em lote exclusiva do Mestre (`BulkRewardModal`)
     ├── [x] Stream e visualização do histórico de auditoria perpétuo (`RoomAuditLog`) com Rollback atômico
     └── [x] Painel visual para o Mestre ativar/desativar permissões individuais por jogador (`MemberPermissionsModal`)
+
+[x] FASE 8 (v1.11.0): Aba "Mesa" — Tabuleiro Virtual Compartilhado - CONCLUÍDA
+    ├── [x] Substituição da aba "Personagens & Fichas" pela aba "Mesa" (`#tab-mesa`, mundo 4800x3000)
+    ├── [x] Presença automática de todos os personagens da sessão e instâncias independentes do Bestiário
+    ├── [x] Câmera individual por usuário (Zoom no cursor 25%-150%, Pan com botão do meio ou Espaço+arrastar)
+    ├── [x] Motor de colisão AABB determinístico (`table_engine.py` + `05b-mesa-board.js`) sem sobreposição
+    ├── [x] Modo de Batalha com divisão horizontal (`y = 1500`: Inimigos no topo, Personagens na base)
+    └── [x] Sincronização multiplayer em tempo real via WebSockets e persistência atômica em `state.json`
 ========================================================================================
 ```
