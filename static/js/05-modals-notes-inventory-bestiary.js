@@ -749,6 +749,22 @@
       countBadge.textContent = `${activeCount}/${acquiredList.length}`;
     }
 
+    const activePassivesBadge = document.getElementById('skill-modal-active-passives-badge');
+    if (activePassivesBadge) {
+      if (slot === 'PASSIVA') {
+        const totalActivePassives = countCharacterActiveTreePassives(char);
+        activePassivesBadge.classList.remove('hidden');
+        activePassivesBadge.textContent = `Passivas Ativas: ${totalActivePassives} / ${MAX_ACTIVE_TREE_PASSIVES}`;
+        activePassivesBadge.className = `px-2.5 py-0.5 rounded-full text-[10px] font-mono font-black ${
+          totalActivePassives >= MAX_ACTIVE_TREE_PASSIVES
+            ? 'bg-amber-950/70 text-amber-300 border border-amber-500/50'
+            : 'bg-sky-950/60 text-sky-300 border border-sky-500/40'
+        }`;
+      } else {
+        activePassivesBadge.classList.add('hidden');
+      }
+    }
+
     if (acquiredList.length === 0) {
       listEl.innerHTML = `
         <div class="p-3.5 rounded-xl bg-black/30 border border-dashed app-divider-border text-center text-xs app-muted italic">

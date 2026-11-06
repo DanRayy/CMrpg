@@ -1695,13 +1695,9 @@
           </div>
           <h3 class="font-serif-fantasy text-base font-black uppercase gold-title">Nenhuma Árvore de Habilidades Cadastrada</h3>
           <p class="text-xs app-muted max-w-lg mx-auto">
-            Crie uma nova árvore personalizada ou carregue imediatamente o template completo de <strong>Geomancia</strong> com efeito de 100% (+10 Capacidade de Peso), passivas, postura ativa com melhorias e talentos multi-rank.
+            Clique no botão abaixo ou em "＋ Nova Árvore" no topo para criar uma árvore de habilidades personalizada.
           </p>
           <div class="flex flex-wrap items-center justify-center gap-2.5 pt-2">
-            <button type="button" data-host-seed-geomancia="true" class="px-4 py-2 rounded-lg text-xs font-serif-fantasy font-bold uppercase btn-gold-outline flex items-center gap-1.5">
-              <iconify-icon icon="game-icons:stone-sphere"></iconify-icon>
-              <span>Carregar Exemplo (Geomancia)</span>
-            </button>
             <button type="button" data-host-create-tree="true" class="btn-gold px-5 py-2 rounded-lg text-xs font-serif-fantasy font-black uppercase flex items-center gap-1.5">
               <iconify-icon icon="game-icons:sparkles"></iconify-icon>
               <span>＋ Criar Primeira Árvore</span>
@@ -1733,25 +1729,25 @@
     const categoriesMeta = [
       {
         key: 'SUPREMA',
-        title: 'Constelação de Supremas',
+        title: 'Supremas',
         icon: 'game-icons:crowned-explosion',
         badgeClass: 'bg-amber-500/20 text-amber-300 border-amber-500/45',
       },
       {
         key: 'ATIVA',
-        title: 'Constelação de Habilidades Ativas',
+        title: 'Ativas',
         icon: 'game-icons:fire-spell-cast',
         badgeClass: 'bg-rose-500/20 text-rose-300 border-rose-500/45',
       },
       {
         key: 'PASSIVA',
-        title: 'Constelação de Habilidades Passivas',
+        title: 'Passivas',
         icon: 'game-icons:dragon-shield',
         badgeClass: 'bg-sky-500/20 text-sky-300 border-sky-500/45',
       },
       {
         key: 'TALENTO',
-        title: 'Constelação de Talentos (Multi-Rank)',
+        title: 'Talentos',
         icon: 'game-icons:sparkles',
         badgeClass: 'bg-purple-500/20 text-purple-300 border-purple-500/45',
       },
@@ -1889,11 +1885,11 @@
         </div>
 
         <div class="flex items-center justify-between text-[11px] app-muted">
-          <span><iconify-icon icon="game-icons:move"></iconify-icon> <strong>Dica do Mestre:</strong> Arraste os cards de nós (Drag &amp; Drop) para personalizar a ordem visual nas constelações, ou clique em <strong>Duplicar</strong> em um nó para cloná-lo rapidamente.</span>
+          <span><iconify-icon icon="game-icons:move"></iconify-icon> <strong>Dica do Mestre:</strong> Arraste os cards de nós (Drag &amp; Drop) para personalizar a ordem visual, ou clique em <strong>Duplicar</strong> em um nó para cloná-lo rapidamente.</span>
           <span class="font-mono font-bold gold-title">Exibindo: ${filteredNodes.length} / ${allNodes.length} Nó(s)</span>
         </div>
 
-        <!-- 4 Seções de Constelação no Editor do Mestre -->
+        <!-- 4 Seções de Categoria no Editor do Mestre -->
         <div class="space-y-4">
           ${visibleCategories
             .map((cat) => {

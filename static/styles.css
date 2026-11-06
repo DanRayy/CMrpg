@@ -36,39 +36,6 @@ html[data-theme="dark"] {
   --shadow-card: 0 14px 34px -8px rgba(0, 0, 0, 0.72);
 }
 
-html[data-theme="light"] {
-  --bg-obsidian: #f4efe6;
-  --bg-sidebar: #ebe3d5;
-  --bg-main: #f8f4ec;
-  --bg-card: #ffffff;
-  --bg-card-elevated: #fcf9f2;
-  --bg-card-hover: #f3ede0;
-  --bg-input: #f5efe4;
-  --bg-pill: #ede5d5;
-  --bg-pill-hover: #e2d7c3;
-
-  --gold-primary: #9c6f19;
-  --gold-bright: #7c5610;
-  --gold-muted: #785a22;
-  --gold-glow: rgba(180, 130, 40, 0.14);
-  --gold-border: rgba(156, 111, 25, 0.25);
-  --gold-border-strong: rgba(156, 111, 25, 0.55);
-
-  --border-subtle: rgba(30, 24, 16, 0.1);
-  --border-medium: rgba(30, 24, 16, 0.18);
-
-  --text-primary: #1c1610;
-  --text-secondary: #463a2c;
-  --text-muted: #756756;
-
-  --crimson-bg: rgba(185, 28, 28, 0.1);
-  --crimson-border: rgba(185, 28, 28, 0.4);
-  --crimson-text: #991b1b;
-
-  --bar-track: #e4dccb;
-  --shadow-card: 0 10px 26px -6px rgba(40, 30, 15, 0.1);
-}
-
 * {
   box-sizing: border-box;
 }
@@ -97,10 +64,6 @@ body {
   background-color: rgba(14, 12, 10, 0.88);
   backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--border-subtle);
-}
-
-html[data-theme="light"] .app-topbar {
-  background-color: rgba(235, 227, 213, 0.9);
 }
 
 .gold-title {
@@ -257,13 +220,6 @@ html[data-theme="light"] .app-topbar {
     radial-gradient(circle at 76% 42%, rgba(245, 158, 11, 0.32) 0%, rgba(180, 83, 9, 0.16) 28%, rgba(12, 10, 8, 0.95) 70%),
     linear-gradient(135deg, #1a130c 0%, #2b1d10 50%, #0f0c09 100%);
   box-shadow: var(--shadow-card);
-}
-
-html[data-theme="light"] .room-hero-banner {
-  background:
-    linear-gradient(90deg, rgba(28, 22, 16, 0.92) 0%, rgba(36, 28, 19, 0.82) 50%, rgba(65, 46, 25, 0.55) 100%),
-    radial-gradient(circle at 76% 42%, rgba(245, 158, 11, 0.35) 0%, rgba(12, 10, 8, 0.9) 70%);
-  color: #f5efe6;
 }
 
 /* Ilustração decorativa de Taverna/Vela/Pena à direita do Banner */
@@ -952,11 +908,6 @@ iconify-icon {
   background-color: var(--bg-sidebar);
   border-left: 1px solid var(--border-subtle);
   width: 300px;
-}
-
-html[data-theme="light"] .battle-sidebar {
-  background-color: var(--bg-sidebar);
-  border-left: 1px solid var(--border-subtle);
 }
 
 .card-active-turn {

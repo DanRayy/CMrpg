@@ -28,7 +28,7 @@
   <!-- Iconify Web Component (game-icons) -->
   <script src="https://code.iconify.design/iconify-icon/2.1.0/iconify-icon.min.js"></script>
   <!-- Estilos Customizados -->
-  <link rel="stylesheet" href="styles.css?v=1.8.0" />
+  <link rel="stylesheet" href="styles.css?v=1.9.0" />
 </head>
 <body class="min-h-screen flex select-none">
 
@@ -251,14 +251,14 @@
           <span id="role-badge-text">MODO MESTRE</span>
         </button>
 
-        <!-- Botão Tema Claro/Escuro -->
+        <!-- Botão de Sino (Ativar / Silenciar Notificações) -->
         <button
-          id="btn-theme-toggle"
+          id="btn-toggle-notifications"
           type="button"
-          title="Alternar Tema Escuro / Pergaminho Claro"
-          class="w-9 h-9 rounded-lg flex items-center justify-center text-sm app-icon-btn transition"
+          title="Notificações Ativas (Clique para desativar)"
+          class="w-9 h-9 rounded-lg flex items-center justify-center text-base border border-amber-500/40 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20 transition"
         >
-          <span id="theme-icon" class="flex items-center"><iconify-icon icon="game-icons:crescent-blade"></iconify-icon></span>
+          <span id="notifications-bell-icon" class="flex items-center"><iconify-icon icon="lucide:bell"></iconify-icon></span>
         </button>
       </div>
     </header>
@@ -771,31 +771,10 @@
           <div>
             <h2 class="font-serif-fantasy text-lg font-extrabold gold-title uppercase tracking-wider flex items-center gap-2">
               <iconify-icon icon="game-icons:family-tree"></iconify-icon>
-              <span>Árvores de Habilidades &amp; Constelações (Mestre)</span>
+              <span>ÁRVORE DE HABILIDADES</span>
             </h2>
-            <p class="text-xs app-muted">
-              Crie e configure árvores completas com bônus de 100%, talentos multi-rank, passivas, ativas, supremas e reordene nós por Drag &amp; Drop.
-            </p>
           </div>
           <div class="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              id="btn-seed-geomancia-tree"
-              class="px-3.5 py-2 text-xs font-serif-fantasy uppercase btn-gold-outline flex items-center gap-1.5"
-              title="Carregar ou restaurar a árvore de exemplo Geomancia completa"
-            >
-              <iconify-icon icon="game-icons:stone-sphere"></iconify-icon>
-              <span>Carregar Exemplo (Geomancia)</span>
-            </button>
-            <button
-              type="button"
-              id="btn-open-fullscreen-skill-tree-master"
-              class="px-3.5 py-2 text-xs font-serif-fantasy uppercase btn-gold-outline flex items-center gap-1.5"
-              title="Abrir o Modal Híbrido Quase Tela Cheia (96vw x 92vh) para testar/gerenciar nos personagens"
-            >
-              <iconify-icon icon="game-icons:computing"></iconify-icon>
-              <span>Abrir Modal Constelação (96vw)</span>
-            </button>
             <button
               type="button"
               id="btn-create-skill-tree"
@@ -2334,6 +2313,9 @@
               <span id="skill-modal-tree-skills-count" class="px-2 py-0.5 rounded-full text-[10px] font-mono font-black bg-amber-500/15 text-amber-300 border border-amber-500/35">
                 0 da Árvore
               </span>
+              <span id="skill-modal-active-passives-badge" class="hidden px-2.5 py-0.5 rounded-full text-[10px] font-mono font-black bg-sky-950/60 text-sky-300 border border-sky-500/40" title="Limite máximo de 3 Passivas de Árvores ativas simultaneamente por ficha">
+                Passivas Ativas: 0 / 3
+              </span>
             </div>
             <button
               type="button"
@@ -3214,8 +3196,14 @@
           </div>
         </div>
 
-        <!-- Pontos de Talento Disponíveis + Ações do Mestre + Fechar -->
+        <!-- Pontos de Talento Disponíveis + Passivas Ativas (X/3) + Ações do Mestre + Fechar -->
         <div class="flex flex-wrap items-center gap-2.5">
+          <div id="skill-tree-modal-passives-pill" class="px-3.5 py-1.5 rounded-xl bg-sky-950/50 border border-sky-500/40 flex items-center gap-2" title="Limite máximo de 3 Passivas de Árvores ativas simultaneamente por ficha">
+            <iconify-icon icon="game-icons:dragon-shield" class="text-sky-300 text-base"></iconify-icon>
+            <span class="text-xs font-bold text-sky-200 uppercase tracking-wider">Passivas Ativas:</span>
+            <span id="skill-tree-modal-passives-badge" class="font-mono font-black text-sm text-sky-300">0 / 3</span>
+          </div>
+
           <div class="px-3.5 py-1.5 rounded-xl bg-purple-950/50 border border-purple-500/40 flex items-center gap-2">
             <iconify-icon icon="game-icons:sparkles" class="text-purple-300 text-base"></iconify-icon>
             <span class="text-xs font-bold text-purple-200 uppercase tracking-wider">Pontos de Talento:</span>
@@ -3227,15 +3215,6 @@
           </div>
 
           <div id="skill-tree-modal-master-toolbar" class="hidden flex flex-wrap items-center gap-1.5">
-            <button
-              type="button"
-              id="btn-st-modal-seed-geomancia"
-              class="px-2.5 py-1.5 rounded-lg text-[11px] font-serif-fantasy font-bold uppercase btn-gold-outline flex items-center gap-1"
-              title="Carregar ou restaurar a Árvore de Exemplo (Geomancia)"
-            >
-              <iconify-icon icon="game-icons:stone-sphere"></iconify-icon>
-              <span class="hidden md:inline">Exemplo (Geomancia)</span>
-            </button>
             <button
               type="button"
               id="btn-st-modal-new-tree"
@@ -3679,11 +3658,11 @@
   </div>
 
     <!-- Módulos Sequenciais da Aplicação -->
-    <script src="js/01-core-state.js?v=1.8.0"></script>
-    <script src="js/02-websocket-combat.js?v=1.8.0"></script>
-    <script src="js/03-tabs-renderers.js?v=1.8.0"></script>
-    <script src="js/04-modals-character-buffs.js?v=1.8.0"></script>
-    <script src="js/05-modals-notes-inventory-bestiary.js?v=1.8.0"></script>
-    <script src="js/06-events-init.js?v=1.8.0"></script>
+    <script src="js/01-core-state.js?v=1.9.0"></script>
+    <script src="js/02-websocket-combat.js?v=1.9.0"></script>
+    <script src="js/03-tabs-renderers.js?v=1.9.0"></script>
+    <script src="js/04-modals-character-buffs.js?v=1.9.0"></script>
+    <script src="js/05-modals-notes-inventory-bestiary.js?v=1.9.0"></script>
+    <script src="js/06-events-init.js?v=1.9.0"></script>
 </body>
 </html>

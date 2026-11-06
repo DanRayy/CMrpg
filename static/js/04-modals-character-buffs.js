@@ -1811,9 +1811,12 @@
         <div class="flex flex-wrap items-center justify-between gap-3">
           <div class="space-y-1">
             <h4 class="font-serif-fantasy font-extrabold uppercase gold-title flex flex-wrap items-center gap-2">
-              <span class="flex items-center gap-1.5"><iconify-icon icon="game-icons:family-tree"></iconify-icon> <span>Árvore de Habilidades &amp; Talentos</span></span>
+              <span class="flex items-center gap-1.5"><iconify-icon icon="game-icons:family-tree"></iconify-icon> <span>Árvore de Habilidades</span></span>
               <span class="px-2.5 py-0.5 rounded-lg bg-purple-500/20 text-purple-200 border border-purple-500/40 font-mono text-[11px]">
                 Pontos Disponíveis: <strong class="text-purple-300">${char.skillPoints || 0}</strong>
+              </span>
+              <span class="px-2.5 py-0.5 rounded-lg bg-sky-500/20 text-sky-200 border border-sky-500/40 font-mono text-[11px]">
+                Passivas Ativas: <strong class="text-sky-300">${countCharacterActiveTreePassives(char)} / ${MAX_ACTIVE_TREE_PASSIVES}</strong>
               </span>
               ${
                 isEffectiveMaster()
@@ -1993,6 +1996,22 @@
     if (ptsBadge) {
       ptsBadge.textContent = String(activeChar ? activeChar.skillPoints || 0 : 0);
     }
+    const passivesBadge = document.getElementById('skill-tree-modal-passives-badge');
+    const passivesPill = document.getElementById('skill-tree-modal-passives-pill');
+    const activePassivesCount = activeChar ? countCharacterActiveTreePassives(activeChar) : 0;
+    if (passivesBadge) {
+      passivesBadge.textContent = `${activePassivesCount} / ${MAX_ACTIVE_TREE_PASSIVES}`;
+      passivesBadge.className = `font-mono font-black text-sm ${
+        activePassivesCount >= MAX_ACTIVE_TREE_PASSIVES ? 'text-amber-300' : 'text-sky-300'
+      }`;
+    }
+    if (passivesPill) {
+      passivesPill.className = `px-3.5 py-1.5 rounded-xl flex items-center gap-2 ${
+        activePassivesCount >= MAX_ACTIVE_TREE_PASSIVES
+          ? 'bg-amber-950/55 border border-amber-500/50'
+          : 'bg-sky-950/50 border border-sky-500/40'
+      }`;
+    }
     if (masterPtsBtns) {
       masterPtsBtns.classList.toggle('hidden', !(isMaster && activeChar));
     }
@@ -2054,7 +2073,7 @@
           <p class="text-xs app-muted mt-1">
             ${
               isMaster
-                ? 'Clique em "Exemplo (Geomancia)" ou "Nova Árvore" no topo para criar uma árvore de habilidades.'
+                ? 'Clique em "Nova Árvore" no topo para criar uma árvore de habilidades.'
                 : 'O Mestre ainda não liberou árvores de habilidades visíveis para os jogadores.'
             }
           </p>
@@ -2137,28 +2156,28 @@
     const tierOrder = [
       {
         key: 'SUPREMA',
-        title: 'Constelação de Supremas',
+        title: 'Supremas',
         subtitle: 'Habilidades definitivas de alto impacto e poder',
         icon: 'game-icons:ifrit',
         accentClass: 'text-rose-300 border-rose-500/40 bg-rose-950/20',
       },
       {
         key: 'ATIVA',
-        title: 'Constelação de Habilidades Ativas',
+        title: 'Ativas',
         subtitle: 'Posturas, feitiços, técnicas e ataques com melhorias progressivas',
         icon: 'game-icons:crossed-swords',
         accentClass: 'text-amber-300 border-amber-500/40 bg-amber-950/20',
       },
       {
         key: 'PASSIVA',
-        title: 'Constelação de Habilidades Passivas',
-        subtitle: 'Efeitos permanentes ou condicionais de combate com ativação rápida',
+        title: 'Passivas',
+        subtitle: 'Efeitos permanentes ou condicionais de combate com ativação rápida (Máx. 3 ativas por ficha)',
         icon: 'game-icons:dragon-shield',
         accentClass: 'text-sky-300 border-sky-500/40 bg-sky-950/20',
       },
       {
         key: 'TALENTO',
-        title: 'Constelação de Talentos (Multi-Rank)',
+        title: 'Talentos',
         subtitle: 'Aprimoramentos empilháveis por nível que fortalecem diretamente a ficha',
         icon: 'game-icons:sparkles',
         accentClass: 'text-purple-300 border-purple-500/40 bg-purple-950/20',
@@ -2182,9 +2201,12 @@
                   <iconify-icon icon="${tier.icon}"></iconify-icon>
                 </span>
                 <div>
-                  <h5 class="font-serif-fantasy font-black text-xs sm:text-sm uppercase tracking-wider gold-title">
-                    ${escapeHtml(tier.title)} (${catNodes.length})
-                  </h5>
+                  <div class="flex items-center gap-2">
+                    <h5 class="font-serif-fantasy font-black text-xs sm:text-sm uppercase tracking-wider gold-title">
+                      ${escapeHtml(tier.title)}
+                    </h5>
+                    <span class="text-xs font-mono font-bold app-muted">(${catNodes.length})</span>
+                  </div>
                   <p class="text-[11px] app-muted">${escapeHtml(tier.subtitle)}</p>
                 </div>
               </div>
@@ -2683,13 +2705,23 @@
               showToast(`Pontos de Talento insuficientes para liberar! Necessário: ${ns.unlockCost} pt(s).`, 'warning');
               return false;
             }
+            const isPassiveNode = String(nd.category || '').toUpperCase() === 'PASSIVA';
+            const currentActivePassives = isPassiveNode ? countCharacterActiveTreePassives(c) : 0;
+            const shouldEnableInitial = !(isPassiveNode && currentActivePassives >= MAX_ACTIVE_TREE_PASSIVES);
             c.skillPoints = Math.max(0, availPts - ns.unlockCost);
             c.skillTreeProgress[nd.id] = {
               unlocked: true,
               upgrades: 0,
-              enabled: true,
+              enabled: shouldEnableInitial,
+              active: shouldEnableInitial,
             };
-            toasts.push(`🔓 Habilidade "${nd.name}" liberada para ${c.name}!`);
+            if (isPassiveNode && !shouldEnableInitial) {
+              toasts.push(
+                `🔓 Passiva "${nd.name}" desbloqueada como INATIVA para ${c.name} (limite de 3/3 Passivas Ativas já atingido).`
+              );
+            } else {
+              toasts.push(`🔓 Habilidade "${nd.name}" liberada para ${c.name}!`);
+            }
           } else {
             if (ns.upgrades >= ns.maxUpgrades) {
               showToast('Esta habilidade já atingiu o limite máximo de melhorias!', 'warning');
@@ -2802,6 +2834,32 @@
     const char = state.characters.find((c) => c.id === charId);
     if (!char || !canEditCharacter(char)) {
       showToast('Sem permissão para alterar habilidades deste personagem.', 'warning');
+      renderAll();
+      return;
+    }
+
+    let targetNode = null;
+    for (const tr of state.skillTrees || []) {
+      const found = (tr.nodes || []).find((n) => n && n.id === nodeId);
+      if (found) {
+        targetNode = found;
+        break;
+      }
+    }
+
+    const isPassive = String(targetNode?.category || '').toUpperCase() === 'PASSIVA';
+    const curNodeState = targetNode ? getCharacterSkillNodeState(char, targetNode) : null;
+    if (
+      Boolean(enabled) &&
+      isPassive &&
+      (!curNodeState || !curNodeState.enabled) &&
+      countCharacterActiveTreePassives(char) >= MAX_ACTIVE_TREE_PASSIVES
+    ) {
+      showToast(
+        'Limite atingido: Cada ficha só pode manter até 3 Passivas de Árvores ativas ao mesmo tempo (3/3). Desative uma passiva antes de ativar outra.',
+        'warning'
+      );
+      renderAll();
       return;
     }
 
@@ -2809,7 +2867,18 @@
       (st, toasts) => {
         const c = st.characters.find((x) => x.id === charId);
         if (!c || !c.skillTreeProgress || !c.skillTreeProgress[nodeId]) return false;
+        if (Boolean(enabled) && isPassive) {
+          const alreadyEnabled = c.skillTreeProgress[nodeId].enabled !== false;
+          if (!alreadyEnabled && countCharacterActiveTreePassives(c) >= MAX_ACTIVE_TREE_PASSIVES) {
+            showToast(
+              'Limite atingido: Cada ficha só pode manter até 3 Passivas de Árvores ativas ao mesmo tempo (3/3). Desative uma passiva antes de ativar outra.',
+              'warning'
+            );
+            return false;
+          }
+        }
         c.skillTreeProgress[nodeId].enabled = Boolean(enabled);
+        c.skillTreeProgress[nodeId].active = Boolean(enabled);
         recalculateCharacterDerived(c);
         c.hp = Math.min(c.hp, c.maxHp);
         c.armor = Math.min(c.armor, c.maxArmor);

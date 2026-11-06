@@ -17,8 +17,8 @@
       document.getElementById('sidebar-mobile-backdrop')?.classList.add('hidden');
     });
 
-    // Alternar Tema
-    document.getElementById('btn-theme-toggle')?.addEventListener('click', toggleTheme);
+    // Alternar Notificações (Botão de Sino)
+    document.getElementById('btn-toggle-notifications')?.addEventListener('click', toggleNotifications);
 
     // Toggle de Descrições Longas de Itens
     document.addEventListener('click', (e) => {
@@ -2601,11 +2601,7 @@
       });
     };
 
-    // Botões na Aba Exclusiva do Host (#tab-skill-trees)
-    document.getElementById('btn-seed-geomancia-tree')?.addEventListener('click', () => seedGeomanciaSkillTree());
-    document.getElementById('btn-open-fullscreen-skill-tree-master')?.addEventListener('click', () => {
-      openSkillTreeModal(null, state.activeSkillTreeId);
-    });
+    // Botão Principal na Aba Exclusiva do Host (#tab-skill-trees)
     document.getElementById('btn-create-skill-tree')?.addEventListener('click', () => openSkillTreeFormModal(null));
 
     // Busca e filtros em tempo real na aba de criação do Host (#tab-skill-trees)
@@ -2630,10 +2626,6 @@
     });
 
     document.getElementById('skill-trees-host-container')?.addEventListener('click', (e) => {
-      if (e.target.closest('[data-host-seed-geomancia]')) {
-        seedGeomanciaSkillTree();
-        return;
-      }
       if (e.target.closest('[data-host-create-tree]')) {
         openSkillTreeFormModal(null);
         return;
@@ -2725,7 +2717,6 @@
     document.getElementById('btn-st-modal-add-pt')?.addEventListener('click', () => {
       if (state.activeSkillTreeCharId) handleAdjustCharacterSkillPoints(state.activeSkillTreeCharId, 1);
     });
-    document.getElementById('btn-st-modal-seed-geomancia')?.addEventListener('click', () => seedGeomanciaSkillTree());
     document.getElementById('btn-st-modal-new-tree')?.addEventListener('click', () => openSkillTreeFormModal(null));
     document.getElementById('btn-st-modal-edit-tree')?.addEventListener('click', () => {
       if (state.activeSkillTreeId) openSkillTreeFormModal(state.activeSkillTreeId);
@@ -2990,7 +2981,7 @@
   // Inicialização
   // ===========================================================================
   function init() {
-    initTheme();
+    initNotifications();
     loadInitialLocalFallback();
     bindEvents();
     initMultiplayerCursorsTracking();

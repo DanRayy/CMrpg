@@ -10,7 +10,9 @@
   // ===========================================================================
   const STORAGE_KEY_CHARS = 'rpg_chars_v1';
   const STORAGE_KEY_STATE = 'cmrpg_full_state_v2';
-  const STORAGE_KEY_THEME = 'theme-preference';
+  const STORAGE_KEY_NOTIFICATIONS = 'cmrpg_notifications_enabled';
+  const MAX_ACTIVE_TREE_PASSIVES = 3;
+  let notificationsEnabled = true;
   const STORAGE_KEY_MEMBER_ID = 'cmrpg_local_member_id';
   const STORAGE_KEY_CURSOR_COLOR_MAP = 'cmrpg_cursor_colors_v1';
   const SESSION_KEY_CURSOR_CLIENT_ID = 'cmrpg_cursor_client_id_v1';
@@ -263,6 +265,7 @@
     skillTreeCategoryFilter: 'ALL',
     hostSkillTreeSearchQuery: '',
     hostSkillTreeCategoryFilter: 'ALL',
+    notificationsEnabled: true,
 
     // UI Filters & Selections
     searchQuery: '',
@@ -589,11 +592,12 @@
       }
     }
 
-    // Árvores de Habilidades: Nós adquiridos, Multi-Ranks e Efeito de Árvore Completa (100%)
+    // Árvores de Habilidades: Nós adquiridos, Multi-Ranks, Limite de 3 Passivas Ativas e Efeito de Árvore Completa (100%)
     if (!char.skillTreeProgress || typeof char.skillTreeProgress !== 'object') {
       char.skillTreeProgress = {};
     }
     const completedTreeIds = [];
+    let activePassivesApplied = 0;
     for (const tree of state.skillTrees || []) {
       if (!tree || !Array.isArray(tree.nodes) || tree.nodes.length === 0) continue;
       let totalSteps = 0;
@@ -606,7 +610,18 @@
         acquiredSteps += nState.acquiredSteps;
 
         if (nState.unlocked && nState.enabled) {
-          const mult = String(node.category || 'TALENTO').toUpperCase() === 'TALENTO' ? nState.rank : 1;
+          const catUpper = String(node.category || 'TALENTO').toUpperCase();
+          if (catUpper === 'PASSIVA') {
+            if (activePassivesApplied >= MAX_ACTIVE_TREE_PASSIVES) {
+              if (char.skillTreeProgress[node.id]) {
+                char.skillTreeProgress[node.id].enabled = false;
+              }
+              continue;
+            }
+            activePassivesApplied += 1;
+          }
+
+          const mult = catUpper === 'TALENTO' ? nState.rank : 1;
           if (mult > 0) {
             for (const eff of node.effects || node.modifiers || []) {
               let stat = eff.targetStat || eff.stat;
@@ -1595,32 +1610,54 @@
   }
 
   // ===========================================================================
-  // Persistência Local (Fallback) & Tema
+  // Persistência Local (Fallback) & Controle de Notificações (Sino)
   // ===========================================================================
-  function initTheme() {
-    const saved = localStorage.getItem(STORAGE_KEY_THEME);
-    const theme = saved === 'light' ? 'light' : 'dark';
-    applyTheme(theme);
+  function initNotifications() {
+    let enabled = true;
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_NOTIFICATIONS);
+      if (saved === 'false' || saved === '0') enabled = false;
+    } catch (_) {}
+    applyNotificationsState(enabled);
   }
 
-  function applyTheme(theme) {
+  function applyNotificationsState(enabled) {
+    const isEnabled = Boolean(enabled);
+    notificationsEnabled = isEnabled;
+    state.notificationsEnabled = isEnabled;
     const html = document.documentElement;
-    html.setAttribute('data-theme', theme);
-    if (theme === 'dark') {
-      html.classList.add('dark');
-    } else {
-      html.classList.remove('dark');
+    html.setAttribute('data-theme', 'dark');
+    html.classList.add('dark');
+
+    const btn = document.getElementById('btn-toggle-notifications');
+    const iconSpan = document.getElementById('notifications-bell-icon');
+    if (btn) {
+      if (isEnabled) {
+        btn.title = 'Notificações Ativas (Clique para desativar)';
+        btn.className =
+          'w-9 h-9 rounded-lg flex items-center justify-center text-base border border-amber-500/40 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20 transition';
+      } else {
+        btn.title = 'Notificações Silenciadas (Clique para ativar)';
+        btn.className =
+          'w-9 h-9 rounded-lg flex items-center justify-center text-base border border-neutral-700/60 bg-neutral-900/60 text-neutral-500 hover:text-neutral-300 hover:border-neutral-600 transition opacity-75';
+      }
     }
-    const icon = document.getElementById('theme-icon');
-    if (icon) icon.innerHTML = theme === 'dark' ? '<iconify-icon icon="game-icons:crescent-blade"></iconify-icon>' : '<iconify-icon icon="game-icons:sun"></iconify-icon>';
+    if (iconSpan) {
+      iconSpan.innerHTML = isEnabled
+        ? '<iconify-icon icon="lucide:bell"></iconify-icon>'
+        : '<iconify-icon icon="lucide:bell-off"></iconify-icon>';
+    }
     try {
-      localStorage.setItem(STORAGE_KEY_THEME, theme);
+      localStorage.setItem(STORAGE_KEY_NOTIFICATIONS, isEnabled ? 'true' : 'false');
     } catch (_) {}
   }
 
-  function toggleTheme() {
-    const cur = document.documentElement.getAttribute('data-theme') || 'dark';
-    applyTheme(cur === 'dark' ? 'light' : 'dark');
+  function toggleNotifications() {
+    const next = !notificationsEnabled;
+    applyNotificationsState(next);
+    if (next) {
+      showToast('🔔 Notificações ativadas.', 'success');
+    }
   }
 
   function buildGeomanciaSkillTreeTemplate() {
@@ -1823,6 +1860,22 @@
       upgradeCost,
       costPerRank: unlockCost,
     };
+  }
+
+  function countCharacterActiveTreePassives(char) {
+    if (!char) return 0;
+    let count = 0;
+    for (const tree of state.skillTrees || []) {
+      for (const node of tree?.nodes || []) {
+        if (!node || !node.id) continue;
+        if (String(node.category || 'TALENTO').toUpperCase() !== 'PASSIVA') continue;
+        const ns = getCharacterSkillNodeState(char, node);
+        if (ns.unlocked && ns.enabled) {
+          count += 1;
+        }
+      }
+    }
+    return count;
   }
 
   function normalizeSkillSearchTerm(text) {
@@ -2228,6 +2281,7 @@
   // Toasts (Notificações Flutuantes no Canto Superior Direito)
   // ===========================================================================
   function showToast(message, variant = 'warning') {
+    if (notificationsEnabled === false || state.notificationsEnabled === false) return;
     if (!message) return;
     const now = Date.now();
     const lastShown = state.recentToastSignatures.get(message) || 0;
