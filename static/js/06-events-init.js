@@ -504,6 +504,11 @@
         clearSearchBtn.classList.toggle('flex', state.searchQuery.length > 0);
       }
       renderCharactersTab();
+      const q = state.searchQuery.trim().toLowerCase();
+      if (q && typeof centerMesaOnCard === 'function') {
+        const match = (state.characters || []).find((c) => (c.name || '').toLowerCase().includes(q));
+        if (match) centerMesaOnCard(match.id);
+      }
     });
     clearSearchBtn?.addEventListener('click', () => {
       if (!searchInput) return;
@@ -975,25 +980,16 @@
     const grid = document.getElementById('characters-grid');
     if (grid) {
       grid.addEventListener('click', handleCharActionClick);
-      grid.addEventListener('mousedown', (e) => {
-        const handle = e.target.closest('.char-drag-handle');
-        if (handle) startCardDrag(e, handle);
-      });
-      grid.addEventListener(
-        'touchstart',
-        (e) => {
-          const handle = e.target.closest('.char-drag-handle');
-          if (handle) startCardDrag(e, handle);
-        },
-        { passive: false }
-      );
     }
 
-    window.addEventListener('mousemove', moveCardDrag, { passive: false });
-    window.addEventListener('touchmove', moveCardDrag, { passive: false });
-    window.addEventListener('mouseup', endCardDrag);
-    window.addEventListener('touchend', endCardDrag);
-    window.addEventListener('touchcancel', endCardDrag);
+    const mesaVp = document.getElementById('mesa-viewport');
+    if (mesaVp) {
+      mesaVp.addEventListener('click', handleCharActionClick);
+    }
+
+    if (typeof initMesaBoardEvents === 'function') {
+      initMesaBoardEvents();
+    }
 
     // -------------------------------------------------------------------------
     // Eventos do Catálogo de Itens

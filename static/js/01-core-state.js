@@ -253,6 +253,7 @@
     auditLog: [],
     customPermissionPresets: [],
     skillTrees: [],
+    table: null,
 
     // Skill Trees UI state
     activeSkillTreeId: null,
@@ -2065,6 +2066,7 @@
           auditLog: state.auditLog,
           customPermissionPresets: state.customPermissionPresets,
           skillTrees: state.skillTrees,
+          table: state.table,
         })
       );
     } catch (_) {}
@@ -2333,14 +2335,18 @@
       quests: state.quests,
       customPermissionPresets: state.customPermissionPresets,
       skillTrees: state.skillTrees,
+      table: state.table,
     });
   }
 
   function restoreCoreState(snap) {
-    for (const k of ['room', 'members', 'characters', 'itemsCatalog', 'npcs', 'escrowSales', 'bestiary', 'battle', 'quests', 'customPermissionPresets', 'skillTrees']) {
+    for (const k of ['room', 'members', 'characters', 'itemsCatalog', 'npcs', 'escrowSales', 'bestiary', 'battle', 'quests', 'customPermissionPresets', 'skillTrees', 'table']) {
       if (snap[k] !== undefined) state[k] = deepClone(snap[k]);
     }
     state.characters.forEach(recalculateCharacterDerived);
+    if (typeof reconcileMesaTableStateClient === 'function') {
+      reconcileMesaTableStateClient(state);
+    }
   }
 
   function updateHistoryButtonsUI() {
@@ -2373,6 +2379,9 @@
     state.redoStack = [];
 
     state.characters.forEach(recalculateCharacterDerived);
+    if (typeof reconcileMesaTableStateClient === 'function') {
+      reconcileMesaTableStateClient(state);
+    }
 
     const activeMember = getActiveMember();
     const auditEntry = auditInfo

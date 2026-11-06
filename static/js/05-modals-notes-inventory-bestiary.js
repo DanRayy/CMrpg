@@ -1386,83 +1386,9 @@
     return { x: evt.clientX, y: evt.clientY };
   }
 
-  function startCardDrag(evt, handleEl) {
-    if (evt.type === 'mousedown' && evt.button !== 0) return;
-    if (!isEffectiveMaster() && !hasPermission('char_reorder')) return;
-    const charId = handleEl.getAttribute('data-drag-char-id');
-    const cardEl = handleEl.closest('.char-card');
-    if (!charId || !cardEl) return;
-
-    evt.preventDefault();
-    const { x, y } = getPointCoords(evt);
-    const rect = cardEl.getBoundingClientRect();
-
-    dragState.active = true;
-    dragState.sourceCharId = charId;
-    dragState.sourceCardEl = cardEl;
-    dragState.offsetX = x - rect.left;
-    dragState.offsetY = y - rect.top;
-
-    const ghost = cardEl.cloneNode(true);
-    ghost.classList.add('drag-ghost');
-    ghost.style.width = `${rect.width}px`;
-    ghost.style.height = `${rect.height}px`;
-    ghost.style.left = `${x - dragState.offsetX}px`;
-    ghost.style.top = `${y - dragState.offsetY}px`;
-    document.body.appendChild(ghost);
-
-    dragState.ghostEl = ghost;
-    cardEl.classList.add('dragging-source');
-  }
-
-  function moveCardDrag(evt) {
-    if (!dragState.active || !dragState.ghostEl) return;
-    if (evt.cancelable) evt.preventDefault();
-    const { x, y } = getPointCoords(evt);
-    dragState.ghostEl.style.left = `${x - dragState.offsetX}px`;
-    dragState.ghostEl.style.top = `${y - dragState.offsetY}px`;
-
-    const elUnder = document.elementFromPoint(x, y);
-    const hoveredCard = elUnder ? elUnder.closest('.char-card') : null;
-
-    if (dragState.currentTargetCardEl && dragState.currentTargetCardEl !== hoveredCard) {
-      dragState.currentTargetCardEl.classList.remove('drop-target-active');
-      dragState.currentTargetCardEl = null;
-    }
-    if (hoveredCard && hoveredCard !== dragState.sourceCardEl) {
-      hoveredCard.classList.add('drop-target-active');
-      dragState.currentTargetCardEl = hoveredCard;
-    }
-  }
-
-  function endCardDrag() {
-    if (!dragState.active) return;
-    const sourceId = dragState.sourceCharId;
-    const targetCard = dragState.currentTargetCardEl;
-    const targetId = targetCard ? targetCard.getAttribute('data-char-id') : null;
-
-    dragState.sourceCardEl?.classList.remove('dragging-source');
-    targetCard?.classList.remove('drop-target-active');
-    dragState.ghostEl?.remove();
-
-    dragState.active = false;
-    dragState.sourceCharId = null;
-    dragState.sourceCardEl = null;
-    dragState.ghostEl = null;
-    dragState.currentTargetCardEl = null;
-
-    if (sourceId && targetId && sourceId !== targetId) {
-      commitMutation((st) => {
-        const idxA = st.characters.findIndex((c) => c.id === sourceId);
-        const idxB = st.characters.findIndex((c) => c.id === targetId);
-        if (idxA === -1 || idxB === -1) return false;
-        const tmp = st.characters[idxA];
-        st.characters[idxA] = st.characters[idxB];
-        st.characters[idxB] = tmp;
-        return true;
-      });
-    }
-  }
+  function startCardDrag() {}
+  function moveCardDrag() {}
+  function endCardDrag() {}
 
   // ===========================================================================
   // Gerenciamento do Bestiário, Invocação e Habilidades Gerais
@@ -1762,8 +1688,8 @@
     );
 
     closeModal('modal-spawn-enemy');
-    switchTab('characters');
-    renderCharactersTab();
+    switchTab('mesa');
+    if (typeof renderMesaTab === 'function') renderMesaTab();
   }
 
   function dismissEnemyInstance(charId) {
@@ -1800,7 +1726,7 @@
             summary: `Inimigo ${c.name} removido da mesa de combate.`,
           }
         );
-        renderCharactersTab();
+        if (typeof renderMesaTab === 'function') renderMesaTab();
       },
     });
   }

@@ -28,7 +28,7 @@
   <!-- Iconify Web Component (game-icons) -->
   <script src="https://code.iconify.design/iconify-icon/2.1.0/iconify-icon.min.js"></script>
   <!-- Estilos Customizados -->
-  <link rel="stylesheet" href="styles.css?v=1.10.0" />
+  <link rel="stylesheet" href="styles.css?v=1.11.0" />
 </head>
 <body class="min-h-screen flex select-none">
 
@@ -72,13 +72,13 @@
           </span>
         </button>
 
-        <button type="button" data-nav-tab="characters" class="sidebar-nav-item">
+        <button type="button" data-nav-tab="mesa" class="sidebar-nav-item">
           <span class="flex items-center gap-2.5 text-left">
-            <iconify-icon icon="game-icons:hooded-figure" class="text-base"></iconify-icon>
-            <span class="leading-tight">Personagens &amp;<br />Fichas</span>
+            <iconify-icon icon="game-icons:tabletop-players" class="text-base"></iconify-icon>
+            <span class="leading-tight">Mesa</span>
           </span>
           <span class="flex items-center gap-1.5">
-            <span data-nav-cursors="characters" class="sidebar-cursors-dots"></span>
+            <span data-nav-cursors="mesa" class="sidebar-cursors-dots"></span>
             <span id="badge-chars-count" class="sidebar-badge">2</span>
           </span>
         </button>
@@ -264,7 +264,7 @@
     </header>
 
     <!-- Container das Abas -->
-    <main class="flex-1 px-4 sm:px-8 py-6 max-w-[1400px] w-full mx-auto space-y-6">
+    <main id="app-main-container" class="flex-1 px-4 sm:px-8 py-6 max-w-[1400px] w-full mx-auto space-y-6">
 
       <!-- ===================================================================== -->
       <!-- ABA 1: VISÃO GERAL (Fiel à Imagem de Referência)                      -->
@@ -424,39 +424,103 @@
       </section>
 
       <!-- ===================================================================== -->
-      <!-- ABA 2: PERSONAGENS & FICHAS                                           -->
+      <!-- ABA 2: MESA (TABULEIRO VIRTUAL COMPARTILHADO)                         -->
       <!-- ===================================================================== -->
-      <section id="tab-characters" class="tab-section hidden space-y-5">
-        <!-- Barra de Ferramentas de Personagens -->
-        <div class="fantasy-card p-4 flex flex-wrap items-center justify-between gap-3">
-          <div class="flex items-center gap-3 flex-1 min-w-[220px] max-w-md">
+      <section id="tab-mesa" class="tab-section hidden flex flex-col gap-2.5">
+        <!-- Barra de Ferramentas Discreta da Mesa -->
+        <div class="fantasy-card px-3.5 py-2.5 flex flex-wrap items-center justify-between gap-2.5">
+          <!-- Busca Rápida / Localizador de Card + Contador -->
+          <div class="flex items-center gap-2.5 min-w-[200px] max-w-xs flex-1">
             <div class="relative flex-1">
-              <iconify-icon icon="game-icons:magnifying-glass" class="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs opacity-60"></iconify-icon>
+              <iconify-icon icon="game-icons:magnifying-glass" class="absolute left-3 top-1/2 -translate-y-1/2 text-xs opacity-60"></iconify-icon>
               <input
                 id="search-input"
                 type="text"
-                placeholder="BUSCAR..."
+                placeholder="LOCALIZAR NA MESA (ENTER)..."
                 autocomplete="off"
-                class="w-full pl-9 pr-8 py-2 text-xs sm:text-sm font-semibold tracking-wide app-input"
+                class="w-full pl-8 pr-7 py-1.5 text-xs font-semibold tracking-wide app-input"
               />
               <button
                 id="clear-search-btn"
                 type="button"
                 title="Limpar busca"
-                class="hidden absolute right-2.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded items-center justify-center text-xs app-muted hover:opacity-100"
+                class="hidden absolute right-2 top-1/2 -translate-y-1/2 w-5 h-5 rounded items-center justify-center text-xs app-muted hover:opacity-100"
               >
                 ✕
               </button>
             </div>
-            <span id="char-count-label" class="text-xs font-mono font-bold app-muted shrink-0"></span>
+            <span id="char-count-label" class="text-[11px] font-mono font-bold app-muted shrink-0"></span>
           </div>
 
+          <!-- Controles de Câmera e Zoom Individual -->
+          <div class="flex flex-wrap items-center gap-1.5 bg-black/35 border app-divider-border rounded-lg px-2 py-1">
+            <button
+              type="button"
+              id="btn-mesa-center"
+              class="px-2.5 py-1 rounded text-[11px] font-bold app-secondary-btn flex items-center gap-1"
+              title="Centralizar visualização nas suas fichas"
+            >
+              <iconify-icon icon="game-icons:compass"></iconify-icon>
+              <span>Centralizar</span>
+            </button>
+            <button
+              type="button"
+              id="btn-mesa-fit"
+              class="px-2.5 py-1 rounded text-[11px] font-bold app-secondary-btn flex items-center gap-1"
+              title="Ajustar zoom para visualizar todos os cards da Mesa"
+            >
+              <iconify-icon icon="game-icons:expand"></iconify-icon>
+              <span>Ver Tudo</span>
+            </button>
+            <span class="h-4 w-px bg-amber-500/20 mx-0.5"></span>
+            <button
+              type="button"
+              id="btn-mesa-zoom-out"
+              class="w-6 h-6 rounded text-xs font-black app-secondary-btn flex items-center justify-center"
+              title="Afastar zoom"
+            >
+              −
+            </button>
+            <span
+              id="mesa-zoom-label"
+              class="min-w-[46px] text-center font-mono text-[11px] font-extrabold gold-title select-none"
+              title="Nível de zoom atual (individual por usuário)"
+            >
+              75%
+            </span>
+            <button
+              type="button"
+              id="btn-mesa-zoom-in"
+              class="w-6 h-6 rounded text-xs font-black app-secondary-btn flex items-center justify-center"
+              title="Aproximar zoom"
+            >
+              ＋
+            </button>
+            <button
+              type="button"
+              id="btn-mesa-zoom-reset"
+              class="px-2 py-1 rounded text-[10px] font-mono font-bold app-secondary-btn"
+              title="Retornar ao zoom padrão (75%)"
+            >
+              Padrão
+            </button>
+          </div>
+
+          <!-- Indicador de Batalha Ativa + Ações do Mestre e Criação -->
           <div class="flex flex-wrap items-center gap-2">
+            <span
+              id="mesa-battle-indicator"
+              class="hidden items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-serif-fantasy font-black uppercase tracking-wider bg-rose-950/80 border border-rose-500/60 text-rose-200 shadow-md animate-pulse"
+            >
+              <iconify-icon icon="game-icons:crossed-swords" class="text-rose-400 text-sm"></iconify-icon>
+              <span id="mesa-battle-round-label">BATALHA ATIVA</span>
+            </span>
+
             <button
               type="button"
               id="btn-spawn-enemy"
-              class="master-only-el rounded-lg px-3.5 py-2 text-xs font-serif-fantasy uppercase tracking-wider bg-rose-950/60 hover:bg-rose-900/80 border border-rose-500/50 text-rose-300 font-extrabold flex items-center gap-1.5 shadow-md transition"
-              title="Trazer instâncias de inimigos do Bestiário para a mesa de combate"
+              class="master-only-el rounded-lg px-3 py-1.5 text-xs font-serif-fantasy uppercase tracking-wider bg-rose-950/60 hover:bg-rose-900/80 border border-rose-500/50 text-rose-300 font-extrabold flex items-center gap-1.5 shadow-md transition"
+              title="Trazer instâncias de inimigos do Bestiário para a Mesa"
             >
               <iconify-icon icon="game-icons:monster-grasp" class="text-base"></iconify-icon>
               <span>TRAZER INIMIGO</span>
@@ -465,7 +529,7 @@
             <button
               type="button"
               id="btn-battle-toggle"
-              class="master-only-el rounded-lg px-3.5 py-2 text-xs font-serif-fantasy uppercase tracking-wider btn-gold flex items-center gap-1.5 shadow-md transition"
+              class="master-only-el rounded-lg px-3 py-1.5 text-xs font-serif-fantasy uppercase tracking-wider btn-gold flex items-center gap-1.5 shadow-md transition"
               title="Iniciar ou Encerrar Batalha e Ordem de Turnos"
             >
               <iconify-icon id="btn-battle-toggle-icon" icon="game-icons:crossed-swords" class="text-base"></iconify-icon>
@@ -475,16 +539,17 @@
             <button
               type="button"
               id="btn-bulk-rewards"
-              class="master-only-el px-3.5 py-2 text-xs font-serif-fantasy uppercase tracking-wider btn-gold-outline flex items-center gap-1.5"
+              class="master-only-el px-3 py-1.5 text-xs font-serif-fantasy uppercase tracking-wider btn-gold-outline flex items-center gap-1.5"
+              title="Conceder XP ou Pontos de Atributo em Lote"
             >
               <iconify-icon icon="game-icons:chest"></iconify-icon>
-              <span>Conceder XP / Atributos em Lote</span>
+              <span>XP em Lote</span>
             </button>
 
             <button
               id="btn-create-char"
               type="button"
-              class="btn-gold px-4 py-2 text-xs font-serif-fantasy uppercase tracking-wider flex items-center gap-1.5"
+              class="btn-gold px-3.5 py-1.5 text-xs font-serif-fantasy uppercase tracking-wider flex items-center gap-1.5"
             >
               <span>＋</span>
               <span>CRIAR</span>
@@ -492,24 +557,55 @@
           </div>
         </div>
 
-        <div class="flex items-center justify-between text-xs app-muted px-1">
-          <span><iconify-icon icon="game-icons:torch" class="text-amber-400"></iconify-icon> Arraste pelo <strong>nome do personagem</strong> no topo do card para reordenar posições. Clique em <strong><iconify-icon icon="game-icons:tied-scroll"></iconify-icon> Ficha</strong> para abrir os 5 Atributos, Talentos e Inventário.</span>
-        </div>
+        <!-- Tabuleiro Virtual Delimitado (Viewport da Mesa) -->
+        <div id="mesa-viewport" class="mesa-viewport" aria-label="Tabuleiro Virtual da Mesa">
+          <div id="mesa-world" class="mesa-world">
+            <!-- Ornamentos de Canto do Tabuleiro -->
+            <div class="mesa-world-corner mesa-corner-tl"></div>
+            <div class="mesa-world-corner mesa-corner-tr"></div>
+            <div class="mesa-world-corner mesa-corner-bl"></div>
+            <div class="mesa-world-corner mesa-corner-br"></div>
 
-        <!-- Estado Vazio de Busca ("NENHUM CHAR ENCONTRADO") -->
-        <div
-          id="empty-search-state"
-          class="hidden flex-col items-center justify-center py-20 px-4 text-center fantasy-card border-dashed"
-        >
-          <div class="text-5xl mb-3 opacity-75 flex justify-center"><iconify-icon icon="game-icons:magnifying-glass"></iconify-icon></div>
-          <h2 class="text-xl sm:text-2xl font-serif-fantasy font-black tracking-wider uppercase gold-title">
-            NENHUM CHAR ENCONTRADO
-          </h2>
-          <p class="text-sm app-muted mt-1">Tente outro termo na barra de pesquisa ou crie um novo personagem.</p>
-        </div>
+            <!-- Regiões do Modo de Batalha (Superior: Inimigos | Inferior: Personagens) -->
+            <div id="mesa-battle-zones" class="mesa-battle-zones hidden" aria-hidden="true">
+              <div id="mesa-zone-enemies" class="mesa-zone-enemies">
+                <div class="mesa-zone-watermark mesa-zone-watermark-enemies">
+                  <iconify-icon icon="game-icons:monster-grasp"></iconify-icon>
+                  <span>REGIÃO SUPERIOR — INIMIGOS (CONTROLE DO MESTRE)</span>
+                </div>
+              </div>
+              <div id="mesa-zone-heroes" class="mesa-zone-heroes">
+                <div class="mesa-zone-watermark mesa-zone-watermark-heroes">
+                  <iconify-icon icon="game-icons:shield-echoes"></iconify-icon>
+                  <span>REGIÃO INFERIOR — PERSONAGENS DOS JOGADORES</span>
+                </div>
+              </div>
+            </div>
 
-        <!-- Grid de Cards de Personagens -->
-        <div id="characters-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5"></div>
+            <!-- Divisória Central Horizontal do Modo de Batalha -->
+            <div id="mesa-battle-divider" class="mesa-battle-divider hidden" aria-hidden="true">
+              <div class="mesa-battle-divider-line"></div>
+              <div class="mesa-battle-divider-badge">
+                <iconify-icon icon="game-icons:crossed-swords" class="text-rose-400"></iconify-icon>
+                <span>FRONTEIRA DE COMBATE • INIMIGOS ACIMA / HERÓIS ABAIXO</span>
+                <iconify-icon icon="game-icons:crossed-swords" class="text-amber-400"></iconify-icon>
+              </div>
+              <div class="mesa-battle-divider-line"></div>
+            </div>
+
+            <!-- Camada de Cards Posicionáveis Livremente -->
+            <div id="mesa-tokens-layer" class="mesa-tokens-layer"></div>
+          </div>
+
+          <!-- Dica Discreta de Navegação no Canto Inferior -->
+          <div class="mesa-hud-hint pointer-events-none select-none">
+            <span><iconify-icon icon="game-icons:magnifying-glass" class="text-amber-400"></iconify-icon> Roda do mouse: <strong>Zoom</strong></span>
+            <span>•</span>
+            <span><iconify-icon icon="game-icons:move" class="text-amber-400"></iconify-icon> Botão do meio ou <strong>Espaço + Arrastar</strong>: Câmera</span>
+            <span>•</span>
+            <span><iconify-icon icon="game-icons:hand" class="text-amber-400"></iconify-icon> Arraste os cards livremente</span>
+          </div>
+        </div>
       </section>
 
       <!-- ===================================================================== -->
@@ -3658,11 +3754,12 @@
   </div>
 
     <!-- Módulos Sequenciais da Aplicação -->
-    <script src="js/01-core-state.js?v=1.10.0"></script>
-    <script src="js/02-websocket-combat.js?v=1.10.0"></script>
-    <script src="js/03-tabs-renderers.js?v=1.10.0"></script>
-    <script src="js/04-modals-character-buffs.js?v=1.10.0"></script>
-    <script src="js/05-modals-notes-inventory-bestiary.js?v=1.10.0"></script>
-    <script src="js/06-events-init.js?v=1.10.0"></script>
+    <script src="js/01-core-state.js?v=1.11.0"></script>
+    <script src="js/02-websocket-combat.js?v=1.11.0"></script>
+    <script src="js/03-tabs-renderers.js?v=1.11.0"></script>
+    <script src="js/04-modals-character-buffs.js?v=1.11.0"></script>
+    <script src="js/05-modals-notes-inventory-bestiary.js?v=1.11.0"></script>
+    <script src="js/05b-mesa-board.js?v=1.11.0"></script>
+    <script src="js/06-events-init.js?v=1.11.0"></script>
 </body>
 </html>

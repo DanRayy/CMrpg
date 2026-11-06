@@ -179,7 +179,30 @@
       }
     }
 
-    // 3. Posicionamento proporcional em relação à seção ativa / área útil principal (compensa scroll e largura do monitor)
+    // 3. Se estiver na aba Mesa e o cursor estiver sobre o viewport do tabuleiro, transmite coordenadas do mundo (wx, wy)
+    if (state.activeTab === 'mesa' || state.activeTab === 'characters') {
+      const vp = document.getElementById('mesa-viewport');
+      if (vp && typeof mesaCamera === 'object' && mesaCamera) {
+        const vr = vp.getBoundingClientRect();
+        if (vr.width > 0 && vr.height > 0 && clientX >= vr.left && clientX <= vr.right && clientY >= vr.top && clientY <= vr.bottom) {
+          const zoom = Number(mesaCamera.zoom || 0.75);
+          const wx = (clientX - vr.left - Number(mesaCamera.panX || 0)) / zoom;
+          const wy = (clientY - vr.top - Number(mesaCamera.panY || 0)) / zoom;
+          return {
+            region: 'mesa',
+            modalId: '',
+            wx: Math.round(wx),
+            wy: Math.round(wy),
+            relX: Number(((clientX - vr.left) / vr.width).toFixed(4)),
+            relY: Number(((clientY - vr.top) / vr.height).toFixed(4)),
+            vw: Number(vw.toFixed(4)),
+            vh: Number(vh.toFixed(4)),
+          };
+        }
+      }
+    }
+
+    // 4. Posicionamento proporcional em relação à seção ativa / área útil principal (compensa scroll e largura do monitor)
     const activeSec = document.getElementById(`tab-${state.activeTab}`) || document.querySelector('main');
     if (activeSec) {
       const mr = activeSec.getBoundingClientRect();
@@ -226,6 +249,16 @@
         if (sr.width > 0 && sr.height > 0 && sr.right > 0) {
           x = sr.left + Number(cursor.relX || 0.5) * sr.width;
           y = sr.top + Number(cursor.relY || 0.5) * sr.height;
+        }
+      }
+    } else if (cursor.region === 'mesa' && cursor.wx !== undefined && cursor.wy !== undefined && cursor.wx !== null && cursor.wy !== null) {
+      const vp = document.getElementById('mesa-viewport');
+      if (vp && typeof mesaCamera === 'object' && mesaCamera) {
+        const vr = vp.getBoundingClientRect();
+        if (vr.width > 0 && vr.height > 0) {
+          const zoom = Number(mesaCamera.zoom || 0.75);
+          x = vr.left + Number(mesaCamera.panX || 0) + Number(cursor.wx) * zoom;
+          y = vr.top + Number(mesaCamera.panY || 0) + Number(cursor.wy) * zoom;
         }
       }
     } else if (cursor.region === 'main') {
@@ -463,6 +496,7 @@
       String(data.nickname || '').trim() ||
       (isMaster ? 'Mestre' : `Jogador (${data.ip || ''})`);
 
+    const normalizedTab = data.activeTab === 'characters' ? 'mesa' : (data.activeTab || 'overview');
     let existing = state.remoteCursors.get(cursorId);
     if (!existing) {
       existing = {
@@ -473,9 +507,11 @@
         isMaster,
         nickname: resolvedNickname,
         color: resolvedColor,
-        activeTab: data.activeTab || 'overview',
+        activeTab: normalizedTab,
         region: data.region || 'main',
         modalId: data.modalId || '',
+        wx: data.wx,
+        wy: data.wy,
         relX: Number(data.relX ?? 0.5),
         relY: Number(data.relY ?? 0.5),
         vw: Number(data.vw ?? 0.5),
@@ -491,9 +527,11 @@
       existing.isMaster = isMaster;
       existing.nickname = resolvedNickname;
       existing.color = resolvedColor;
-      existing.activeTab = data.activeTab || 'overview';
+      existing.activeTab = normalizedTab;
       existing.region = data.region || 'main';
       existing.modalId = data.modalId || '';
+      existing.wx = data.wx;
+      existing.wy = data.wy;
       existing.relX = Number(data.relX ?? 0.5);
       existing.relY = Number(data.relY ?? 0.5);
       existing.vw = Number(data.vw ?? 0.5);
@@ -652,6 +690,22 @@
             handleIncomingCursorDisconnect(data);
             return;
           }
+          if (data.type === 'table_drag') {
+            if (typeof handleIncomingTableDrag === 'function') handleIncomingTableDrag(data);
+            return;
+          }
+          if (data.type === 'table_update') {
+            if (typeof handleIncomingTableUpdate === 'function') handleIncomingTableUpdate(data);
+            return;
+          }
+          if (data.type === 'table_move_rejected') {
+            if (typeof handleIncomingTableMoveRejected === 'function') handleIncomingTableMoveRejected(data);
+            return;
+          }
+          if (data.type === 'table_sync') {
+            if (typeof handleIncomingTableSync === 'function') handleIncomingTableSync(data);
+            return;
+          }
           if (data.type === 'state_sync') {
             if (data.identity) {
               state.isHost = Boolean(data.identity.is_host);
@@ -684,6 +738,10 @@
             if (Array.isArray(data.escrowSales)) state.escrowSales = data.escrowSales;
             if (Array.isArray(data.bestiary)) state.bestiary = data.bestiary;
             if (data.battle) state.battle = data.battle;
+            if (data.table) state.table = data.table;
+            if (data.table_view && typeof applyServerMesaView === 'function') {
+              applyServerMesaView(data.table_view);
+            }
             if (Array.isArray(data.quests)) state.quests = data.quests;
             if (Array.isArray(data.auditLog)) state.auditLog = data.auditLog;
             if (Array.isArray(data.customPermissionPresets)) state.customPermissionPresets = data.customPermissionPresets;
@@ -728,7 +786,8 @@
   // ===========================================================================
   const TAB_TITLES = {
     overview: 'VISÃO GERAL',
-    characters: 'PERSONAGENS & FICHAS',
+    mesa: 'MESA',
+    characters: 'MESA',
     catalog: 'CATÁLOGO DE ITENS',
     shop: 'LOJA & MERCADORES',
     bestiary: 'BESTIÁRIO',
@@ -738,6 +797,7 @@
   };
 
   function switchTab(tabId) {
+    if (tabId === 'characters') tabId = 'mesa';
     state.activeTab = tabId;
     document.querySelectorAll('[data-nav-tab]').forEach((btn) => {
       if (btn.getAttribute('data-nav-tab') === tabId) {
@@ -754,6 +814,11 @@
         sec.classList.add('hidden');
       }
     });
+
+    const mainContainer = document.getElementById('app-main-container');
+    if (mainContainer) {
+      mainContainer.classList.toggle('mesa-fullbleed', tabId === 'mesa');
+    }
 
     const bcSec = document.getElementById('topbar-section-breadcrumb');
     if (bcSec) bcSec.textContent = TAB_TITLES[tabId] || 'VISÃO GERAL';
@@ -1699,13 +1764,11 @@
       openConfirmModal({
         icon: '<iconify-icon icon="game-icons:skull-crossed-bones" class="text-rose-400"></iconify-icon>',
         title: 'ENCERRAR BATALHA?',
-        message: 'Deseja realmente encerrar o combate atual? A fila de batalha será fechada, os contadores serão zerados e todas as fichas de inimigos em campo serão removidas da mesa.',
+        message: 'Deseja realmente encerrar o combate atual? A fila de iniciativa será fechada e a movimentação livre na Mesa será restaurada, preservando todas as fichas e estados atuais em campo.',
         confirmText: '<iconify-icon icon="game-icons:skull-crossed-bones"></iconify-icon> <span>Encerrar Batalha</span>',
         onConfirm: () => {
           commitMutation(
             (st, toasts) => {
-              const enemyCount = (st.characters || []).filter((c) => Boolean(c.isEnemy)).length;
-              st.characters = (st.characters || []).filter((c) => !c.isEnemy);
               st.battle = {
                 isActive: false,
                 roundNumber: 1,
@@ -1714,17 +1777,16 @@
                 orderIds: [],
                 turnCounts: {},
               };
-              if (enemyCount > 0) {
-                toasts.push(`Combate encerrado. ${enemyCount} ficha(s) de inimigo removida(s) da mesa.`);
-              } else {
-                toasts.push('Combate encerrado pelo Mestre.');
+              if (typeof exitMesaBattleClient === 'function') {
+                exitMesaBattleClient(st);
               }
+              toasts.push('Combate encerrado. A movimentação livre na Mesa foi restaurada.');
               return true;
             },
             {
               actionType: 'BATTLE_END',
               targetEntity: 'Mesa de Combate',
-              summary: 'Batalha encerrada e todas as fichas de inimigos foram removidas da mesa.',
+              summary: 'Batalha encerrada e movimentação livre restaurada na Mesa.',
             }
           );
           closeModal('modal-general-skills');
@@ -2016,6 +2078,9 @@
         const firstChar = (st.characters || []).find((c) => c.id === firstId);
         if (firstChar) {
           resetTurnCombatantPa(firstChar);
+        }
+        if (typeof enterMesaBattleClient === 'function') {
+          enterMesaBattleClient(st);
         }
         const firstName = firstChar ? firstChar.name : '1º Combatente';
         toasts.push(`Combate iniciado! Turno de ${firstName}!`);
