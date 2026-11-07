@@ -180,7 +180,7 @@
     }
 
     // 3. Se estiver na aba Mesa e o cursor estiver sobre o viewport do tabuleiro, transmite coordenadas do mundo (wx, wy)
-    if (state.activeTab === 'mesa' || state.activeTab === 'characters') {
+    if (state.activeTab === 'mesa') {
       const vp = document.getElementById('mesa-viewport');
       if (vp && typeof mesaCamera === 'object' && mesaCamera) {
         const vr = vp.getBoundingClientRect();
@@ -787,7 +787,7 @@
   const TAB_TITLES = {
     overview: 'VISÃO GERAL',
     mesa: 'MESA',
-    characters: 'MESA',
+    characters: 'FICHAS',
     catalog: 'CATÁLOGO DE ITENS',
     shop: 'LOJA & MERCADORES',
     bestiary: 'BESTIÁRIO',
@@ -797,7 +797,6 @@
   };
 
   function switchTab(tabId) {
-    if (tabId === 'characters') tabId = 'mesa';
     state.activeTab = tabId;
     document.querySelectorAll('[data-nav-tab]').forEach((btn) => {
       if (btn.getAttribute('data-nav-tab') === tabId) {
@@ -869,6 +868,7 @@
       (i) => isEffectiveMaster() || i.visivelParaJogadores !== false
     );
     setTxt('badge-chars-count', String(state.characters.length));
+    setTxt('badge-mesa-count', String(state.characters.length));
     setTxt('badge-items-count', String(visibleItems.length));
     setTxt('badge-npcs-count', String(state.npcs.length));
     setTxt('badge-quests-count', String(state.quests.length));
@@ -1738,23 +1738,33 @@
   }
 
   function updateBattleToggleButton() {
-    const btn = document.getElementById('btn-battle-toggle');
-    const icon = document.getElementById('btn-battle-toggle-icon');
-    const text = document.getElementById('btn-battle-toggle-text');
-    if (!btn || !text) return;
-
     const battle = getBattleState();
-    if (battle.isActive) {
-      btn.className = 'master-only-el rounded-lg px-3.5 py-2 text-xs font-serif-fantasy uppercase tracking-wider bg-rose-950/80 hover:bg-rose-900 border border-rose-500/70 text-rose-200 font-extrabold flex items-center gap-1.5 shadow-md transition';
-      if (icon) icon.setAttribute('icon', 'game-icons:skull-crossed-bones');
-      text.textContent = 'ENCERRAR BATALHA';
-      btn.title = 'Encerrar o combate ativo e zerar contadores de turno e cargas';
-    } else {
-      btn.className = 'master-only-el rounded-lg px-3.5 py-2 text-xs font-serif-fantasy uppercase tracking-wider btn-gold flex items-center gap-1.5 shadow-md transition';
-      if (icon) icon.setAttribute('icon', 'game-icons:crossed-swords');
-      text.textContent = 'INICIAR BATALHA';
-      btn.title = 'Configurar ordem e iniciar combate';
-    }
+    const pairs = [
+      {
+        btn: document.getElementById('btn-battle-toggle'),
+        icon: document.getElementById('btn-battle-toggle-icon'),
+        text: document.getElementById('btn-battle-toggle-text'),
+      },
+      {
+        btn: document.getElementById('btn-fichas-battle-toggle'),
+        icon: document.getElementById('btn-fichas-battle-toggle-icon'),
+        text: document.getElementById('btn-fichas-battle-toggle-text'),
+      },
+    ];
+    pairs.forEach(({ btn, icon, text }) => {
+      if (!btn || !text) return;
+      if (battle.isActive) {
+        btn.className = 'master-only-el rounded-lg px-3.5 py-2 text-xs font-serif-fantasy uppercase tracking-wider bg-rose-950/80 hover:bg-rose-900 border border-rose-500/70 text-rose-200 font-extrabold flex items-center gap-1.5 shadow-md transition';
+        if (icon) icon.setAttribute('icon', 'game-icons:skull-crossed-bones');
+        text.textContent = 'ENCERRAR BATALHA';
+        btn.title = 'Encerrar o combate ativo e zerar contadores de turno e cargas';
+      } else {
+        btn.className = 'master-only-el rounded-lg px-3.5 py-2 text-xs font-serif-fantasy uppercase tracking-wider btn-gold flex items-center gap-1.5 shadow-md transition';
+        if (icon) icon.setAttribute('icon', 'game-icons:crossed-swords');
+        text.textContent = 'INICIAR BATALHA';
+        btn.title = 'Configurar ordem e iniciar combate';
+      }
+    });
   }
 
   function handleBattleToggleClick() {

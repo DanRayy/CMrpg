@@ -176,18 +176,17 @@ def test_permissions_master_vs_players() -> None:
     assert can_move_card(char_master, master_id, members) is True
     assert can_move_card(enemy, master_id, members) is True
 
-    # Universal permission for player cards: any player can move any character card, even if not linked
+    # Universal permission on Mesa: any player can move any character card and any enemy card
     assert can_move_card(char_p1, p1_id, members) is True
     assert can_move_card(char_p2, p1_id, members) is True
     assert can_move_card(char_master, p1_id, members) is True
-    # BUT strictly forbidden to move enemies
-    assert can_move_card(enemy, p1_id, members) is False
+    assert can_move_card(enemy, p1_id, members) is True
 
-    # Player 2 can also move any player card, but strictly forbidden to move enemies
+    # Player 2 can also move any player card and any enemy card
     assert can_move_card(char_p2, p2_id, members) is True
     assert can_move_card(char_p1, p2_id, members) is True
     assert can_move_card(char_master, p2_id, members) is True
-    assert can_move_card(enemy, p2_id, members) is False
+    assert can_move_card(enemy, p2_id, members) is True
 
 
 def test_region_helpers() -> None:

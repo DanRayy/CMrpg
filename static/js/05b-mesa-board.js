@@ -1082,8 +1082,9 @@ function handleIncomingTableSync(data) {
   if (!data.table || typeof data.table !== 'object') return;
   state.table = data.table;
   saveStateToLocalStorage();
-  if (state.activeTab === 'mesa') {
-    renderMesaTab();
+  renderMesaTab();
+  if (typeof renderCharactersTab === 'function') {
+    renderCharactersTab();
   }
 }
 
@@ -1169,8 +1170,8 @@ function initMesaBoardEvents() {
 
     if (e.button !== 0) return;
 
-    // 2. Se clicou em um botão, input ou controle interativo dentro do card, deixa o clique normal agir
-    if (e.target.closest('button, input, textarea, select, a, label, [data-action]')) {
+    // 2. Se clicou em um botão, input, avatar de ficha completa ou controle interativo dentro do card, deixa o clique normal agir
+    if (e.target.closest('button, input, textarea, select, a, label, [data-action], .char-card-top-avatar-wrap[data-view-image-src]')) {
       return;
     }
 
@@ -1343,15 +1344,17 @@ function initMesaBoardEvents() {
     zoomMesaAtScreenPoint(MESA_DEFAULT_ZOOM);
   });
 
-  // Seletor de Qualidade Gráfica da Mesa
+  // Seletor de Qualidade Gráfica da Mesa (Aplicação Imediata em Tempo Real)
   const qualitySelect = document.getElementById('select-mesa-render-quality');
   if (qualitySelect) {
     qualitySelect.value = getMesaRenderQuality();
-    qualitySelect.addEventListener('change', (e) => {
-      setMesaRenderQuality(e.target.value);
-    });
+    const onQualityChange = (e) => {
+      updateTableRenderQuality(e.target.value);
+    };
+    qualitySelect.addEventListener('change', onQualityChange);
+    qualitySelect.addEventListener('input', onQualityChange);
   }
-  setMesaRenderQuality(getMesaRenderQuality());
+  updateTableRenderQuality(getMesaRenderQuality());
 
   // Busca na barra da Mesa: destaca e centraliza no personagem buscado
   const searchInput = document.getElementById('search-input');
@@ -1383,24 +1386,84 @@ function getMesaRenderQuality() {
   return '1.5';
 }
 
-function setMesaRenderQuality(qualityStr) {
+function updateTableRenderQuality(qualityStr) {
   const q = qualityStr === '1' || qualityStr === '2' ? qualityStr : '1.5';
   try {
     localStorage.setItem(STORAGE_KEY_MESA_QUALITY, q);
   } catch (_) {}
 
+  const qualityMultiplier = parseFloat(q) || 1.5;
+  const effectiveDpr = (typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1) * qualityMultiplier;
+  const imageRenderingMode = q === '1' ? 'auto' : 'crisp-edges';
+
   const viewport = document.getElementById('mesa-viewport');
+  const worldEl = document.getElementById('mesa-world');
+  const tokensLayer = document.getElementById('mesa-tokens-layer');
+
   if (viewport) {
     viewport.classList.remove('mesa-quality-1x', 'mesa-quality-15x', 'mesa-quality-2x');
     if (q === '1') viewport.classList.add('mesa-quality-1x');
     else if (q === '2') viewport.classList.add('mesa-quality-2x');
     else viewport.classList.add('mesa-quality-15x');
+
+    viewport.dataset.renderQuality = q;
+    viewport.style.setProperty('--mesa-render-quality', String(qualityMultiplier));
+    viewport.style.setProperty('--mesa-effective-dpr', String(effectiveDpr));
+    viewport.style.imageRendering = imageRenderingMode;
+    viewport.style.webkitFontSmoothing = q === '1' ? 'auto' : 'antialiased';
+    viewport.style.textRendering = q === '1' ? 'optimizeSpeed' : 'geometricPrecision';
+  }
+
+  if (worldEl) {
+    worldEl.dataset.renderQuality = q;
+    worldEl.style.setProperty('--mesa-render-quality', String(qualityMultiplier));
+    worldEl.style.setProperty('--mesa-effective-dpr', String(effectiveDpr));
+    worldEl.style.imageRendering = imageRenderingMode;
+    worldEl.style.backfaceVisibility = 'hidden';
+    worldEl.style.transformStyle = q === '1' ? 'flat' : 'preserve-3d';
+
+    // Invalida o buffer de textura da GPU para forçar re-rasterização imediata na nova resolução sem precisar de F5
+    worldEl.style.willChange = 'auto';
+    void worldEl.offsetHeight;
+    applyMesaCameraTransform();
+    if (typeof requestAnimationFrame === 'function') {
+      requestAnimationFrame(() => {
+        if (worldEl) worldEl.style.willChange = 'transform';
+      });
+    } else {
+      worldEl.style.willChange = 'transform';
+    }
+  }
+
+  if (tokensLayer) {
+    mesaCardHtmlCache.clear();
+    renderMesaTab();
+    tokensLayer.querySelectorAll('.mesa-token, .char-card').forEach((el) => {
+      el.style.imageRendering = imageRenderingMode;
+      el.style.webkitFontSmoothing = q === '1' ? 'auto' : 'antialiased';
+      el.style.textRendering = q === '1' ? 'optimizeSpeed' : 'geometricPrecision';
+      el.style.backfaceVisibility = 'hidden';
+    });
+  }
+
+  if (viewport) {
+    viewport.querySelectorAll('canvas').forEach((cv) => {
+      applyCanvasSuperSampling(cv, mesaCamera.zoom);
+    });
   }
 
   const select = document.getElementById('select-mesa-render-quality');
   if (select && select.value !== q) {
     select.value = q;
   }
+}
+
+function setMesaRenderQuality(qualityStr) {
+  updateTableRenderQuality(qualityStr);
+}
+
+function applySuperSampling(canvas, zoomFactor = 1) {
+  applyCanvasSuperSampling(canvas, zoomFactor);
 }
 
 function toggleCharacterCompactMode(charId) {
@@ -1522,6 +1585,8 @@ if (typeof module !== 'undefined' && module.exports) {
     exitMesaBattleClient,
     getMesaRenderQuality,
     setMesaRenderQuality,
+    updateTableRenderQuality,
+    applySuperSampling,
     applyCanvasSuperSampling,
     toggleCharacterCompactMode,
   };

@@ -1386,9 +1386,83 @@
     return { x: evt.clientX, y: evt.clientY };
   }
 
-  function startCardDrag() {}
-  function moveCardDrag() {}
-  function endCardDrag() {}
+  function startCardDrag(evt, handleEl) {
+    if (evt.type === 'mousedown' && evt.button !== 0) return;
+    if (!isEffectiveMaster() && !hasPermission('char_reorder')) return;
+    const charId = handleEl.getAttribute('data-drag-char-id');
+    const cardEl = handleEl.closest('.char-card');
+    if (!charId || !cardEl) return;
+
+    evt.preventDefault();
+    const { x, y } = getPointCoords(evt);
+    const rect = cardEl.getBoundingClientRect();
+
+    dragState.active = true;
+    dragState.sourceCharId = charId;
+    dragState.sourceCardEl = cardEl;
+    dragState.offsetX = x - rect.left;
+    dragState.offsetY = y - rect.top;
+
+    const ghost = cardEl.cloneNode(true);
+    ghost.classList.add('drag-ghost');
+    ghost.style.width = `${rect.width}px`;
+    ghost.style.height = `${rect.height}px`;
+    ghost.style.left = `${x - dragState.offsetX}px`;
+    ghost.style.top = `${y - dragState.offsetY}px`;
+    document.body.appendChild(ghost);
+
+    dragState.ghostEl = ghost;
+    cardEl.classList.add('dragging-source');
+  }
+
+  function moveCardDrag(evt) {
+    if (!dragState.active || !dragState.ghostEl) return;
+    if (evt.cancelable) evt.preventDefault();
+    const { x, y } = getPointCoords(evt);
+    dragState.ghostEl.style.left = `${x - dragState.offsetX}px`;
+    dragState.ghostEl.style.top = `${y - dragState.offsetY}px`;
+
+    const elUnder = document.elementFromPoint(x, y);
+    const hoveredCard = elUnder ? elUnder.closest('#characters-grid .char-card') : null;
+
+    if (dragState.currentTargetCardEl && dragState.currentTargetCardEl !== hoveredCard) {
+      dragState.currentTargetCardEl.classList.remove('drop-target-active');
+      dragState.currentTargetCardEl = null;
+    }
+    if (hoveredCard && hoveredCard !== dragState.sourceCardEl) {
+      hoveredCard.classList.add('drop-target-active');
+      dragState.currentTargetCardEl = hoveredCard;
+    }
+  }
+
+  function endCardDrag() {
+    if (!dragState.active) return;
+    const sourceId = dragState.sourceCharId;
+    const targetCard = dragState.currentTargetCardEl;
+    const targetId = targetCard ? targetCard.getAttribute('data-char-id') : null;
+
+    dragState.sourceCardEl?.classList.remove('dragging-source');
+    targetCard?.classList.remove('drop-target-active');
+    dragState.ghostEl?.remove();
+
+    dragState.active = false;
+    dragState.sourceCharId = null;
+    dragState.sourceCardEl = null;
+    dragState.ghostEl = null;
+    dragState.currentTargetCardEl = null;
+
+    if (sourceId && targetId && sourceId !== targetId) {
+      commitMutation((st) => {
+        const idxA = st.characters.findIndex((c) => c.id === sourceId);
+        const idxB = st.characters.findIndex((c) => c.id === targetId);
+        if (idxA === -1 || idxB === -1) return false;
+        const tmp = st.characters[idxA];
+        st.characters[idxA] = st.characters[idxB];
+        st.characters[idxB] = tmp;
+        return true;
+      });
+    }
+  }
 
   // ===========================================================================
   // Gerenciamento do Bestiário, Invocação e Habilidades Gerais
@@ -1542,10 +1616,13 @@
         (e) => `
         <div class="p-3 rounded-xl bg-black/40 border app-divider-border flex flex-wrap items-center justify-between gap-3 text-xs">
           <div class="flex items-center gap-3">
-            <div class="w-9 h-9 rounded-full bg-rose-950/60 border border-rose-500/40 flex items-center justify-center text-rose-400 text-lg shrink-0 overflow-hidden">
+            <div
+              class="w-9 h-9 rounded-full bg-rose-950/60 border border-rose-500/40 flex items-center justify-center text-rose-400 text-lg shrink-0 overflow-hidden ${e.image && String(e.image).trim() ? 'image-viewer-trigger' : ''}"
+              ${e.image && String(e.image).trim() ? `data-view-image-src="${escapeHtml(String(e.image).trim())}" data-view-image-title="${escapeHtml(e.name)}"` : ''}
+            >
               ${
                 e.image && String(e.image).trim()
-                  ? `<img src="${escapeHtml(String(e.image).trim())}" alt="${escapeHtml(e.name)}" class="w-full h-full object-cover rounded-full" />`
+                  ? `<img src="${escapeHtml(String(e.image).trim())}" alt="${escapeHtml(e.name)}" class="w-full h-full object-cover rounded-full pointer-events-none" />`
                   : '<iconify-icon icon="game-icons:monster-grasp"></iconify-icon>'
               }
             </div>
@@ -1701,7 +1778,10 @@
     );
 
     closeModal('modal-spawn-enemy');
-    switchTab('mesa');
+    if (state.activeTab !== 'characters' && state.activeTab !== 'mesa') {
+      switchTab('mesa');
+    }
+    renderCharactersTab();
     if (typeof renderMesaTab === 'function') renderMesaTab();
   }
 
@@ -1739,6 +1819,7 @@
             summary: `Inimigo ${c.name} removido da mesa de combate.`,
           }
         );
+        renderCharactersTab();
         if (typeof renderMesaTab === 'function') renderMesaTab();
       },
     });

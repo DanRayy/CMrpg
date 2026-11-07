@@ -161,12 +161,12 @@ def test_multiplayer_permissions_and_concurrent_collisions(tmp_path: Path) -> No
         assert upd_p1_move["position"] == {"x": 2200, "y": 2200}
         assert main.state_manager.state["table"]["positions"]["char_default_2"] == {"x": 2200, "y": 2200}
 
-        # 2. Strict enemy block: Player 1 tries to move Enemy -> FORBIDDEN
-        orig_enemy_pos = copy.deepcopy(main.state_manager.state["table"]["positions"]["char_enemy_test_1"])
+        # 2. Universal enemy movement on Mesa: Player 1 CAN also move Enemy
         ws_p1.send_json({"type": "table_move", "charId": "char_enemy_test_1", "x": 900, "y": 400})
-        rej2 = _drain_until_type(ws_p1, "table_move_rejected")
-        assert rej2["reason"] == "forbidden"
-        assert main.state_manager.state["table"]["positions"]["char_enemy_test_1"] == orig_enemy_pos
+        upd_enemy_p1 = _drain_until_type(ws_m, "table_update")
+        assert upd_enemy_p1["charId"] == "char_enemy_test_1"
+        assert upd_enemy_p1["position"] == {"x": 900, "y": 400}
+        assert main.state_manager.state["table"]["positions"]["char_enemy_test_1"] == {"x": 900, "y": 400}
 
         # 3. Master CAN move Player 2's character AND Enemy
         ws_m.send_json({"type": "table_move", "charId": "char_default_2", "x": 1800, "y": 1900})
@@ -275,7 +275,11 @@ def test_static_assets_and_mesa_markup(tmp_path: Path) -> None:
     assert resp_html.status_code == 200
     html = resp_html.text
     assert 'data-nav-tab="mesa"' in html
+    assert 'data-nav-tab="characters"' in html
     assert 'id="tab-mesa"' in html
+    assert 'id="tab-characters"' in html
+    assert 'id="characters-grid"' in html
+    assert 'id="modal-image-viewer"' in html
     assert 'id="mesa-viewport"' in html
     assert 'id="mesa-world"' in html
     assert 'id="mesa-tokens-layer"' in html

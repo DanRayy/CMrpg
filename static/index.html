@@ -28,7 +28,7 @@
   <!-- Iconify Web Component (game-icons) -->
   <script src="https://code.iconify.design/iconify-icon/2.1.0/iconify-icon.min.js"></script>
   <!-- Estilos Customizados -->
-  <link rel="stylesheet" href="styles.css?v=1.12.0" />
+  <link rel="stylesheet" href="styles.css?v=1.13.0" />
 </head>
 <body class="min-h-screen flex select-none">
 
@@ -79,6 +79,17 @@
           </span>
           <span class="flex items-center gap-1.5">
             <span data-nav-cursors="mesa" class="sidebar-cursors-dots"></span>
+            <span id="badge-mesa-count" class="sidebar-badge">2</span>
+          </span>
+        </button>
+
+        <button type="button" data-nav-tab="characters" class="sidebar-nav-item">
+          <span class="flex items-center gap-2.5 text-left">
+            <iconify-icon icon="game-icons:character" class="text-base"></iconify-icon>
+            <span class="leading-tight">Fichas</span>
+          </span>
+          <span class="flex items-center gap-1.5">
+            <span data-nav-cursors="characters" class="sidebar-cursors-dots"></span>
             <span id="badge-chars-count" class="sidebar-badge">2</span>
           </span>
         </button>
@@ -618,6 +629,95 @@
             <span><iconify-icon icon="game-icons:hand" class="text-amber-400"></iconify-icon> Arraste os cards livremente</span>
           </div>
         </div>
+      </section>
+
+      <!-- ===================================================================== -->
+      <!-- ABA 2B: FICHAS (GERENCIAMENTO COMPLETO DE PERSONAGENS E INIMIGOS)     -->
+      <!-- ===================================================================== -->
+      <section id="tab-characters" class="tab-section hidden space-y-5">
+        <!-- Barra de Ferramentas de Fichas -->
+        <div class="fantasy-card p-4 flex flex-wrap items-center justify-between gap-3">
+          <div class="flex items-center gap-3 flex-1 min-w-[220px] max-w-md">
+            <div class="relative flex-1">
+              <iconify-icon icon="game-icons:magnifying-glass" class="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs opacity-60"></iconify-icon>
+              <input
+                id="fichas-search-input"
+                type="text"
+                placeholder="BUSCAR..."
+                autocomplete="off"
+                class="w-full pl-9 pr-8 py-2 text-xs sm:text-sm font-semibold tracking-wide app-input"
+              />
+              <button
+                id="fichas-clear-search-btn"
+                type="button"
+                title="Limpar busca"
+                class="hidden absolute right-2.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded items-center justify-center text-xs app-muted hover:opacity-100"
+              >
+                ✕
+              </button>
+            </div>
+            <span id="fichas-count-label" class="text-xs font-mono font-bold app-muted shrink-0"></span>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              id="btn-fichas-spawn-enemy"
+              class="master-only-el rounded-lg px-3.5 py-2 text-xs font-serif-fantasy uppercase tracking-wider bg-rose-950/60 hover:bg-rose-900/80 border border-rose-500/50 text-rose-300 font-extrabold flex items-center gap-1.5 shadow-md transition"
+              title="Trazer instâncias de inimigos do Bestiário para a mesa de combate"
+            >
+              <iconify-icon icon="game-icons:monster-grasp" class="text-base"></iconify-icon>
+              <span>TRAZER INIMIGO</span>
+            </button>
+
+            <button
+              type="button"
+              id="btn-fichas-battle-toggle"
+              class="master-only-el rounded-lg px-3.5 py-2 text-xs font-serif-fantasy uppercase tracking-wider btn-gold flex items-center gap-1.5 shadow-md transition"
+              title="Iniciar ou Encerrar Batalha e Ordem de Turnos"
+            >
+              <iconify-icon id="btn-fichas-battle-toggle-icon" icon="game-icons:crossed-swords" class="text-base"></iconify-icon>
+              <span id="btn-fichas-battle-toggle-text">INICIAR BATALHA</span>
+            </button>
+
+            <button
+              type="button"
+              id="btn-fichas-bulk-rewards"
+              class="master-only-el px-3.5 py-2 text-xs font-serif-fantasy uppercase tracking-wider btn-gold-outline flex items-center gap-1.5"
+            >
+              <iconify-icon icon="game-icons:chest"></iconify-icon>
+              <span>Conceder XP / Atributos em Lote</span>
+            </button>
+
+            <button
+              id="btn-fichas-create-char"
+              type="button"
+              class="btn-gold px-4 py-2 text-xs font-serif-fantasy uppercase tracking-wider flex items-center gap-1.5"
+            >
+              <span>＋</span>
+              <span>CRIAR</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between text-xs app-muted px-1">
+          <span><iconify-icon icon="game-icons:torch" class="text-amber-400"></iconify-icon> Arraste pelo <strong>nome do personagem</strong> no topo do card para reordenar posições. Clique em <strong><iconify-icon icon="game-icons:tied-scroll"></iconify-icon> Ficha</strong> para abrir os 5 Atributos, Talentos e Inventário.</span>
+        </div>
+
+        <!-- Estado Vazio de Busca ("NENHUM CHAR ENCONTRADO") -->
+        <div
+          id="empty-search-state"
+          class="hidden flex-col items-center justify-center py-20 px-4 text-center fantasy-card border-dashed"
+        >
+          <div class="text-5xl mb-3 opacity-75 flex justify-center"><iconify-icon icon="game-icons:magnifying-glass"></iconify-icon></div>
+          <h2 class="text-xl sm:text-2xl font-serif-fantasy font-black tracking-wider uppercase gold-title">
+            NENHUM CHAR ENCONTRADO
+          </h2>
+          <p class="text-sm app-muted mt-1">Tente outro termo na barra de pesquisa ou crie um novo personagem.</p>
+        </div>
+
+        <!-- Grid de Cards de Personagens -->
+        <div id="characters-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 mt-4"></div>
       </section>
 
       <!-- ===================================================================== -->
@@ -3939,13 +4039,47 @@
     </div>
   </div>
 
+  <!-- ========================================================================= -->
+  <!-- MODAL 22: VISUALIZADOR DE IMAGEM / ARTE COMPLETA EM TELA CHEIA            -->
+  <!-- ========================================================================= -->
+  <div
+    id="modal-image-viewer"
+    class="hidden fixed inset-0 z-[150] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 sm:p-8 image-viewer-backdrop"
+    role="dialog"
+    aria-modal="true"
+    aria-label="Visualizador de Imagem"
+  >
+    <button
+      type="button"
+      id="btn-close-image-viewer"
+      class="fixed top-5 right-5 z-[155] w-11 h-11 rounded-full bg-black/75 hover:bg-amber-500/25 border border-amber-500/50 text-amber-200 hover:text-white flex items-center justify-center text-xl font-black shadow-xl transition"
+      title="Fechar visualização (ESC)"
+      aria-label="Fechar visualização"
+    >
+      ✕
+    </button>
+
+    <div id="image-viewer-stage" class="relative flex flex-col items-center justify-center max-w-[92vw] max-h-[88vh] pointer-events-none">
+      <img
+        id="image-viewer-img"
+        src=""
+        alt="Visualização ampliada"
+        class="max-w-[90vw] max-h-[82vh] w-auto h-auto object-contain rounded-2xl border-2 border-amber-500/55 shadow-[0_24px_80px_rgba(0,0,0,0.95)] bg-[#0c0a08] pointer-events-auto select-none"
+      />
+      <div
+        id="image-viewer-caption"
+        class="mt-3 px-4 py-1.5 rounded-full bg-black/80 border border-amber-500/35 text-xs sm:text-sm font-serif-fantasy font-extrabold tracking-wider gold-title shadow-lg pointer-events-auto"
+      ></div>
+    </div>
+  </div>
+
     <!-- Módulos Sequenciais da Aplicação -->
-    <script src="js/01-core-state.js?v=1.12.0"></script>
-    <script src="js/02-websocket-combat.js?v=1.12.0"></script>
-    <script src="js/03-tabs-renderers.js?v=1.12.0"></script>
-    <script src="js/04-modals-character-buffs.js?v=1.12.0"></script>
-    <script src="js/05-modals-notes-inventory-bestiary.js?v=1.12.0"></script>
-    <script src="js/05b-mesa-board.js?v=1.12.0"></script>
-    <script src="js/06-events-init.js?v=1.12.0"></script>
+    <script src="js/01-core-state.js?v=1.13.0"></script>
+    <script src="js/02-websocket-combat.js?v=1.13.0"></script>
+    <script src="js/03-tabs-renderers.js?v=1.13.0"></script>
+    <script src="js/04-modals-character-buffs.js?v=1.13.0"></script>
+    <script src="js/05-modals-notes-inventory-bestiary.js?v=1.13.0"></script>
+    <script src="js/05b-mesa-board.js?v=1.13.0"></script>
+    <script src="js/06-events-init.js?v=1.13.0"></script>
 </body>
 </html>

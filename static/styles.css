@@ -2011,5 +2011,60 @@ iconify-icon {
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.55);
 }
 
+/* Tag de Identificação do Token Compacto (Nome + Nível / Nome do Inimigo) */
+.compact-token-label {
+  position: absolute;
+  top: calc(100% - 2px);
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  max-width: 156px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: rgba(10, 8, 6, 0.88);
+  border: 1px solid rgba(212, 168, 83, 0.48);
+  color: #f7ebd2;
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1.25;
+  letter-spacing: 0.02em;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.85);
+  pointer-events: none !important;
+  user-select: none;
+  z-index: 14;
+}
+
+.compact-token-label.compact-token-label-enemy {
+  border-color: rgba(251, 113, 133, 0.55);
+  color: #fecdd3;
+}
+
+/* Gatilhos e Modal do Visualizador de Imagem em Tela Cheia */
+.image-viewer-trigger {
+  cursor: zoom-in;
+  transition: transform 0.15s ease, filter 0.15s ease;
+}
+
+.image-viewer-trigger:hover {
+  filter: brightness(1.1);
+}
+
+@keyframes fadeInImageViewer {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.image-viewer-backdrop {
+  animation: fadeInImageViewer 0.18s ease-out;
+}
+
+
 
 

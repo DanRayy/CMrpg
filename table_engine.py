@@ -421,36 +421,7 @@ def can_move_card(
     if not isinstance(char, dict) or not isinstance(identity, dict):
         return False
 
-    is_host = bool(identity.get("is_host"))
-    member_id = str(identity.get("member_id") or "").strip()
-    client_ip = str(identity.get("client_ip") or "").strip()
-    role = str(identity.get("role") or "").upper()
-
-    member_obj: Optional[Dict[str, Any]] = None
-    if isinstance(members, list):
-        for m in members:
-            if not isinstance(m, dict):
-                continue
-            if (member_id and m.get("id") == member_id) or (client_ip and m.get("ip") == client_ip):
-                member_obj = m
-                break
-
-    is_master = (
-        is_host
-        or member_id == "host_master"
-        or role == "MESTRE"
-        or bool(member_obj and str(member_obj.get("role") or "").upper() == "MESTRE")
-    )
-
-    # Mestre pode mover qualquer card (personagens e inimigos)
-    if is_master:
-        return True
-
-    # Jogadores comuns jamais podem mover inimigos
-    if is_enemy_character(char):
-        return False
-
-    # Permissão universal: qualquer jogador pode mover cards de personagens (mesmo não vinculados)
+    # Todos os jogadores conectados na sala podem mover livremente qualquer ficha ou inimigo pela Mesa
     return True
 
 

@@ -494,33 +494,52 @@
       closeModal('modal-gold');
     });
 
-    // Busca em Tempo Real de Personagens (BUSCAR...)
+    // Busca em Tempo Real de Personagens (BUSCAR... na Mesa e na aba Fichas)
     const searchInput = document.getElementById('search-input');
     const clearSearchBtn = document.getElementById('clear-search-btn');
-    searchInput?.addEventListener('input', (e) => {
-      state.searchQuery = e.target.value || '';
+    const fichasSearchInput = document.getElementById('fichas-search-input');
+    const fichasClearSearchBtn = document.getElementById('fichas-clear-search-btn');
+
+    const syncCharacterSearchUI = (rawQuery, centerOnMesa = false) => {
+      state.searchQuery = rawQuery || '';
+      const hasQuery = state.searchQuery.length > 0;
+      if (searchInput && searchInput.value !== state.searchQuery) searchInput.value = state.searchQuery;
+      if (fichasSearchInput && fichasSearchInput.value !== state.searchQuery) fichasSearchInput.value = state.searchQuery;
       if (clearSearchBtn) {
-        clearSearchBtn.classList.toggle('hidden', state.searchQuery.length === 0);
-        clearSearchBtn.classList.toggle('flex', state.searchQuery.length > 0);
+        clearSearchBtn.classList.toggle('hidden', !hasQuery);
+        clearSearchBtn.classList.toggle('flex', hasQuery);
+      }
+      if (fichasClearSearchBtn) {
+        fichasClearSearchBtn.classList.toggle('hidden', !hasQuery);
+        fichasClearSearchBtn.classList.toggle('flex', hasQuery);
       }
       renderCharactersTab();
-      const q = state.searchQuery.trim().toLowerCase();
-      if (q && typeof centerMesaOnCard === 'function') {
-        const match = (state.characters || []).find((c) => (c.name || '').toLowerCase().includes(q));
-        if (match) centerMesaOnCard(match.id);
+      if (typeof renderMesaTab === 'function') renderMesaTab();
+      if (centerOnMesa) {
+        const q = state.searchQuery.trim().toLowerCase();
+        if (q && typeof centerMesaOnCard === 'function') {
+          const match = (state.characters || []).find((c) => (c.name || '').toLowerCase().includes(q));
+          if (match) centerMesaOnCard(match.id);
+        }
       }
+    };
+
+    searchInput?.addEventListener('input', (e) => {
+      syncCharacterSearchUI(e.target.value || '', true);
+    });
+    fichasSearchInput?.addEventListener('input', (e) => {
+      syncCharacterSearchUI(e.target.value || '', false);
     });
     clearSearchBtn?.addEventListener('click', () => {
-      if (!searchInput) return;
-      searchInput.value = '';
-      state.searchQuery = '';
-      clearSearchBtn.classList.add('hidden');
-      clearSearchBtn.classList.remove('flex');
-      renderCharactersTab();
+      syncCharacterSearchUI('', false);
+    });
+    fichasClearSearchBtn?.addEventListener('click', () => {
+      syncCharacterSearchUI('', false);
     });
 
     // Botão CRIAR Personagem + Preset Nível 1 Canônico + 3 Botões de Habilidade no Formulário
     document.getElementById('btn-create-char')?.addEventListener('click', openCreateCharacterModal);
+    document.getElementById('btn-fichas-create-char')?.addEventListener('click', openCreateCharacterModal);
     document.getElementById('btn-set-canonical-lvl1')?.addEventListener('click', () => {
       document.getElementById('char-max-hp').value = '80';
       document.getElementById('char-max-armor').value = '0';
@@ -1081,6 +1100,26 @@
     const grid = document.getElementById('characters-grid');
     if (grid) {
       grid.addEventListener('click', handleCharActionClick);
+      grid.addEventListener('mousedown', (e) => {
+        const handle = e.target.closest('.char-drag-handle');
+        if (handle && typeof startCardDrag === 'function') startCardDrag(e, handle);
+      });
+      grid.addEventListener(
+        'touchstart',
+        (e) => {
+          const handle = e.target.closest('.char-drag-handle');
+          if (handle && typeof startCardDrag === 'function') startCardDrag(e, handle);
+        },
+        { passive: false }
+      );
+      if (typeof moveCardDrag === 'function') {
+        window.addEventListener('mousemove', moveCardDrag);
+        window.addEventListener('touchmove', moveCardDrag, { passive: true });
+      }
+      if (typeof endCardDrag === 'function') {
+        window.addEventListener('mouseup', endCardDrag);
+        window.addEventListener('touchend', endCardDrag);
+      }
     }
 
     const mesaVp = document.getElementById('mesa-viewport');
@@ -1091,6 +1130,61 @@
     if (typeof initMesaBoardEvents === 'function') {
       initMesaBoardEvents();
     }
+
+    // Visualizador de Imagem em Tela Cheia (#modal-image-viewer) com Clique Único
+    const openImageViewerModal = (src, title = '') => {
+      if (!src) return;
+      const modal = document.getElementById('modal-image-viewer');
+      const img = document.getElementById('image-viewer-img');
+      const cap = document.getElementById('image-viewer-caption');
+      if (!modal || !img) return;
+      img.src = src;
+      img.alt = title || 'Visualização de imagem';
+      if (cap) {
+        if (title) {
+          cap.textContent = title;
+          cap.classList.remove('hidden');
+        } else {
+          cap.textContent = '';
+          cap.classList.add('hidden');
+        }
+      }
+      modal.classList.remove('hidden');
+    };
+
+    const closeImageViewerModal = () => {
+      const modal = document.getElementById('modal-image-viewer');
+      if (!modal) return;
+      modal.classList.add('hidden');
+    };
+
+    document.getElementById('btn-close-image-viewer')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      closeImageViewerModal();
+    });
+
+    document.getElementById('modal-image-viewer')?.addEventListener('click', (e) => {
+      if (e.target.closest('#image-viewer-img')) return;
+      closeImageViewerModal();
+    });
+
+    document.addEventListener(
+      'click',
+      (e) => {
+        const trigger = e.target.closest('[data-view-image-src]');
+        if (!trigger) return;
+        if (typeof mesaDrag !== 'undefined' && mesaDrag.suppressNextClick) {
+          return;
+        }
+        const src = trigger.getAttribute('data-view-image-src');
+        if (!src) return;
+        const title = trigger.getAttribute('data-view-image-title') || '';
+        e.stopPropagation();
+        e.preventDefault();
+        openImageViewerModal(src, title);
+      },
+      true
+    );
 
     // -------------------------------------------------------------------------
     // Eventos do Catálogo de Itens
@@ -1902,17 +1996,22 @@
       }
     });
 
-    // Botão "TRAZER INIMIGO" na aba Personagens
-    document.getElementById('btn-spawn-enemy')?.addEventListener('click', () => {
+    // Botão "TRAZER INIMIGO" na Mesa e na aba Fichas
+    const handleSpawnEnemyToolbarClick = () => {
       if (!isEffectiveMaster() && !hasPermission('bestiary_summon')) {
         showToast('Você não possui permissão para trazer inimigos para a mesa!', 'warning');
         return;
       }
       openSpawnEnemyModal();
-    });
+    };
+    document.getElementById('btn-spawn-enemy')?.addEventListener('click', handleSpawnEnemyToolbarClick);
+    document.getElementById('btn-fichas-spawn-enemy')?.addEventListener('click', handleSpawnEnemyToolbarClick);
 
-    // Controle de Batalha & Fila de Turnos
+    // Controle de Batalha & Fila de Turnos (Mesa e Fichas)
     document.getElementById('btn-battle-toggle')?.addEventListener('click', () => {
+      handleBattleToggleClick();
+    });
+    document.getElementById('btn-fichas-battle-toggle')?.addEventListener('click', () => {
       handleBattleToggleClick();
     });
 
@@ -2173,6 +2272,7 @@
     };
 
     document.getElementById('btn-bulk-rewards')?.addEventListener('click', openBulkRewardModal);
+    document.getElementById('btn-fichas-bulk-rewards')?.addEventListener('click', openBulkRewardModal);
     document.getElementById('btn-quests-bulk-xp')?.addEventListener('click', openBulkRewardModal);
     document.getElementById('btn-bulk-select-all')?.addEventListener('click', () => {
       document.querySelectorAll('#bulk-chars-checkboxes [data-bulk-char]').forEach((cb) => (cb.checked = true));
@@ -3072,6 +3172,10 @@
     // Atalhos de Teclado (Ctrl+Z, Ctrl+Y, Escape)
     window.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
+        if (!document.getElementById('modal-image-viewer')?.classList.contains('hidden')) {
+          closeImageViewerModal();
+          return;
+        }
         if (!document.getElementById('modal-confirm')?.classList.contains('hidden')) {
           closeModal('modal-confirm');
           return;

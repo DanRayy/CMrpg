@@ -9,8 +9,13 @@
     const imgUrl = item?.image ? String(item.image).trim() : '';
     if (imgUrl) {
       return `
-        <span class="${sizeClasses} rounded-full border border-amber-500/70 bg-black/60 overflow-hidden flex items-center justify-center shrink-0 shadow-sm">
-          <img src="${escapeHtml(imgUrl)}" alt="${escapeHtml(item?.nome || 'Item')}" class="w-full h-full object-cover rounded-full" loading="lazy" />
+        <span
+          class="${sizeClasses} rounded-full border border-amber-500/70 bg-black/60 overflow-hidden flex items-center justify-center shrink-0 shadow-sm image-viewer-trigger"
+          data-view-image-src="${escapeHtml(imgUrl)}"
+          data-view-image-title="${escapeHtml(item?.nome || 'Item')}"
+          title="Clique para ampliar imagem (${escapeHtml(item?.nome || 'Item')})"
+        >
+          <img src="${escapeHtml(imgUrl)}" alt="${escapeHtml(item?.nome || 'Item')}" class="w-full h-full object-cover rounded-full pointer-events-none" loading="lazy" />
         </span>
       `;
     }
@@ -20,9 +25,7 @@
 
   function canMoveCharacterOnMesa(char) {
     if (!char) return false;
-    if (isEffectiveMaster()) return true;
-    if (char.isEnemy || char.type === 'enemy' || char.bestiaryId) return false;
-    return true; // Permissão universal: qualquer jogador pode mover cards de personagens (exceto inimigos)
+    return true; // Movimentação irrestrita na Mesa: todos os jogadores podem mover fichas e inimigos
   }
 
   function buildCharacterCardHtml(char, opts = {}) {
@@ -504,6 +507,12 @@
     const avatarInnerHtml = entityImage
       ? `<img src="${escapeHtml(entityImage)}" alt="${escapeHtml(char.name)}" class="char-card-avatar-img" />`
       : getDefaultUserAvatarSvg('char-card-avatar-fallback');
+    const avatarViewerAttrs = entityImage
+      ? `data-view-image-src="${escapeHtml(entityImage)}" data-view-image-title="${escapeHtml(char.name)}"`
+      : '';
+    const compactTagText = isEnemy
+      ? `${char.name}`
+      : `${char.name} - Nv. ${char.level || 1}`;
 
     if (isCompact) {
       return `
@@ -513,8 +522,9 @@
           title="${escapeHtml(char.name)} (${isMasked ? 'NV. ?' : `NV. ${char.level || 1}`})"
         >
           <div
-            class="compact-token-circle ${isEnemy ? 'enemy-token' : ''} ${char.isDead ? 'dead-token' : ''} ${isCurrentTurn ? 'active-turn-token' : ''} ${canReorderChar ? 'char-drag-handle' : ''}"
+            class="compact-token-circle ${isEnemy ? 'enemy-token' : ''} ${char.isDead ? 'dead-token' : ''} ${isCurrentTurn ? 'active-turn-token' : ''} ${canReorderChar ? 'char-drag-handle' : ''} ${entityImage ? 'image-viewer-trigger' : ''}"
             ${canReorderChar ? `data-drag-char-id="${escapeHtml(char.id)}"` : ''}
+            ${avatarViewerAttrs}
           >
             ${avatarInnerHtml}
           </div>
@@ -528,6 +538,9 @@
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 pointer-events-none"><path d="m6 9 6 6 6-6"/></svg>
           </button>
+          <div class="compact-token-label ${isEnemy ? 'compact-token-label-enemy' : ''}">
+            ${escapeHtml(compactTagText)}
+          </div>
         </article>
       `;
     }
@@ -544,7 +557,11 @@
           data-char-id="${escapeHtml(char.id)}"
         >
           <!-- Avatar Circular no Topo Central -->
-          <div class="char-card-top-avatar-wrap ${isEnemy ? 'enemy-avatar-ring' : ''}" title="${escapeHtml(char.name)}">
+          <div
+            class="char-card-top-avatar-wrap ${isEnemy ? 'enemy-avatar-ring' : ''} ${entityImage ? 'image-viewer-trigger' : ''}"
+            ${avatarViewerAttrs}
+            title="${entityImage ? `Clique para ampliar imagem (${escapeHtml(char.name)})` : escapeHtml(char.name)}"
+          >
             ${avatarInnerHtml}
           </div>
 
@@ -675,10 +692,31 @@
   }
 
   function renderCharactersTab() {
-    if (typeof renderMesaTab === 'function') {
-      renderMesaTab();
-      return;
+    const grid = document.getElementById('characters-grid');
+    const emptyState = document.getElementById('empty-search-state');
+    const countLabel = document.getElementById('fichas-count-label');
+
+    const q = (state.searchQuery || '').trim().toLowerCase();
+    const filtered = (state.characters || []).filter((c) => (c.name || '').toLowerCase().includes(q));
+
+    if (countLabel) {
+      countLabel.textContent = `${filtered.length} / ${(state.characters || []).length} CHAR(S)`;
     }
+
+    if (grid && emptyState) {
+      if (filtered.length === 0) {
+        grid.innerHTML = '';
+        grid.classList.add('hidden');
+        emptyState.classList.remove('hidden');
+        emptyState.classList.add('flex');
+      } else {
+        emptyState.classList.add('hidden');
+        emptyState.classList.remove('flex');
+        grid.classList.remove('hidden');
+        grid.innerHTML = filtered.map((char) => buildCharacterCardHtml(char, { forMesa: false })).join('');
+      }
+    }
+
     renderBattleSidebar();
     updateBattleToggleButton();
   }
@@ -1278,7 +1316,11 @@
           return `
           <article class="char-card character-card character-card-with-avatar p-4 sm:p-5 flex flex-col justify-between gap-3.5 relative border border-rose-950/40 hover:border-amber-500/40 transition">
             <!-- Avatar Circular no Topo do Card do Bestiário -->
-            <div class="char-card-top-avatar-wrap enemy-avatar-ring" title="${escapeHtml(e.name)}">
+            <div
+              class="char-card-top-avatar-wrap enemy-avatar-ring ${e.image && String(e.image).trim() ? 'image-viewer-trigger' : ''}"
+              ${e.image && String(e.image).trim() ? `data-view-image-src="${escapeHtml(String(e.image).trim())}" data-view-image-title="${escapeHtml(e.name)}"` : ''}
+              title="${escapeHtml(e.name)}"
+            >
               ${
                 e.image && String(e.image).trim()
                   ? `<img src="${escapeHtml(String(e.image).trim())}" alt="${escapeHtml(e.name)}" class="char-card-avatar-img" />`
@@ -1289,10 +1331,13 @@
             <div class="flex items-start justify-between gap-2">
               <div class="min-w-0 flex-1">
                 <div class="flex items-center gap-2">
-                  <span class="w-8 h-8 rounded-lg bg-rose-950/60 border border-rose-500/40 flex items-center justify-center text-rose-400 text-lg shrink-0 overflow-hidden">
+                  <span
+                    class="w-8 h-8 rounded-lg bg-rose-950/60 border border-rose-500/40 flex items-center justify-center text-rose-400 text-lg shrink-0 overflow-hidden ${e.image && String(e.image).trim() ? 'image-viewer-trigger' : ''}"
+                    ${e.image && String(e.image).trim() ? `data-view-image-src="${escapeHtml(String(e.image).trim())}" data-view-image-title="${escapeHtml(e.name)}"` : ''}
+                  >
                     ${
                       e.image && String(e.image).trim()
-                        ? `<img src="${escapeHtml(String(e.image).trim())}" alt="${escapeHtml(e.name)}" class="w-full h-full object-cover" />`
+                        ? `<img src="${escapeHtml(String(e.image).trim())}" alt="${escapeHtml(e.name)}" class="w-full h-full object-cover pointer-events-none" />`
                         : '<iconify-icon icon="game-icons:monster-grasp"></iconify-icon>'
                     }
                   </span>
@@ -2126,6 +2171,9 @@
     renderHeaderAndSidebarBadges();
     renderOverviewTab();
     renderCharactersTab();
+    if (typeof renderMesaTab === 'function') {
+      renderMesaTab();
+    }
     renderCatalogTab();
     renderShopTab();
     renderBestiaryTab();
