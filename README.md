@@ -1,6 +1,6 @@
 # CMrpg — Mesa de RPG & Combate em Tempo Real
 
-O **CMrpg** é uma aplicação web completa para gerenciamento de mesas de RPG de mesa, combate tático em tempo real, fichas dinâmicas, controle de inventário e regras sincronizadas via WebSockets.
+O **CMrpg** é uma aplicação web completa para gerenciamento de jogos de RPG de mesa, combate tático em tempo real, fichas dinâmicas, controle de inventário e regras sincronizadas via WebSockets.
 
 Desenvolvido para proporcionar uma experiência fluida, o sistema atende tanto ao Mestre da mesa quanto aos Jogadores, permitindo sessões colaborativas locais ou remotas via rede virtual.
 
