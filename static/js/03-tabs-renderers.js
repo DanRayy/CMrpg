@@ -1,6 +1,23 @@
   // ---------------------------------------------------------------------------
   // ABA 2: MESA & CARDS DE PERSONAGENS / INIMIGOS (Cards + Barras + 6 Action Pills)
   // ---------------------------------------------------------------------------
+  function getDefaultUserAvatarSvg(svgClass = 'char-card-avatar-fallback') {
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="${svgClass}" aria-hidden="true"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`;
+  }
+
+  function renderItemThumbnailHtml(item, sizeClasses = 'w-9 h-9') {
+    const imgUrl = item?.image ? String(item.image).trim() : '';
+    if (imgUrl) {
+      return `
+        <span class="${sizeClasses} rounded-full border border-amber-500/70 bg-black/60 overflow-hidden flex items-center justify-center shrink-0 shadow-sm">
+          <img src="${escapeHtml(imgUrl)}" alt="${escapeHtml(item?.nome || 'Item')}" class="w-full h-full object-cover rounded-full" loading="lazy" />
+        </span>
+      `;
+    }
+    const fallbackIcon = ITEM_TYPE_ICONS[item?.tipo] || '<iconify-icon icon="game-icons:knapsack"></iconify-icon>';
+    return `<span class="text-xl flex items-center shrink-0">${fallbackIcon}</span>`;
+  }
+
   function canMoveCharacterOnMesa(char) {
     if (!char) return false;
     if (isEffectiveMaster()) return true;
@@ -14,6 +31,10 @@
     const bestiaryRef = isEnemy ? (state.bestiary || []).find((b) => b.id === char.bestiaryId) : null;
     const isRevealed = !isEnemy || (bestiaryRef ? Boolean(bestiaryRef.reveladoParaJogadores) : Boolean(char.reveladoParaJogadores));
     const isMasked = isEnemy && !isMaster && !isRevealed;
+    const entityImage = (char.image && String(char.image).trim())
+      || (isEnemy && bestiaryRef?.image && String(bestiaryRef.image).trim())
+      || null;
+    const isCompact = Boolean(char.isCompact);
 
     const hpPct = isMasked ? 0 : calcPercentage(char.hp, char.maxHp);
     const armorPct = isMasked ? 0 : calcPercentage(char.armor, char.maxArmor);
@@ -480,9 +501,40 @@
       `;
     }
 
+    const avatarInnerHtml = entityImage
+      ? `<img src="${escapeHtml(entityImage)}" alt="${escapeHtml(char.name)}" class="char-card-avatar-img" />`
+      : getDefaultUserAvatarSvg('char-card-avatar-fallback');
+
+    if (isCompact) {
+      return `
+        <article
+          class="char-card character-card card-compact-mode"
+          data-char-id="${escapeHtml(char.id)}"
+          title="${escapeHtml(char.name)} (${isMasked ? 'NV. ?' : `NV. ${char.level || 1}`})"
+        >
+          <div
+            class="compact-token-circle ${isEnemy ? 'enemy-token' : ''} ${char.isDead ? 'dead-token' : ''} ${isCurrentTurn ? 'active-turn-token' : ''} ${canReorderChar ? 'char-drag-handle' : ''}"
+            ${canReorderChar ? `data-drag-char-id="${escapeHtml(char.id)}"` : ''}
+          >
+            ${avatarInnerHtml}
+          </div>
+          <button
+            type="button"
+            data-action="toggle-compact-card"
+            data-char-id="${escapeHtml(char.id)}"
+            class="btn-expand-full-mode"
+            title="Modo Completo (${escapeHtml(char.name)})"
+            aria-label="Modo Completo"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 pointer-events-none"><path d="m6 9 6 6 6-6"/></svg>
+          </button>
+        </article>
+      `;
+    }
+
     return `
         <article
-          class="char-card p-4 sm:p-5 flex flex-col justify-between gap-3.5 relative ${
+          class="char-card character-card character-card-with-avatar p-4 sm:p-5 flex flex-col justify-between gap-3.5 relative ${
             isCurrentTurn ? 'card-active-turn' : ''
           } ${
             char.isDead
@@ -491,6 +543,11 @@
           }"
           data-char-id="${escapeHtml(char.id)}"
         >
+          <!-- Avatar Circular no Topo Central -->
+          <div class="char-card-top-avatar-wrap ${isEnemy ? 'enemy-avatar-ring' : ''}" title="${escapeHtml(char.name)}">
+            ${avatarInnerHtml}
+          </div>
+
           <!-- Topo: Nome Arrastável + Nível/XP + Botões de Ação -->
           <div class="char-card-header flex items-start justify-between gap-3 min-w-0">
             <div class="min-w-0 flex-1">
@@ -599,6 +656,20 @@
 
           ${generalSkillsBannerHtml}
           ${bottomActionsHtml}
+
+          <!-- Rodapé Inferior: Botão Modo Compacto -->
+          <div class="char-card-compact-footer">
+            <button
+              type="button"
+              data-action="toggle-compact-card"
+              data-char-id="${escapeHtml(char.id)}"
+              class="btn-toggle-compact-mode"
+              title="Recolher para Modo Compacto (Token Circular)"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5 pointer-events-none"><path d="m18 15-6-6-6 6"/></svg>
+              <span>Modo Compacto</span>
+            </button>
+          </div>
         </article>
       `;
   }
@@ -665,8 +736,8 @@
         <div class="fantasy-card p-4 flex flex-col justify-between gap-3">
           <div class="space-y-2">
             <div class="flex items-start justify-between gap-2">
-              <div class="flex items-center gap-2">
-                <span class="text-xl flex items-center">${ITEM_TYPE_ICONS[it.tipo] || '<iconify-icon icon="game-icons:knapsack"></iconify-icon>'}</span>
+              <div class="flex items-center gap-2.5">
+                ${renderItemThumbnailHtml(it, 'w-9 h-9')}
                 <div>
                   <h4 class="font-serif-fantasy font-bold text-sm app-title">${escapeHtml(it.nome)}</h4>
                   <span class="text-[10px] font-mono uppercase gold-title">${escapeHtml(it.tipo)}</span>
@@ -886,11 +957,14 @@
           <div class="fantasy-card p-4 flex flex-col justify-between gap-3 ${outOfStock ? 'opacity-50' : ''}">
             <div>
               <div class="flex items-start justify-between gap-2">
-                <div>
-                  <h4 class="font-serif-fantasy font-bold text-sm app-title flex items-center gap-1.5">${ITEM_TYPE_ICONS[item.tipo] || '<iconify-icon icon="game-icons:knapsack"></iconify-icon>'} <span>${escapeHtml(item.nome)}</span></h4>
-                  <span class="text-[10px] font-mono app-muted flex items-center gap-1"><iconify-icon icon="game-icons:weight"></iconify-icon> <span>${item.peso}kg</span> • ${
-                    st.infinite ? 'Estoque Infinito' : `Estoque: ${st.quantity}`
-                  }</span>
+                <div class="flex items-center gap-2.5 min-w-0">
+                  ${renderItemThumbnailHtml(item, 'w-9 h-9')}
+                  <div class="min-w-0">
+                    <h4 class="font-serif-fantasy font-bold text-sm app-title flex items-center gap-1.5 truncate"><span>${escapeHtml(item.nome)}</span></h4>
+                    <span class="text-[10px] font-mono app-muted flex items-center gap-1"><iconify-icon icon="game-icons:weight"></iconify-icon> <span>${item.peso}kg</span> • ${
+                      st.infinite ? 'Estoque Infinito' : `Estoque: ${st.quantity}`
+                    }</span>
+                  </div>
                 </div>
                 <div class="flex items-center gap-1.5">
                   <span class="px-2.5 py-1 rounded-lg font-mono font-extrabold text-xs bg-amber-500/15 gold-title border border-amber-500/30">
@@ -1202,13 +1276,25 @@
           }).join('');
 
           return `
-          <article class="char-card p-4 sm:p-5 flex flex-col justify-between gap-3.5 relative border border-rose-950/40 hover:border-amber-500/40 transition">
+          <article class="char-card character-card character-card-with-avatar p-4 sm:p-5 flex flex-col justify-between gap-3.5 relative border border-rose-950/40 hover:border-amber-500/40 transition">
+            <!-- Avatar Circular no Topo do Card do Bestiário -->
+            <div class="char-card-top-avatar-wrap enemy-avatar-ring" title="${escapeHtml(e.name)}">
+              ${
+                e.image && String(e.image).trim()
+                  ? `<img src="${escapeHtml(String(e.image).trim())}" alt="${escapeHtml(e.name)}" class="char-card-avatar-img" />`
+                  : getDefaultUserAvatarSvg('char-card-avatar-fallback')
+              }
+            </div>
             <!-- Topo: Ícone + Nome + Nível + Visibilidade -->
             <div class="flex items-start justify-between gap-2">
               <div class="min-w-0 flex-1">
                 <div class="flex items-center gap-2">
-                  <span class="w-8 h-8 rounded-lg bg-rose-950/60 border border-rose-500/40 flex items-center justify-center text-rose-400 text-lg shrink-0">
-                    <iconify-icon icon="game-icons:monster-grasp"></iconify-icon>
+                  <span class="w-8 h-8 rounded-lg bg-rose-950/60 border border-rose-500/40 flex items-center justify-center text-rose-400 text-lg shrink-0 overflow-hidden">
+                    ${
+                      e.image && String(e.image).trim()
+                        ? `<img src="${escapeHtml(String(e.image).trim())}" alt="${escapeHtml(e.name)}" class="w-full h-full object-cover" />`
+                        : '<iconify-icon icon="game-icons:monster-grasp"></iconify-icon>'
+                    }
                   </span>
                   <div class="min-w-0">
                     <h3 class="font-serif-fantasy text-base sm:text-lg font-black tracking-wide truncate gold-title" title="${escapeHtml(e.name)}">

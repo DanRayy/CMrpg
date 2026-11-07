@@ -294,3 +294,84 @@ def test_static_assets_and_mesa_markup(tmp_path: Path) -> None:
         r = client.get(asset)
         assert r.status_code == 200, f"Asset {asset} returned {r.status_code}"
 
+
+def test_upload_image_and_compact_card_collision(tmp_path: Path) -> None:
+    _setup_isolated_state(tmp_path)
+    client = TestClient(main.app, client=("127.0.0.1", 53030))
+
+    # Minimal 1x1 PNG bytes
+    png_1x1 = (
+        b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01"
+        b"\x08\x06\x00\x00\x00\x1f\x15\xc4\x89\x00\x00\x00\nIDATx\x9cc\x00\x01"
+        b"\x00\x00\x05\x00\x01\r\n-\xb4\x00\x00\x00\x00IEND\xaeB`\x82"
+    )
+    created_files = []
+    try:
+        # 1. Upload Character image (multipart)
+        r_char = client.post(
+            "/api/upload-image",
+            data={"category": "personagens"},
+            files={"file": ("cropped.png", png_1x1, "image/png")},
+        )
+        assert r_char.status_code == 200
+        url_char = r_char.json()["url"]
+        assert url_char.startswith("/static/img/fichas/personagens/char_")
+        assert url_char.endswith(".png")
+        disk_char = main.BASE_DIR / url_char.lstrip("/")
+        assert disk_char.exists()
+        created_files.append(disk_char)
+
+        # 2. Upload Bestiary Enemy image (multipart)
+        r_enemy = client.post(
+            "/api/upload-image",
+            data={"category": "inimigos"},
+            files={"file": ("enemy.png", png_1x1, "image/png")},
+        )
+        assert r_enemy.status_code == 200
+        url_enemy = r_enemy.json()["url"]
+        disk_enemy = main.BASE_DIR / url_enemy.lstrip("/")
+        created_files.append(disk_enemy)
+        assert url_enemy.startswith("/static/img/fichas/inimigos/char_")
+        assert disk_enemy.exists()
+
+        # 3. Upload Catalog Item image (ARMA -> static/img/itens/armas/)
+        r_item = client.post(
+            "/api/upload-image",
+            data={"category": "itens", "itemType": "ARMA"},
+            files={"file": ("sword.png", png_1x1, "image/png")},
+        )
+        assert r_item.status_code == 200
+        url_item = r_item.json()["url"]
+        assert url_item.startswith("/static/img/itens/armas/item_")
+        disk_item = main.BASE_DIR / url_item.lstrip("/")
+        assert disk_item.exists()
+        created_files.append(disk_item)
+
+        # 4. Compact Mode 72x96 collision test on Mesa:
+        # Place two compact cards at x=100, y=500 and x=180, y=500 (distance 80px > 72px width!)
+        with client.websocket_connect("/ws") as ws_m:
+            _drain_until_type(ws_m, "state_sync")
+            chars = copy.deepcopy(main.state_manager.state["characters"])
+            for c in chars:
+                if c["id"] in ("char_default_1", "char_default_2"):
+                    c["isCompact"] = True
+                    c["image"] = url_char
+            ws_m.send_json({"type": "update_state", "characters": chars})
+            sync_compact = _drain_until_type(ws_m, "state_sync")
+            assert sync_compact["table"]["sizes"]["char_default_1"] == {"w": 72, "h": 96}
+            assert sync_compact["table"]["sizes"]["char_default_2"] == {"w": 72, "h": 96}
+
+            ws_m.send_json({"type": "table_move", "charId": "char_default_1", "x": 100, "y": 2200})
+            upd1 = _drain_until_type(ws_m, "table_update")
+            assert upd1["position"] == {"x": 100, "y": 2200}
+
+            # Second compact card placed 80px to the right (x=180, y=2200) must NOT collide with first compact card!
+            ws_m.send_json({"type": "table_move", "charId": "char_default_2", "x": 180, "y": 2200})
+            upd2 = _drain_until_type(ws_m, "table_update")
+            assert upd2["position"] == {"x": 180, "y": 2200}
+    finally:
+        for f in created_files:
+            if f.exists():
+                f.unlink()
+
+

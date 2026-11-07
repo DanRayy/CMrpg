@@ -11,6 +11,8 @@ const MESA_DEFAULT_WORLD_W = 4800;
 const MESA_DEFAULT_WORLD_H = 3000;
 const MESA_DEFAULT_CARD_W = 420;
 const MESA_DEFAULT_CARD_H = 468;
+const MESA_COMPACT_CARD_W = 72;
+const MESA_COMPACT_CARD_H = 96;
 
 const MESA_MIN_ZOOM = 0.25;
 const MESA_MAX_ZOOM = 1.50;
@@ -389,9 +391,14 @@ function ensureClientTableState(targetState = null) {
   let enemyIdx = 0;
 
   chars.forEach((c) => {
-    const sz = st.table.sizes[c.id] || { w: MESA_DEFAULT_CARD_W, h: MESA_DEFAULT_CARD_H };
-    const w = Number(sz.w || MESA_DEFAULT_CARD_W);
-    const h = Number(sz.h || MESA_DEFAULT_CARD_H);
+    const isCompact = Boolean(c.isCompact);
+    const sz = st.table.sizes[c.id];
+    const w = isCompact
+      ? MESA_COMPACT_CARD_W
+      : (sz && Number(sz.w) > 120 ? Number(sz.w) : MESA_DEFAULT_CARD_W);
+    const h = isCompact
+      ? MESA_COMPACT_CARD_H
+      : (sz && Number(sz.w) > 120 && Number(sz.h) > 120 ? Number(sz.h) : MESA_DEFAULT_CARD_H);
     st.table.sizes[c.id] = { w, h };
     const pos = st.table.positions[c.id];
     if (pos && Number.isFinite(pos.x) && Number.isFinite(pos.y)) {
@@ -693,8 +700,8 @@ function zoomMesaAtScreenPoint(newZoomRaw, clientX, clientY) {
 function queueMesaCardSizeReport(charId, w, h) {
   const tbl = ensureClientTableState();
   if (!tbl) return;
-  const cleanW = Math.max(260, Math.min(720, Math.round(w)));
-  const cleanH = Math.max(220, Math.min(1200, Math.round(h)));
+  const cleanW = Math.max(64, Math.min(720, Math.round(w)));
+  const cleanH = Math.max(64, Math.min(1200, Math.round(h)));
   const cur = tbl.sizes[charId];
   if (cur && Math.abs(cur.w - cleanW) <= 1 && Math.abs(cur.h - cleanH) <= 1) {
     return;
@@ -854,11 +861,22 @@ function renderMesaTab() {
     }
 
     const canMove = canMoveCharacterOnMesa(char);
+    const isCompact = Boolean(char.isCompact);
     tokenEl.classList.toggle('mesa-token-movable', canMove);
     tokenEl.classList.toggle('mesa-token-locked', !canMove);
     tokenEl.classList.toggle('mesa-token-enemy', Boolean(char.isEnemy));
+    tokenEl.classList.toggle('mesa-token-compact', isCompact);
     tokenEl.classList.toggle('mesa-token-search-match', Boolean(q && matchingIds.has(cid)));
     tokenEl.classList.toggle('mesa-token-search-dim', Boolean(q && !matchingIds.has(cid)));
+
+    if (isCompact) {
+      tokenEl.style.width = `${MESA_COMPACT_CARD_W}px`;
+      tokenEl.style.height = `${MESA_COMPACT_CARD_H}px`;
+      tbl.sizes[cid] = { w: MESA_COMPACT_CARD_W, h: MESA_COMPACT_CARD_H };
+    } else {
+      tokenEl.style.width = `${MESA_DEFAULT_CARD_W}px`;
+      tokenEl.style.height = '';
+    }
 
     // Não substitui o innerHTML se este card estiver sendo arrastado no momento
     const isBeingDragged = mesaDrag.charId === cid && mesaDrag.movedBeyondThreshold;
@@ -872,7 +890,9 @@ function renderMesaTab() {
       tokenEl.style.transform = `translate3d(${Math.round(pos.x)}px, ${Math.round(pos.y)}px, 0)`;
     }
 
-    if (tokenEl.offsetWidth > 0 && tokenEl.offsetHeight > 0) {
+    if (isCompact) {
+      queueMesaCardSizeReport(cid, MESA_COMPACT_CARD_W, MESA_COMPACT_CARD_H);
+    } else if (tokenEl.offsetWidth > 0 && tokenEl.offsetHeight > 0) {
       queueMesaCardSizeReport(cid, tokenEl.offsetWidth, tokenEl.offsetHeight);
     }
   });
@@ -894,9 +914,10 @@ function buildMesaObstaclesForChar(excludeCharId) {
     if (c.id === excludeCharId) return;
     const pos = tbl.positions[c.id];
     if (!pos) return;
-    let w = tbl.sizes[c.id]?.w || MESA_DEFAULT_CARD_W;
-    let h = tbl.sizes[c.id]?.h || MESA_DEFAULT_CARD_H;
-    if (tokensLayer) {
+    const isCompact = Boolean(c.isCompact);
+    let w = isCompact ? MESA_COMPACT_CARD_W : (tbl.sizes[c.id]?.w || MESA_DEFAULT_CARD_W);
+    let h = isCompact ? MESA_COMPACT_CARD_H : (tbl.sizes[c.id]?.h || MESA_DEFAULT_CARD_H);
+    if (!isCompact && tokensLayer) {
       const domEl = tokensLayer.querySelector(`.mesa-token[data-token-char-id="${CSS.escape(c.id)}"]`);
       if (domEl && domEl.offsetWidth > 0 && domEl.offsetHeight > 0) {
         w = Math.max(w, domEl.offsetWidth);
@@ -1171,8 +1192,9 @@ function initMesaBoardEvents() {
     const worldX = (e.clientX - rect.left - mesaCamera.x) / mesaCamera.zoom;
     const worldY = (e.clientY - rect.top - mesaCamera.y) / mesaCamera.zoom;
 
-    const cardW = tokenEl.offsetWidth || tbl.sizes[charId]?.w || MESA_DEFAULT_CARD_W;
-    const cardH = tokenEl.offsetHeight || tbl.sizes[charId]?.h || MESA_DEFAULT_CARD_H;
+    const isCompact = Boolean(char.isCompact);
+    const cardW = isCompact ? MESA_COMPACT_CARD_W : (tokenEl.offsetWidth || tbl.sizes[charId]?.w || MESA_DEFAULT_CARD_W);
+    const cardH = isCompact ? MESA_COMPACT_CARD_H : (tokenEl.offsetHeight || tbl.sizes[charId]?.h || MESA_DEFAULT_CARD_H);
     tbl.sizes[charId] = { w: cardW, h: cardH };
 
     mesaDrag.pointerId = e.pointerId;
@@ -1186,6 +1208,7 @@ function initMesaBoardEvents() {
     mesaDrag.currentY = Math.round(pos.y);
     mesaDrag.cardW = cardW;
     mesaDrag.cardH = cardH;
+    mesaDrag.isCompact = isCompact;
     mesaDrag.isEnemy = Boolean(char.isEnemy);
     mesaDrag.movedBeyondThreshold = false;
     mesaDrag.lastSentX = mesaDrag.currentX;
@@ -1228,8 +1251,8 @@ function initMesaBoardEvents() {
     const split = Number(tbl.battle.split || Math.floor(worldH / 2));
     const battleActive = Boolean(getBattleState().isActive || tbl.battle.active);
 
-    const cardW = mesaDrag.tokenEl.offsetWidth || mesaDrag.cardW;
-    const cardH = mesaDrag.tokenEl.offsetHeight || mesaDrag.cardH;
+    const cardW = mesaDrag.isCompact ? MESA_COMPACT_CARD_W : (mesaDrag.tokenEl.offsetWidth || mesaDrag.cardW);
+    const cardH = mesaDrag.isCompact ? MESA_COMPACT_CARD_H : (mesaDrag.tokenEl.offsetHeight || mesaDrag.cardH);
     mesaDrag.cardW = cardW;
     mesaDrag.cardH = cardH;
 
@@ -1380,6 +1403,80 @@ function setMesaRenderQuality(qualityStr) {
   }
 }
 
+function toggleCharacterCompactMode(charId) {
+  if (!charId || typeof state === 'undefined') return;
+  const char = (state.characters || []).find((c) => c.id === charId);
+  if (!char) return;
+  if (typeof canMoveCharacterOnMesa === 'function' && !canMoveCharacterOnMesa(char)) {
+    return;
+  }
+
+  const nextCompact = !Boolean(char.isCompact);
+  const nextW = nextCompact ? MESA_COMPACT_CARD_W : MESA_DEFAULT_CARD_W;
+  const nextH = nextCompact ? MESA_COMPACT_CARD_H : MESA_DEFAULT_CARD_H;
+
+  if (typeof commitMutation === 'function') {
+    commitMutation(
+      (st) => {
+        const target = (st.characters || []).find((c) => c.id === charId);
+        if (!target) return false;
+        target.isCompact = nextCompact;
+        const tbl = ensureClientTableState(st);
+        if (tbl) {
+          tbl.sizes[charId] = { w: nextW, h: nextH };
+          if (!nextCompact) {
+            const pos = tbl.positions[charId];
+            if (pos && Number.isFinite(pos.x) && Number.isFinite(pos.y)) {
+              const worldW = Number(tbl.world.w || MESA_DEFAULT_WORLD_W);
+              const worldH = Number(tbl.world.h || MESA_DEFAULT_WORLD_H);
+              const split = Number(tbl.battle.split || Math.floor(worldH / 2));
+              const battleActive = Boolean(st.battle?.isActive || tbl.battle.active);
+              const region = mesaGetAllowedRegion(
+                worldW,
+                worldH,
+                nextW,
+                nextH,
+                battleActive,
+                split,
+                Boolean(target.isEnemy)
+              );
+              const obstacles = [];
+              (st.characters || []).forEach((other) => {
+                if (other.id === charId) return;
+                const op = tbl.positions[other.id];
+                if (!op) return;
+                const osz = other.isCompact
+                  ? { w: MESA_COMPACT_CARD_W, h: MESA_COMPACT_CARD_H }
+                  : tbl.sizes[other.id] || { w: MESA_DEFAULT_CARD_W, h: MESA_DEFAULT_CARD_H };
+                obstacles.push({
+                  id: other.id,
+                  x: Math.round(op.x),
+                  y: Math.round(op.y),
+                  w: Math.round(osz.w),
+                  h: Math.round(osz.h),
+                });
+              });
+              const clamped = mesaClampToRegion(pos.x, pos.y, region);
+              if (mesaOverlapsAny(clamped.x, clamped.y, nextW, nextH, obstacles, 0)) {
+                tbl.positions[charId] = mesaNearestFree(clamped.x, clamped.y, nextW, nextH, obstacles, region, 12);
+              } else {
+                tbl.positions[charId] = clamped;
+              }
+            }
+          }
+        }
+        return true;
+      },
+      { skipUndo: true }
+    );
+  } else {
+    char.isCompact = nextCompact;
+    renderMesaTab();
+  }
+
+  queueMesaCardSizeReport(charId, nextW, nextH);
+}
+
 /**
  * Função utilitária para buffers Canvas com super-sampling nítido em zoom elevado.
  * Multiplica as dimensões internas por window.devicePixelRatio * zoomFactor * qualityMultiplier.
@@ -1426,5 +1523,6 @@ if (typeof module !== 'undefined' && module.exports) {
     getMesaRenderQuality,
     setMesaRenderQuality,
     applyCanvasSuperSampling,
+    toggleCharacterCompactMode,
   };
 }

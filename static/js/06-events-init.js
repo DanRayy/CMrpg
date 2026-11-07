@@ -548,6 +548,102 @@
     document.getElementById('form-character')?.addEventListener('submit', handleCharacterFormSubmit);
     document.getElementById('btn-delete-char')?.addEventListener('click', requestDeleteCharacter);
 
+    // Eventos do Modal de Edição Circular de Imagem + Botões de Imagem (Personagem, Inimigo, Item)
+    if (typeof initCircularImageCropperEvents === 'function') {
+      initCircularImageCropperEvents();
+    }
+
+    document.getElementById('btn-char-select-image')?.addEventListener('click', () => {
+      document.getElementById('char-image-file')?.click();
+    });
+    document.getElementById('char-image-file')?.addEventListener('change', (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      openCircularImageCropperModal(file, {
+        category: 'personagens',
+        onComplete: (url) => {
+          updateFormImagePreviewUI({
+            inputId: 'char-image-url',
+            previewId: 'char-image-preview',
+            clearBtnId: 'btn-char-clear-image',
+            imageUrl: url,
+          });
+        },
+      });
+      e.target.value = '';
+    });
+    document.getElementById('btn-char-clear-image')?.addEventListener('click', () => {
+      updateFormImagePreviewUI({
+        inputId: 'char-image-url',
+        previewId: 'char-image-preview',
+        clearBtnId: 'btn-char-clear-image',
+        imageUrl: '',
+      });
+      if (document.getElementById('char-image-file')) document.getElementById('char-image-file').value = '';
+    });
+
+    document.getElementById('btn-enemy-select-image')?.addEventListener('click', () => {
+      document.getElementById('enemy-image-file')?.click();
+    });
+    document.getElementById('enemy-image-file')?.addEventListener('change', (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      openCircularImageCropperModal(file, {
+        category: 'inimigos',
+        onComplete: (url) => {
+          updateFormImagePreviewUI({
+            inputId: 'enemy-image-url',
+            previewId: 'enemy-image-preview',
+            clearBtnId: 'btn-enemy-clear-image',
+            imageUrl: url,
+          });
+        },
+      });
+      e.target.value = '';
+    });
+    document.getElementById('btn-enemy-clear-image')?.addEventListener('click', () => {
+      updateFormImagePreviewUI({
+        inputId: 'enemy-image-url',
+        previewId: 'enemy-image-preview',
+        clearBtnId: 'btn-enemy-clear-image',
+        imageUrl: '',
+      });
+      if (document.getElementById('enemy-image-file')) document.getElementById('enemy-image-file').value = '';
+    });
+
+    document.getElementById('btn-cat-item-select-image')?.addEventListener('click', () => {
+      document.getElementById('cat-item-image-file')?.click();
+    });
+    document.getElementById('cat-item-image-file')?.addEventListener('change', (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const itemType = document.getElementById('cat-item-type')?.value || 'OUTRO';
+      openCircularImageCropperModal(file, {
+        category: 'itens',
+        itemType,
+        onComplete: (url) => {
+          updateFormImagePreviewUI({
+            inputId: 'cat-item-image-url',
+            previewId: 'cat-item-image-preview',
+            clearBtnId: 'btn-cat-item-clear-image',
+            imageUrl: url,
+            fallbackIconHtml: '<iconify-icon icon="game-icons:knapsack" class="text-xl text-amber-300/80"></iconify-icon>',
+          });
+        },
+      });
+      e.target.value = '';
+    });
+    document.getElementById('btn-cat-item-clear-image')?.addEventListener('click', () => {
+      updateFormImagePreviewUI({
+        inputId: 'cat-item-image-url',
+        previewId: 'cat-item-image-preview',
+        clearBtnId: 'btn-cat-item-clear-image',
+        imageUrl: '',
+        fallbackIconHtml: '<iconify-icon icon="game-icons:knapsack" class="text-xl text-amber-300/80"></iconify-icon>',
+      });
+      if (document.getElementById('cat-item-image-file')) document.getElementById('cat-item-image-file').value = '';
+    });
+
     // Modal de Dano (Rápido vs Pipeline ADR-012)
     document.getElementById('btn-dmg-mode-simple')?.addEventListener('click', () => setDamageModeUI('simple'));
     document.getElementById('btn-dmg-mode-pipeline')?.addEventListener('click', () => setDamageModeUI('pipeline'));
@@ -975,6 +1071,11 @@
       }
       else if (action === 'open-general-skills') openGeneralSkillsModal(charId, 'instance');
       else if (action === 'dismiss-enemy') dismissEnemyInstance(charId);
+      else if (action === 'toggle-compact-card') {
+        if (typeof toggleCharacterCompactMode === 'function') {
+          toggleCharacterCompactMode(charId);
+        }
+      }
     };
 
     const grid = document.getElementById('characters-grid');
@@ -1052,6 +1153,14 @@
       document.getElementById('cat-item-equipable').checked = true;
       document.getElementById('cat-item-non-tradable').checked = false;
       document.getElementById('cat-item-visible').checked = true;
+      updateFormImagePreviewUI({
+        inputId: 'cat-item-image-url',
+        previewId: 'cat-item-image-preview',
+        clearBtnId: 'btn-cat-item-clear-image',
+        imageUrl: '',
+        fallbackIconHtml: '<iconify-icon icon="game-icons:knapsack" class="text-xl text-amber-300/80"></iconify-icon>',
+      });
+      if (document.getElementById('cat-item-image-file')) document.getElementById('cat-item-image-file').value = '';
       document.getElementById('cat-item-effects-list').innerHTML = '';
       addEffectRowToModal({ targetStat: 'ARMADURA', modifierType: 'FLAT', value: 25 });
       openModal('modal-catalog-item');
@@ -1090,6 +1199,14 @@
         document.getElementById('cat-item-equipable').checked = Boolean(it.equipavel);
         document.getElementById('cat-item-non-tradable').checked = Boolean(it.naoNegociavel);
         document.getElementById('cat-item-visible').checked = it.visivelParaJogadores !== false;
+        updateFormImagePreviewUI({
+          inputId: 'cat-item-image-url',
+          previewId: 'cat-item-image-preview',
+          clearBtnId: 'btn-cat-item-clear-image',
+          imageUrl: it.image || '',
+          fallbackIconHtml: '<iconify-icon icon="game-icons:knapsack" class="text-xl text-amber-300/80"></iconify-icon>',
+        });
+        if (document.getElementById('cat-item-image-file')) document.getElementById('cat-item-image-file').value = '';
         const list = document.getElementById('cat-item-effects-list');
         list.innerHTML = '';
         (it.effects || []).forEach((ef) => addEffectRowToModal(ef));
@@ -1129,6 +1246,8 @@
       const equipavel = tipo === 'OUTRO' || tipo === 'CONSUMIVEL' ? false : document.getElementById('cat-item-equipable').checked;
       const naoNegociavel = document.getElementById('cat-item-non-tradable').checked;
       const visivelParaJogadores = document.getElementById('cat-item-visible').checked;
+      const rawItemImg = (document.getElementById('cat-item-image-url')?.value || '').trim();
+      const itemImage = rawItemImg ? rawItemImg : null;
 
       const effects = [];
       if (tipo !== 'OUTRO') {
@@ -1149,6 +1268,7 @@
               id: `item_${Date.now()}`,
               nome,
               tipo,
+              image: itemImage,
               descricao,
               peso,
               preco,
@@ -1168,6 +1288,7 @@
             Object.assign(target, {
               nome,
               tipo,
+              image: itemImage,
               descricao,
               peso,
               preco,
@@ -1902,6 +2023,8 @@
       });
 
       const generalSkills = document.getElementById('enemy-general-skills').value.trim();
+      const rawEnemyImg = (document.getElementById('enemy-image-url')?.value || '').trim();
+      const enemyImage = rawEnemyImg ? rawEnemyImg : null;
 
       commitMutation(
         (st, toasts) => {
@@ -1913,6 +2036,7 @@
             st.bestiary[idx] = {
               ...st.bestiary[idx],
               name,
+              image: enemyImage,
               level,
               reveladoParaJogadores,
               maxHp,
@@ -1928,9 +2052,10 @@
               elementalResistances,
               generalSkills,
             };
-            // Sincroniza reveladoParaJogadores, generalSkills e elementalResistances para instâncias ativas na mesa
+            // Sincroniza reveladoParaJogadores, image, generalSkills e elementalResistances para instâncias ativas na mesa
             (st.characters || []).forEach((c) => {
               if (c.bestiaryId === enemyId) {
+                c.image = enemyImage;
                 c.reveladoParaJogadores = reveladoParaJogadores;
                 c.generalSkills = generalSkills;
                 c.elementalResistances = { ...elementalResistances };
@@ -1942,6 +2067,7 @@
             const newEnemy = {
               id: `bestiary_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
               name,
+              image: enemyImage,
               level,
               reveladoParaJogadores,
               maxHp,

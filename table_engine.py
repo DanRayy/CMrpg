@@ -9,9 +9,12 @@ DEFAULT_WORLD_HEIGHT = 3000
 DEFAULT_CARD_WIDTH = 420
 DEFAULT_CARD_HEIGHT = 468
 
-MIN_CARD_WIDTH = 260
+COMPACT_CARD_WIDTH = 72
+COMPACT_CARD_HEIGHT = 96
+
+MIN_CARD_WIDTH = 64
 MAX_CARD_WIDTH = 720
-MIN_CARD_HEIGHT = 220
+MIN_CARD_HEIGHT = 64
 MAX_CARD_HEIGHT = 1200
 
 MIN_ZOOM = 0.25
@@ -69,6 +72,21 @@ def sanitize_size(
     w = max(MIN_CARD_WIDTH, min(MAX_CARD_WIDTH, int(round(w_val))))
     h = max(MIN_CARD_HEIGHT, min(MAX_CARD_HEIGHT, int(round(h_val))))
     return {"w": w, "h": h}
+
+
+def resolve_char_size(
+    char: Optional[Dict[str, Any]],
+    raw_size: Optional[Dict[str, Any]],
+) -> Dict[str, int]:
+    if isinstance(char, dict):
+        if bool(char.get("isCompact")):
+            return {"w": COMPACT_CARD_WIDTH, "h": COMPACT_CARD_HEIGHT}
+        if "isCompact" in char and not bool(char.get("isCompact")):
+            sz = sanitize_size(raw_size)
+            if sz["w"] <= 120:
+                return {"w": DEFAULT_CARD_WIDTH, "h": DEFAULT_CARD_HEIGHT}
+            return sz
+    return sanitize_size(raw_size)
 
 
 def sanitize_view(
@@ -481,7 +499,7 @@ def enter_battle(table: Dict[str, Any], characters: List[Dict[str, Any]]) -> boo
             continue
         cid = str(char["id"])
         is_enemy = is_enemy_character(char)
-        sz = sanitize_size(sizes.get(cid))
+        sz = resolve_char_size(char, sizes.get(cid))
         sizes[cid] = sz
         w, h = sz["w"], sz["h"]
         region = get_allowed_region(
@@ -614,7 +632,7 @@ def reconcile(state: Dict[str, Any]) -> bool:
 
     for char in characters:
         cid = str(char["id"])
-        sz = sanitize_size(sizes.get(cid))
+        sz = resolve_char_size(char, sizes.get(cid))
         if sizes.get(cid) != sz:
             sizes[cid] = sz
             changed = True

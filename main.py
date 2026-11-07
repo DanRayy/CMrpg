@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import asyncio
+import base64
 import copy
 import datetime
+from email.parser import BytesParser
+from email.policy import default as default_email_policy
 import json
 import os
 import socket
@@ -37,6 +40,7 @@ from table_engine import (
     nearest_free,
     overlaps_any,
     reconcile as reconcile_table_state,
+    resolve_char_size,
     resolve_move,
     sanitize_size,
     sanitize_view,
@@ -47,6 +51,44 @@ STATE_FILE = Path(os.environ.get("CMRPG_STATE_FILE", str(BASE_DIR / "state.json"
 STATE_TMP_FILE = STATE_FILE.with_name(f"{STATE_FILE.name}.tmp")
 BACKUPS_DIR = BASE_DIR / "backups"
 STATIC_DIR = BASE_DIR / "static"
+
+ITEM_CATEGORY_FOLDER_MAP: Dict[str, str] = {
+    "ARMA": "armas",
+    "ARMAS": "armas",
+    "WEAPON": "armas",
+    "ARMADURA": "armaduras",
+    "ARMADURAS": "armaduras",
+    "ARMOR": "armaduras",
+    "ACESSORIO": "acessorios",
+    "ACESSORIOS": "acessorios",
+    "ACESSÓRIO": "acessorios",
+    "ACESSÓRIOS": "acessorios",
+    "ACCESSORY": "acessorios",
+    "CONSUMIVEL": "consumiveis",
+    "CONSUMIVEIS": "consumiveis",
+    "CONSUMÍVEL": "consumiveis",
+    "CONSUMÍVEIS": "consumiveis",
+    "CONSUMABLE": "consumiveis",
+    "OUTRO": "outros",
+    "OUTROS": "outros",
+    "OTHER": "outros",
+}
+
+
+def ensure_upload_directories() -> None:
+    for folder in (
+        STATIC_DIR / "img" / "fichas" / "personagens",
+        STATIC_DIR / "img" / "fichas" / "inimigos",
+        STATIC_DIR / "img" / "itens" / "armas",
+        STATIC_DIR / "img" / "itens" / "armaduras",
+        STATIC_DIR / "img" / "itens" / "acessorios",
+        STATIC_DIR / "img" / "itens" / "consumiveis",
+        STATIC_DIR / "img" / "itens" / "outros",
+    ):
+        os.makedirs(folder, exist_ok=True)
+
+
+ensure_upload_directories()
 
 HISTORY_LIMIT = 6
 SAVE_DEBOUNCE_SECONDS = 0.3
@@ -959,6 +1001,9 @@ def normalize_character(
     char["bestiaryId"] = str(char.get("bestiaryId")) if char.get("bestiaryId") else None
     char["generalSkills"] = str(char.get("generalSkills", "")).strip()
     char["reveladoParaJogadores"] = bool(char.get("reveladoParaJogadores", False))
+    raw_img = char.get("image")
+    char["image"] = str(raw_img).strip() if isinstance(raw_img, str) and raw_img.strip() else None
+    char["isCompact"] = bool(char.get("isCompact", False))
 
     if char["isEnemy"]:
         char["baseMaxWeight"] = 999
@@ -1678,7 +1723,12 @@ class StateManager:
             world = table.get("world") or {}
             world_w = int(world.get("w", DEFAULT_WORLD_WIDTH))
             world_h = int(world.get("h", DEFAULT_WORLD_HEIGHT))
-            sz = sanitize_size(table["sizes"].get(char_id))
+            chars_by_id = {
+                str(c["id"]): c
+                for c in chars
+                if isinstance(c, dict) and c.get("id")
+            }
+            sz = resolve_char_size(char, table["sizes"].get(char_id))
             table["sizes"][char_id] = sz
             battle_info = table.get("battle") or {}
             region = get_allowed_region(
@@ -1695,7 +1745,7 @@ class StateManager:
             for other_id, other_pos in (table.get("positions") or {}).items():
                 if other_id == char_id or not isinstance(other_pos, dict):
                     continue
-                other_sz = sanitize_size(table["sizes"].get(other_id))
+                other_sz = resolve_char_size(chars_by_id.get(other_id), table["sizes"].get(other_id))
                 obstacles.append(
                     {
                         "id": other_id,
@@ -1746,7 +1796,12 @@ class StateManager:
         world = table.get("world") or {}
         world_w = int(world.get("w", DEFAULT_WORLD_WIDTH))
         world_h = int(world.get("h", DEFAULT_WORLD_HEIGHT))
-        sz = sanitize_size((table.get("sizes") or {}).get(char_id))
+        chars_by_id = {
+            str(c["id"]): c
+            for c in chars
+            if isinstance(c, dict) and c.get("id")
+        }
+        sz = resolve_char_size(char, (table.get("sizes") or {}).get(char_id))
         battle_info = table.get("battle") or {}
         region = get_allowed_region(
             world_w=world_w,
@@ -1761,7 +1816,7 @@ class StateManager:
         for other_id, other_pos in (table.get("positions") or {}).items():
             if other_id == char_id or not isinstance(other_pos, dict):
                 continue
-            other_sz = sanitize_size((table.get("sizes") or {}).get(other_id))
+            other_sz = resolve_char_size(chars_by_id.get(other_id), (table.get("sizes") or {}).get(other_id))
             obstacles.append(
                 {
                     "id": other_id,
@@ -1818,7 +1873,7 @@ class StateManager:
                         if b_ref is not None
                         else bool(char.get("reveladoParaJogadores"))
                     )
-                    if not is_revealed:
+                    if not is_revealed and clean_sz["w"] > 120:
                         clean_sz["h"] = max(cur_sz["h"], clean_sz["h"])
 
                 if abs(clean_sz["w"] - cur_sz["w"]) <= 1 and abs(clean_sz["h"] - cur_sz["h"]) <= 1:
@@ -2032,7 +2087,7 @@ async def lifespan(app_instance: FastAPI) -> AsyncIterator[None]:
 app = FastAPI(
     title="CMrpg Server",
     description="Sistema de Gestão de RPG Local via Radmin VPN.",
-    version="1.11.1",
+    version="1.12.0",
     lifespan=lifespan,
 )
 
@@ -2094,6 +2149,109 @@ async def preview_damage(request: Request) -> JSONResponse:
         is_true_damage=is_true,
     )
     return JSONResponse(content=result)
+
+
+@app.post("/api/upload-image")
+async def upload_image(request: Request) -> JSONResponse:
+    ensure_upload_directories()
+    content_type = request.headers.get("content-type", "")
+    file_bytes: Optional[bytes] = None
+    filename_hint = "upload.png"
+    mime_hint = "image/png"
+    fields: Dict[str, str] = {}
+
+    for k, v in request.query_params.items():
+        fields[str(k)] = str(v)
+
+    if "multipart/form-data" in content_type.lower():
+        raw_body = await request.body()
+        header_bytes = (
+            b"Content-Type: "
+            + content_type.encode("utf-8", errors="ignore")
+            + b"\r\nMIME-Version: 1.0\r\n\r\n"
+        )
+        msg = BytesParser(policy=default_email_policy).parsebytes(header_bytes + raw_body)
+        if msg.is_multipart():
+            for part in msg.iter_parts():
+                part_name = str(part.get_param("name", header="content-disposition") or "")
+                part_filename = part.get_filename()
+                payload = part.get_payload(decode=True)
+                if part_filename is not None or part_name in ("file", "image", "avatar"):
+                    if payload:
+                        file_bytes = payload
+                        if part_filename:
+                            filename_hint = str(part_filename)
+                        mime_hint = part.get_content_type() or "image/png"
+                else:
+                    if payload is not None:
+                        fields[part_name] = payload.decode("utf-8", errors="replace").strip()
+    elif "application/json" in content_type.lower():
+        try:
+            body_json = await request.json()
+            if isinstance(body_json, dict):
+                for k, v in body_json.items():
+                    if k not in ("file", "image", "data") and isinstance(v, (str, int, float)):
+                        fields[str(k)] = str(v)
+                raw_data = body_json.get("image") or body_json.get("file") or body_json.get("data") or ""
+                if isinstance(raw_data, str) and raw_data:
+                    if "," in raw_data and raw_data.startswith("data:"):
+                        header_part, b64_part = raw_data.split(",", 1)
+                        if "image/webp" in header_part:
+                            mime_hint = "image/webp"
+                            filename_hint = "upload.webp"
+                        file_bytes = base64.b64decode(b64_part)
+                    else:
+                        file_bytes = base64.b64decode(raw_data)
+        except Exception:
+            pass
+
+    if not file_bytes:
+        return JSONResponse(status_code=400, content={"error": "Nenhum arquivo de imagem enviado."})
+
+    raw_cat = (
+        fields.get("category")
+        or fields.get("target")
+        or fields.get("folder")
+        or fields.get("entityType")
+        or "personagens"
+    ).strip().lower()
+    raw_item_type = (
+        fields.get("itemType")
+        or fields.get("tipo")
+        or fields.get("subCategory")
+        or "OUTRO"
+    ).strip().upper()
+
+    if raw_cat in ("inimigos", "inimigo", "enemy", "enemies", "bestiary", "fichas/inimigos"):
+        rel_folder = "fichas/inimigos"
+        prefix = "char"
+    elif (
+        raw_cat in ("itens", "item", "catalog", "catalogo")
+        or raw_cat.startswith("itens/")
+        or raw_cat.upper() in ITEM_CATEGORY_FOLDER_MAP
+    ):
+        if raw_cat.startswith("itens/"):
+            sub_raw = raw_cat.split("/", 1)[1].strip().upper()
+            mapped_sub = ITEM_CATEGORY_FOLDER_MAP.get(sub_raw, "outros")
+        elif raw_cat.upper() in ITEM_CATEGORY_FOLDER_MAP and raw_item_type == "OUTRO":
+            mapped_sub = ITEM_CATEGORY_FOLDER_MAP[raw_cat.upper()]
+        else:
+            mapped_sub = ITEM_CATEGORY_FOLDER_MAP.get(raw_item_type, "outros")
+        rel_folder = f"itens/{mapped_sub}"
+        prefix = "item"
+    else:
+        rel_folder = "fichas/personagens"
+        prefix = "char"
+
+    ext = ".webp" if (filename_hint.lower().endswith(".webp") or "webp" in mime_hint.lower()) else ".png"
+    unique_name = f"{prefix}_{uuid.uuid4().hex[:12]}{ext}"
+    target_dir = STATIC_DIR / "img" / Path(rel_folder)
+    os.makedirs(target_dir, exist_ok=True)
+    target_path = target_dir / unique_name
+    await asyncio.to_thread(target_path.write_bytes, file_bytes)
+
+    url = f"/static/img/{rel_folder}/{unique_name}"
+    return JSONResponse(content={"url": url, "filename": unique_name, "folder": rel_folder})
 
 
 @app.websocket("/ws")

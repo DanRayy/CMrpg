@@ -1,4 +1,288 @@
   // ---------------------------------------------------------------------------
+  // Sistema de Upload e Modal de Edição de Imagem Circular (Crop, Zoom, Rotação)
+  // ---------------------------------------------------------------------------
+  const imageCropperState = {
+    img: null,
+    zoom: 1,
+    panX: 0,
+    panY: 0,
+    rotationDeg: 0,
+    isDragging: false,
+    dragStartX: 0,
+    dragStartY: 0,
+    startPanX: 0,
+    startPanY: 0,
+    category: 'personagens',
+    itemType: '',
+    onComplete: null,
+    isUploading: false,
+  };
+
+  function updateFormImagePreviewUI({ inputId, previewId, clearBtnId, imageUrl, fallbackIconHtml }) {
+    const hiddenInput = document.getElementById(inputId);
+    const previewEl = document.getElementById(previewId);
+    const clearBtn = document.getElementById(clearBtnId);
+    const cleanUrl = imageUrl && String(imageUrl).trim() ? String(imageUrl).trim() : '';
+
+    if (hiddenInput) hiddenInput.value = cleanUrl;
+    if (clearBtn) clearBtn.classList.toggle('hidden', !cleanUrl);
+    if (previewEl) {
+      if (cleanUrl) {
+        previewEl.innerHTML = `<img src="${escapeHtml(cleanUrl)}" alt="Preview" class="w-full h-full object-cover rounded-full" />`;
+      } else {
+        previewEl.innerHTML =
+          fallbackIconHtml ||
+          '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-7 h-7 text-amber-300/85"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>';
+      }
+    }
+  }
+
+  function getCropperBaseScale(img, circleRadius) {
+    if (!img || !img.width || !img.height) return 1;
+    const minSide = Math.min(img.width, img.height);
+    return (circleRadius * 2) / Math.max(1, minSide);
+  }
+
+  function drawCircularCropperCanvas() {
+    const canvas = document.getElementById('cropper-canvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const cw = canvas.width;
+    const ch = canvas.height;
+    const cx = cw / 2;
+    const cy = ch / 2;
+    const radius = 108;
+
+    ctx.clearRect(0, 0, cw, ch);
+    ctx.fillStyle = '#1e1f22';
+    ctx.fillRect(0, 0, cw, ch);
+
+    const img = imageCropperState.img;
+    if (img && img.complete && img.width > 0) {
+      const baseScale = getCropperBaseScale(img, radius);
+      const effectiveScale = baseScale * Number(imageCropperState.zoom || 1);
+      const rad = (Number(imageCropperState.rotationDeg || 0) * Math.PI) / 180;
+
+      ctx.save();
+      ctx.translate(cx + imageCropperState.panX, cy + imageCropperState.panY);
+      ctx.rotate(rad);
+      ctx.scale(effectiveScale, effectiveScale);
+      ctx.drawImage(img, -img.width / 2, -img.height / 2);
+      ctx.restore();
+    }
+
+    // Máscara escura semi-transparente externa ao círculo
+    ctx.save();
+    ctx.fillStyle = 'rgba(16, 17, 20, 0.66)';
+    ctx.beginPath();
+    ctx.rect(0, 0, cw, ch);
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2, true);
+    ctx.fill('evenodd');
+    ctx.restore();
+
+    // Borda circular branca nítida no centro
+    ctx.save();
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 3.5;
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function openCircularImageCropperModal(file, opts = {}) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const img = new Image();
+      img.onload = () => {
+        imageCropperState.img = img;
+        imageCropperState.zoom = 1;
+        imageCropperState.panX = 0;
+        imageCropperState.panY = 0;
+        imageCropperState.rotationDeg = 0;
+        imageCropperState.isDragging = false;
+        imageCropperState.category = opts.category || 'personagens';
+        imageCropperState.itemType = opts.itemType || '';
+        imageCropperState.onComplete = typeof opts.onComplete === 'function' ? opts.onComplete : null;
+
+        const slider = document.getElementById('cropper-zoom-slider');
+        if (slider) slider.value = '1';
+
+        openModal('modal-image-cropper');
+        requestAnimationFrame(() => drawCircularCropperCanvas());
+      };
+      img.onerror = () => {
+        showToast('Não foi possível carregar o arquivo de imagem selecionado.', 'warning');
+      };
+      img.src = String(ev.target?.result || '');
+    };
+    reader.readAsDataURL(file);
+  }
+
+  async function applyCircularImageCrop() {
+    if (imageCropperState.isUploading || !imageCropperState.img) return;
+    const img = imageCropperState.img;
+    const applyBtn = document.getElementById('btn-cropper-apply');
+
+    const outSize = 300;
+    const outHalf = outSize / 2;
+    const previewRadius = 108;
+    const ratio = outHalf / previewRadius;
+
+    const outCanvas = document.createElement('canvas');
+    outCanvas.width = outSize;
+    outCanvas.height = outSize;
+    const outCtx = outCanvas.getContext('2d');
+    if (!outCtx) return;
+
+    outCtx.clearRect(0, 0, outSize, outSize);
+    outCtx.save();
+    outCtx.beginPath();
+    outCtx.arc(outHalf, outHalf, outHalf, 0, Math.PI * 2);
+    outCtx.closePath();
+    outCtx.clip();
+
+    const baseScale = getCropperBaseScale(img, previewRadius);
+    const effectiveScale = baseScale * Number(imageCropperState.zoom || 1) * ratio;
+    const rad = (Number(imageCropperState.rotationDeg || 0) * Math.PI) / 180;
+
+    outCtx.translate(outHalf + imageCropperState.panX * ratio, outHalf + imageCropperState.panY * ratio);
+    outCtx.rotate(rad);
+    outCtx.scale(effectiveScale, effectiveScale);
+    outCtx.drawImage(img, -img.width / 2, -img.height / 2);
+    outCtx.restore();
+
+    imageCropperState.isUploading = true;
+    if (applyBtn) {
+      applyBtn.disabled = true;
+      applyBtn.textContent = 'Salvando...';
+    }
+
+    try {
+      const blob = await new Promise((resolve) => outCanvas.toBlob(resolve, 'image/png', 0.95));
+      if (!blob) throw new Error('Falha ao gerar imagem recortada');
+
+      const formData = new FormData();
+      formData.append('category', imageCropperState.category || 'personagens');
+      if (imageCropperState.itemType) {
+        formData.append('itemType', imageCropperState.itemType);
+      }
+      formData.append('file', blob, 'cropped.png');
+
+      const resp = await fetch('/api/upload-image', {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await resp.json();
+      if (!resp.ok || !data?.url) {
+        throw new Error(data?.error || 'Falha no upload da imagem');
+      }
+
+      if (typeof imageCropperState.onComplete === 'function') {
+        imageCropperState.onComplete(data.url);
+      }
+      closeModal('modal-image-cropper');
+      showToast('Imagem recortada e aplicada com sucesso!');
+    } catch (err) {
+      showToast(err?.message || 'Erro ao enviar imagem para o servidor.', 'warning');
+    } finally {
+      imageCropperState.isUploading = false;
+      if (applyBtn) {
+        applyBtn.disabled = false;
+        applyBtn.textContent = 'Aplicar';
+      }
+    }
+  }
+
+  function initCircularImageCropperEvents() {
+    const stage = document.getElementById('cropper-stage');
+    const slider = document.getElementById('cropper-zoom-slider');
+    const rotateBtn = document.getElementById('btn-cropper-rotate');
+    const resetBtn = document.getElementById('btn-cropper-reset');
+    const cancelBtn = document.getElementById('btn-cropper-cancel');
+    const applyBtn = document.getElementById('btn-cropper-apply');
+
+    if (stage) {
+      stage.addEventListener('pointerdown', (e) => {
+        if (!imageCropperState.img) return;
+        imageCropperState.isDragging = true;
+        imageCropperState.dragStartX = e.clientX;
+        imageCropperState.dragStartY = e.clientY;
+        imageCropperState.startPanX = imageCropperState.panX;
+        imageCropperState.startPanY = imageCropperState.panY;
+        try {
+          stage.setPointerCapture(e.pointerId);
+        } catch (_) {}
+      });
+
+      stage.addEventListener('pointermove', (e) => {
+        if (!imageCropperState.isDragging) return;
+        const rect = stage.getBoundingClientRect();
+        const canvas = document.getElementById('cropper-canvas');
+        const scaleX = canvas && rect.width > 0 ? canvas.width / rect.width : 1;
+        const scaleY = canvas && rect.height > 0 ? canvas.height / rect.height : 1;
+        imageCropperState.panX = imageCropperState.startPanX + (e.clientX - imageCropperState.dragStartX) * scaleX;
+        imageCropperState.panY = imageCropperState.startPanY + (e.clientY - imageCropperState.dragStartY) * scaleY;
+        drawCircularCropperCanvas();
+      });
+
+      const stopDrag = (e) => {
+        if (!imageCropperState.isDragging) return;
+        imageCropperState.isDragging = false;
+        try {
+          stage.releasePointerCapture(e.pointerId);
+        } catch (_) {}
+      };
+      stage.addEventListener('pointerup', stopDrag);
+      stage.addEventListener('pointercancel', stopDrag);
+
+      stage.addEventListener(
+        'wheel',
+        (e) => {
+          if (!imageCropperState.img) return;
+          e.preventDefault();
+          const delta = e.deltaY < 0 ? 0.1 : -0.1;
+          const nextZoom = Math.max(1, Math.min(3, Number((imageCropperState.zoom + delta).toFixed(2))));
+          imageCropperState.zoom = nextZoom;
+          if (slider) slider.value = String(nextZoom);
+          drawCircularCropperCanvas();
+        },
+        { passive: false }
+      );
+    }
+
+    slider?.addEventListener('input', (e) => {
+      imageCropperState.zoom = Math.max(1, Math.min(3, Number(e.target.value || 1)));
+      drawCircularCropperCanvas();
+    });
+
+    rotateBtn?.addEventListener('click', () => {
+      imageCropperState.rotationDeg = (Number(imageCropperState.rotationDeg || 0) + 90) % 360;
+      drawCircularCropperCanvas();
+    });
+
+    resetBtn?.addEventListener('click', () => {
+      imageCropperState.zoom = 1;
+      imageCropperState.panX = 0;
+      imageCropperState.panY = 0;
+      imageCropperState.rotationDeg = 0;
+      if (slider) slider.value = '1';
+      drawCircularCropperCanvas();
+    });
+
+    cancelBtn?.addEventListener('click', () => {
+      closeModal('modal-image-cropper');
+    });
+
+    applyBtn?.addEventListener('click', () => {
+      applyCircularImageCrop();
+    });
+  }
+
+  // ---------------------------------------------------------------------------
   // Modal 1: Criar / Editar Personagem (Point Buy 57 + 7 Resistências + DEL)
   // ---------------------------------------------------------------------------
   function renderCharFormAttributesInputs(attrsObj) {
@@ -230,6 +514,13 @@
     document.getElementById('char-age-input').value = '';
     document.getElementById('char-height-input').value = '';
     document.getElementById('char-history-input').value = '';
+    updateFormImagePreviewUI({
+      inputId: 'char-image-url',
+      previewId: 'char-image-preview',
+      clearBtnId: 'btn-char-clear-image',
+      imageUrl: '',
+    });
+    if (document.getElementById('char-image-file')) document.getElementById('char-image-file').value = '';
     if (document.getElementById('char-skills-input')) document.getElementById('char-skills-input').value = '';
     if (document.getElementById('char-skill-passive')) document.getElementById('char-skill-passive').value = '';
     if (document.getElementById('char-skill-active')) document.getElementById('char-skill-active').value = '';
@@ -273,6 +564,13 @@
     document.getElementById('char-age-input').value = char.age || '';
     document.getElementById('char-height-input').value = char.height || '';
     document.getElementById('char-history-input').value = char.history || '';
+    updateFormImagePreviewUI({
+      inputId: 'char-image-url',
+      previewId: 'char-image-preview',
+      clearBtnId: 'btn-char-clear-image',
+      imageUrl: char.image || '',
+    });
+    if (document.getElementById('char-image-file')) document.getElementById('char-image-file').value = '';
     if (document.getElementById('char-skills-input')) {
       document.getElementById('char-skills-input').value = char.skillsDescription || '';
     }
@@ -341,6 +639,8 @@
     const age = document.getElementById('char-age-input').value.trim();
     const height = document.getElementById('char-height-input').value.trim();
     const history = document.getElementById('char-history-input').value.trim();
+    const rawCharImage = (document.getElementById('char-image-url')?.value || '').trim();
+    const charImage = rawCharImage ? rawCharImage : null;
     const skillsDescription = (document.getElementById('char-skills-input')?.value || '').trim();
     const skillPassive = (document.getElementById('char-skill-passive')?.value || '').trim();
     const skillActive = (document.getElementById('char-skill-active')?.value || '').trim();
@@ -394,6 +694,8 @@
             name,
             ownerMemberId: creatorMemberId,
             ownerIp: creatorIp,
+            image: charImage,
+            isCompact: false,
             age,
             height,
             history,
@@ -480,6 +782,7 @@
           if (!target) return false;
 
           target.name = name;
+          target.image = charImage;
           target.age = age;
           target.height = height;
           target.history = history;

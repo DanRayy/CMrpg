@@ -1784,4 +1784,232 @@ iconify-icon {
   text-rendering: optimizeLegibility;
 }
 
+/* ==========================================================================
+   Avatar Circular no Topo, Modo Compacto Retrátil e Editor de Imagem Circular
+   ========================================================================== */
+.character-card-with-avatar {
+  position: relative;
+  margin-top: 32px !important;
+  padding-top: 36px !important;
+  overflow: visible !important;
+}
+
+.mesa-token .character-card-with-avatar {
+  margin-top: 32px !important;
+}
+
+.char-card-top-avatar-wrap {
+  position: absolute;
+  top: -32px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #241b12 0%, #0d0a07 100%);
+  border: 2.5px solid var(--gold-bright, #f0c674);
+  box-shadow:
+    0 6px 16px rgba(0, 0, 0, 0.85),
+    0 0 0 3px rgba(18, 14, 10, 0.92),
+    0 0 12px rgba(212, 168, 83, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  z-index: 25;
+}
+
+.char-card-top-avatar-wrap.enemy-avatar-ring {
+  border-color: #fb7185;
+  box-shadow:
+    0 6px 16px rgba(0, 0, 0, 0.85),
+    0 0 0 3px rgba(18, 14, 10, 0.92),
+    0 0 12px rgba(244, 63, 94, 0.35);
+}
+
+.char-card-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  display: block;
+  pointer-events: none;
+}
+
+.char-card-avatar-fallback {
+  width: 32px;
+  height: 32px;
+  color: var(--gold-bright, #f0c674);
+  opacity: 0.92;
+  pointer-events: none;
+}
+
+/* Rodapé centralizado da Ficha Completa ("Modo Compacto") */
+.char-card-compact-footer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px dashed rgba(212, 168, 83, 0.18);
+}
+
+.btn-toggle-compact-mode {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 4px 14px;
+  border-radius: 0 0 10px 10px;
+  background: rgba(20, 16, 11, 0.92);
+  border: 1px solid var(--gold-border, rgba(212, 168, 83, 0.45));
+  color: var(--gold-bright, #f0c674);
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.5);
+}
+
+.btn-toggle-compact-mode:hover {
+  background: rgba(212, 168, 83, 0.18);
+  border-color: var(--gold-bright, #f0c674);
+  color: #fff7e6;
+  transform: translateY(-1px);
+}
+
+/* Ficha Compacta (Token Circular 72x96 Sem Área Fantasma) */
+.character-card.card-compact-mode,
+.char-card.card-compact-mode {
+  width: 72px !important;
+  min-width: 72px !important;
+  max-width: 72px !important;
+  height: 96px !important;
+  min-height: 96px !important;
+  max-height: 96px !important;
+  padding: 0 !important;
+  margin: 8px !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  overflow: visible !important;
+}
+
+.mesa-token.mesa-token-compact {
+  width: 72px !important;
+  min-width: 72px !important;
+  max-width: 72px !important;
+  height: 96px !important;
+  min-height: 96px !important;
+  max-height: 96px !important;
+}
+
+.mesa-token.mesa-token-compact .character-card.card-compact-mode,
+.mesa-token.mesa-token-compact .char-card.card-compact-mode {
+  margin: 0 !important;
+}
+
+.compact-token-circle {
+  position: relative;
+  width: 68px;
+  height: 68px;
+  min-width: 68px;
+  min-height: 68px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #241b12 0%, #0d0a07 100%);
+  border: 2.5px solid var(--gold-bright, #f0c674);
+  box-shadow:
+    0 6px 16px rgba(0, 0, 0, 0.85),
+    0 0 0 2px rgba(12, 10, 8, 0.95);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.compact-token-circle.enemy-token {
+  border-color: #fb7185;
+}
+
+.compact-token-circle.dead-token {
+  border-color: #ef4444;
+  filter: grayscale(0.65);
+}
+
+.compact-token-circle.active-turn-token {
+  border-color: #fbbf24;
+  box-shadow:
+    0 0 0 3px rgba(251, 191, 36, 0.55),
+    0 0 18px rgba(251, 191, 36, 0.65);
+}
+
+.btn-expand-full-mode {
+  margin-top: -2px;
+  width: 44px;
+  height: 22px;
+  border-radius: 0 0 8px 8px;
+  background: rgba(18, 14, 10, 0.95);
+  border: 1.5px solid var(--gold-border, rgba(212, 168, 83, 0.65));
+  color: var(--gold-bright, #f0c674);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 10;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.75);
+  transition: all 0.15s ease;
+}
+
+.btn-expand-full-mode:hover {
+  background: rgba(212, 168, 83, 0.24);
+  border-color: var(--gold-bright, #f0c674);
+  color: #ffffff;
+  transform: translateY(1px);
+}
+
+/* Slider do Editor de Imagem Circular */
+.cropper-zoom-range {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 5px;
+  border-radius: 999px;
+  background: #4e5058;
+  outline: none;
+}
+
+.cropper-zoom-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #ffffff;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.55);
+  transition: transform 0.1s ease;
+}
+
+.cropper-zoom-range::-webkit-slider-thumb:hover {
+  transform: scale(1.12);
+}
+
+.cropper-zoom-range::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.55);
+}
+
+
 

@@ -1020,8 +1020,8 @@
           } flex flex-col justify-between gap-3">
             <div class="space-y-1.5">
               <div class="flex items-start justify-between gap-2">
-                <div class="flex items-center gap-2 min-w-0">
-                  <span class="text-xl shrink-0 flex items-center">${ITEM_TYPE_ICONS[tpl.tipo] || '<iconify-icon icon="game-icons:knapsack"></iconify-icon>'}</span>
+                <div class="flex items-center gap-2.5 min-w-0">
+                  ${renderItemThumbnailHtml(tpl, 'w-9 h-9')}
                   <div class="min-w-0">
                     <h5 class="font-bold text-sm app-title truncate" title="${escapeHtml(tpl.nome)}">
                       ${escapeHtml(tpl.nome)}
@@ -1405,6 +1405,13 @@
     document.getElementById('enemy-name-input').value = enemy ? enemy.name : '';
     document.getElementById('enemy-level-input').value = enemy ? (enemy.level || 1) : 1;
     document.getElementById('enemy-revealed-input').checked = enemy ? Boolean(enemy.reveladoParaJogadores) : false;
+    updateFormImagePreviewUI({
+      inputId: 'enemy-image-url',
+      previewId: 'enemy-image-preview',
+      clearBtnId: 'btn-enemy-clear-image',
+      imageUrl: enemy?.image || '',
+    });
+    if (document.getElementById('enemy-image-file')) document.getElementById('enemy-image-file').value = '';
 
     document.getElementById('enemy-max-hp').value = enemy ? enemy.maxHp : 100;
     document.getElementById('enemy-max-armor').value = enemy ? enemy.maxArmor : 10;
@@ -1535,8 +1542,12 @@
         (e) => `
         <div class="p-3 rounded-xl bg-black/40 border app-divider-border flex flex-wrap items-center justify-between gap-3 text-xs">
           <div class="flex items-center gap-3">
-            <div class="w-9 h-9 rounded-lg bg-rose-950/60 border border-rose-500/40 flex items-center justify-center text-rose-400 text-lg shrink-0">
-              <iconify-icon icon="game-icons:monster-grasp"></iconify-icon>
+            <div class="w-9 h-9 rounded-full bg-rose-950/60 border border-rose-500/40 flex items-center justify-center text-rose-400 text-lg shrink-0 overflow-hidden">
+              ${
+                e.image && String(e.image).trim()
+                  ? `<img src="${escapeHtml(String(e.image).trim())}" alt="${escapeHtml(e.name)}" class="w-full h-full object-cover rounded-full" />`
+                  : '<iconify-icon icon="game-icons:monster-grasp"></iconify-icon>'
+              }
             </div>
             <div>
               <div class="flex items-center gap-2">
@@ -1614,6 +1625,8 @@
           reveladoParaJogadores: Boolean(bestiaryEnemy.reveladoParaJogadores),
           level: Number(bestiaryEnemy.level || 1),
           avatar: 'monster-grasp',
+          image: bestiaryEnemy.image || null,
+          isCompact: false,
           ownerMemberId: 'host_master',
           ownerIp: state.localClientIp || '',
           age: '',
