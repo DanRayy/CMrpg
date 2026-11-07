@@ -1452,6 +1452,12 @@
     return false;
   }
 
+  function isCharMesaCompact(char) {
+    if (!char || typeof char !== 'object') return false;
+    if (char.mesaCompact !== undefined) return Boolean(char.mesaCompact);
+    return Boolean(char.isCompact);
+  }
+
   function canEditCharacter(char) {
     if (!char) return false;
     if (isEffectiveMaster()) return true;

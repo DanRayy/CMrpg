@@ -358,6 +358,7 @@ def test_upload_image_and_compact_card_collision(tmp_path: Path) -> None:
             chars = copy.deepcopy(main.state_manager.state["characters"])
             for c in chars:
                 if c["id"] in ("char_default_1", "char_default_2"):
+                    c["mesaCompact"] = True
                     c["isCompact"] = True
                     c["image"] = url_char
             ws_m.send_json({"type": "update_state", "characters": chars})
@@ -377,5 +378,39 @@ def test_upload_image_and_compact_card_collision(tmp_path: Path) -> None:
         for f in created_files:
             if f.exists():
                 f.unlink()
+
+
+def test_decoupled_mesa_compact_state_and_cards_rendering(tmp_path: Path) -> None:
+    _setup_isolated_state(tmp_path)
+    client = TestClient(main.app, client=("127.0.0.1", 53040))
+
+    with client.websocket_connect("/ws") as ws:
+        _drain_until_type(ws, "state_sync")
+        chars = copy.deepcopy(main.state_manager.state["characters"])
+        for c in chars:
+            if c["id"] == "char_default_1":
+                c["mesaCompact"] = True
+                c["isCompact"] = False
+            elif c["id"] == "char_default_2":
+                c["mesaCompact"] = False
+                c["isCompact"] = True
+        ws.send_json({"type": "update_state", "characters": chars})
+        sync = _drain_until_type(ws, "state_sync")
+
+        # Mesa table sizes must be strictly governed by mesaCompact:
+        assert sync["table"]["sizes"]["char_default_1"] == {"w": 72, "h": 96}
+        assert sync["table"]["sizes"]["char_default_2"] == {"w": 420, "h": 468}
+
+        # Static asset query string must be v1.13.1
+        resp = client.get("/")
+        assert "js/01-core-state.js?v=1.13.1" in resp.text
+        assert "js/03-tabs-renderers.js?v=1.13.1" in resp.text
+
+        # Verify 03-tabs-renderers.js restricts compact mode exclusively to Mesa:
+        js_resp = client.get("/js/03-tabs-renderers.js")
+        assert "const forMesa = Boolean(opts && opts.forMesa);" in js_resp.text
+        assert "const isCompact = forMesa &&" in js_resp.text
+        assert "${forMesa ? `" in js_resp.text
+        assert "<!-- Rodapé Inferior: Botão Modo Compacto (Exclusivo da Mesa) -->" in js_resp.text
 
 

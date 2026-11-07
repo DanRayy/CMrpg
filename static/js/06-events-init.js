@@ -1091,7 +1091,7 @@
       else if (action === 'open-general-skills') openGeneralSkillsModal(charId, 'instance');
       else if (action === 'dismiss-enemy') dismissEnemyInstance(charId);
       else if (action === 'toggle-compact-card') {
-        if (typeof toggleCharacterCompactMode === 'function') {
+        if (e.target.closest('#mesa-viewport') && typeof toggleCharacterCompactMode === 'function') {
           toggleCharacterCompactMode(charId);
         }
       }

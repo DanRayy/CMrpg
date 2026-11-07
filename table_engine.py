@@ -79,9 +79,13 @@ def resolve_char_size(
     raw_size: Optional[Dict[str, Any]],
 ) -> Dict[str, int]:
     if isinstance(char, dict):
-        if bool(char.get("isCompact")):
+        if "mesaCompact" in char:
+            is_compact = bool(char["mesaCompact"])
+        else:
+            is_compact = bool(char.get("isCompact", False))
+        if is_compact:
             return {"w": COMPACT_CARD_WIDTH, "h": COMPACT_CARD_HEIGHT}
-        if "isCompact" in char and not bool(char.get("isCompact")):
+        if "mesaCompact" in char or "isCompact" in char:
             sz = sanitize_size(raw_size)
             if sz["w"] <= 120:
                 return {"w": DEFAULT_CARD_WIDTH, "h": DEFAULT_CARD_HEIGHT}

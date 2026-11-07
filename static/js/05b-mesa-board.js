@@ -391,7 +391,7 @@ function ensureClientTableState(targetState = null) {
   let enemyIdx = 0;
 
   chars.forEach((c) => {
-    const isCompact = Boolean(c.isCompact);
+    const isCompact = isCharMesaCompact(c);
     const sz = st.table.sizes[c.id];
     const w = isCompact
       ? MESA_COMPACT_CARD_W
@@ -861,7 +861,7 @@ function renderMesaTab() {
     }
 
     const canMove = canMoveCharacterOnMesa(char);
-    const isCompact = Boolean(char.isCompact);
+    const isCompact = isCharMesaCompact(char);
     tokenEl.classList.toggle('mesa-token-movable', canMove);
     tokenEl.classList.toggle('mesa-token-locked', !canMove);
     tokenEl.classList.toggle('mesa-token-enemy', Boolean(char.isEnemy));
@@ -914,7 +914,7 @@ function buildMesaObstaclesForChar(excludeCharId) {
     if (c.id === excludeCharId) return;
     const pos = tbl.positions[c.id];
     if (!pos) return;
-    const isCompact = Boolean(c.isCompact);
+    const isCompact = isCharMesaCompact(c);
     let w = isCompact ? MESA_COMPACT_CARD_W : (tbl.sizes[c.id]?.w || MESA_DEFAULT_CARD_W);
     let h = isCompact ? MESA_COMPACT_CARD_H : (tbl.sizes[c.id]?.h || MESA_DEFAULT_CARD_H);
     if (!isCompact && tokensLayer) {
@@ -1193,7 +1193,7 @@ function initMesaBoardEvents() {
     const worldX = (e.clientX - rect.left - mesaCamera.x) / mesaCamera.zoom;
     const worldY = (e.clientY - rect.top - mesaCamera.y) / mesaCamera.zoom;
 
-    const isCompact = Boolean(char.isCompact);
+    const isCompact = isCharMesaCompact(char);
     const cardW = isCompact ? MESA_COMPACT_CARD_W : (tokenEl.offsetWidth || tbl.sizes[charId]?.w || MESA_DEFAULT_CARD_W);
     const cardH = isCompact ? MESA_COMPACT_CARD_H : (tokenEl.offsetHeight || tbl.sizes[charId]?.h || MESA_DEFAULT_CARD_H);
     tbl.sizes[charId] = { w: cardW, h: cardH };
@@ -1474,7 +1474,7 @@ function toggleCharacterCompactMode(charId) {
     return;
   }
 
-  const nextCompact = !Boolean(char.isCompact);
+  const nextCompact = !isCharMesaCompact(char);
   const nextW = nextCompact ? MESA_COMPACT_CARD_W : MESA_DEFAULT_CARD_W;
   const nextH = nextCompact ? MESA_COMPACT_CARD_H : MESA_DEFAULT_CARD_H;
 
@@ -1483,7 +1483,8 @@ function toggleCharacterCompactMode(charId) {
       (st) => {
         const target = (st.characters || []).find((c) => c.id === charId);
         if (!target) return false;
-        target.isCompact = nextCompact;
+        target.mesaCompact = nextCompact;
+        target.isCompact = false;
         const tbl = ensureClientTableState(st);
         if (tbl) {
           tbl.sizes[charId] = { w: nextW, h: nextH };
@@ -1508,7 +1509,7 @@ function toggleCharacterCompactMode(charId) {
                 if (other.id === charId) return;
                 const op = tbl.positions[other.id];
                 if (!op) return;
-                const osz = other.isCompact
+                const osz = isCharMesaCompact(other)
                   ? { w: MESA_COMPACT_CARD_W, h: MESA_COMPACT_CARD_H }
                   : tbl.sizes[other.id] || { w: MESA_DEFAULT_CARD_W, h: MESA_DEFAULT_CARD_H };
                 obstacles.push({
@@ -1533,7 +1534,8 @@ function toggleCharacterCompactMode(charId) {
       { skipUndo: true }
     );
   } else {
-    char.isCompact = nextCompact;
+    char.mesaCompact = nextCompact;
+    char.isCompact = false;
     renderMesaTab();
   }
 
@@ -1568,9 +1570,15 @@ function applyCanvasSuperSampling(canvas, zoomFactor = 1) {
   }
 }
 
+function isCharMesaCompact(char) {
+  if (!char || typeof char !== 'object') return false;
+  return Boolean(char.mesaCompact || char.isCompact);
+}
+
 // Exportação para testes automatizados em Node.js
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
+    isCharMesaCompact,
     mesaGetAllowedRegion,
     mesaClampToRegion,
     mesaInRegion,

@@ -695,6 +695,7 @@
             ownerMemberId: creatorMemberId,
             ownerIp: creatorIp,
             image: charImage,
+            mesaCompact: false,
             isCompact: false,
             age,
             height,

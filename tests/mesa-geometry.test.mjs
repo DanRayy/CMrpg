@@ -133,3 +133,23 @@ test('JS collision benchmark: 30 cards x 500 drag frames runs under 1.5ms/frame'
   const avgFrameMs = elapsedMs / frames;
   assert.ok(avgFrameMs < 2.0, `Expected < 2.0ms per frame for 30 cards, got ${avgFrameMs.toFixed(3)}ms`);
 });
+
+test('mesaCompact controls token dimensions on Mesa while isCharMesaCompact isolates state', () => {
+  const char = { id: 'c1', name: 'Dan', mesaCompact: true, isCompact: false };
+  assert.equal(mesa.isCharMesaCompact(char), true);
+
+  const charFull = { id: 'c2', name: 'Ray', mesaCompact: false, isCompact: false };
+  assert.equal(mesa.isCharMesaCompact(charFull), false);
+
+  const st = {
+    characters: [
+      { id: 'c1', name: 'Dan', mesaCompact: true, isCompact: false },
+      { id: 'c2', name: 'Ray', mesaCompact: false, isCompact: false },
+    ],
+    battle: { isActive: false },
+    table: null,
+  };
+  mesa.reconcileMesaTableStateClient(st);
+  assert.deepEqual(st.table.sizes.c1, { w: 72, h: 96 });
+  assert.deepEqual(st.table.sizes.c2, { w: 420, h: 468 });
+});

@@ -1003,6 +1003,10 @@ def normalize_character(
     char["reveladoParaJogadores"] = bool(char.get("reveladoParaJogadores", False))
     raw_img = char.get("image")
     char["image"] = str(raw_img).strip() if isinstance(raw_img, str) and raw_img.strip() else None
+    if "mesaCompact" in char:
+        char["mesaCompact"] = bool(char["mesaCompact"])
+    else:
+        char["mesaCompact"] = bool(char.get("isCompact", False))
     char["isCompact"] = bool(char.get("isCompact", False))
 
     if char["isEnemy"]:
@@ -2087,7 +2091,7 @@ async def lifespan(app_instance: FastAPI) -> AsyncIterator[None]:
 app = FastAPI(
     title="CMrpg Server",
     description="Sistema de Gestão de RPG Local via Radmin VPN.",
-    version="1.13.0",
+    version="1.13.1",
     lifespan=lifespan,
 )
 

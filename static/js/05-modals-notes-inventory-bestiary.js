@@ -1703,6 +1703,7 @@
           level: Number(bestiaryEnemy.level || 1),
           avatar: 'monster-grasp',
           image: bestiaryEnemy.image || null,
+          mesaCompact: false,
           isCompact: false,
           ownerMemberId: 'host_master',
           ownerIp: state.localClientIp || '',

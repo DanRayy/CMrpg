@@ -37,7 +37,8 @@
     const entityImage = (char.image && String(char.image).trim())
       || (isEnemy && bestiaryRef?.image && String(bestiaryRef.image).trim())
       || null;
-    const isCompact = Boolean(char.isCompact);
+    const forMesa = Boolean(opts && opts.forMesa);
+    const isCompact = forMesa && (typeof isCharMesaCompact === 'function' ? isCharMesaCompact(char) : Boolean(char.mesaCompact !== undefined ? char.mesaCompact : char.isCompact));
 
     const hpPct = isMasked ? 0 : calcPercentage(char.hp, char.maxHp);
     const armorPct = isMasked ? 0 : calcPercentage(char.armor, char.maxArmor);
@@ -674,7 +675,8 @@
           ${generalSkillsBannerHtml}
           ${bottomActionsHtml}
 
-          <!-- Rodapé Inferior: Botão Modo Compacto -->
+          ${forMesa ? `
+          <!-- Rodapé Inferior: Botão Modo Compacto (Exclusivo da Mesa) -->
           <div class="char-card-compact-footer">
             <button
               type="button"
@@ -687,6 +689,7 @@
               <span>Modo Compacto</span>
             </button>
           </div>
+          ` : ''}
         </article>
       `;
   }
