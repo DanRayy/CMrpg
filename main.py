@@ -2096,7 +2096,7 @@ async def lifespan(app_instance: FastAPI) -> AsyncIterator[None]:
 app = FastAPI(
     title="CMrpg Server",
     description="Sistema de Gestão de RPG Local via Radmin VPN.",
-    version="1.13.3",
+    version="1.13.4",
     lifespan=lifespan,
 )
 
@@ -2593,8 +2593,41 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                                 incoming_battle["roundNumber"] = old_battle.get("roundNumber", 1)
                                 incoming_battle["charges"] = old_battle.get("charges", 0)
 
-                        if acting_char and (acting_char.get("isEnemy") or acting_char.get("hp", 1) <= 0 or acting_char.get("isDead")):
-                            incoming_battle["charges"] = old_battle.get("charges", 0)
+                        # Validação de cargas: Cargas são geradas no INÍCIO do turno do novo combatente. Inimigos e combatentes mortos não geram cargas.
+                        new_idx = int(incoming_battle.get("currentTurnIndex", 0))
+                        order = incoming_battle.get("orderIds") or old_battle.get("orderIds") or []
+                        new_acting_id = order[new_idx % len(order)] if order else None
+                        new_acting_char = next(
+                            (c for c in state_manager.state.get("characters") or [] if c.get("id") == new_acting_id),
+                            None,
+                        )
+                        if new_acting_char and (new_acting_char.get("isEnemy") or new_acting_char.get("hp", 1) <= 0 or new_acting_char.get("isDead")):
+                            if incoming_battle.get("charges", 0) > old_battle.get("charges", 0):
+                                incoming_battle["charges"] = old_battle.get("charges", 0)
+
+                    elif not old_battle.get("isActive"):
+                        # Início de combate: já no primeiro turno do jogador há 1 carga. Inimigos e combatentes mortos não geram cargas.
+                        first_order = incoming_battle.get("orderIds") or []
+                        first_id = first_order[0] if first_order else None
+                        first_char = next(
+                            (c for c in state_manager.state.get("characters") or [] if c.get("id") == first_id),
+                            None,
+                        )
+                        if first_char and (first_char.get("isEnemy") or first_char.get("hp", 1) <= 0 or first_char.get("isDead")):
+                            if incoming_battle.get("charges", 0) > 0:
+                                incoming_battle["charges"] = 0
+                    else:
+                        # Turno não mudou e batalha já ativa: no turno de inimigo ou combatente derrotado, jogador não pode forjar aumento de cargas
+                        cur_idx = int(incoming_battle.get("currentTurnIndex", 0))
+                        order = incoming_battle.get("orderIds") or old_battle.get("orderIds") or []
+                        cur_acting_id = order[cur_idx % len(order)] if order else None
+                        cur_acting_char = next(
+                            (c for c in state_manager.state.get("characters") or [] if c.get("id") == cur_acting_id),
+                            None,
+                        )
+                        if cur_acting_char and (cur_acting_char.get("isEnemy") or cur_acting_char.get("hp", 1) <= 0 or cur_acting_char.get("isDead")):
+                            if not is_host and incoming_battle.get("charges", 0) > old_battle.get("charges", 0):
+                                incoming_battle["charges"] = old_battle.get("charges", 0)
 
                 payload = await state_manager.update_full_state(
                     data=data,

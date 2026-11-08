@@ -401,10 +401,10 @@ def test_decoupled_mesa_compact_state_and_cards_rendering(tmp_path: Path) -> Non
         assert sync["table"]["sizes"]["char_default_1"] == {"w": 72, "h": 96}
         assert sync["table"]["sizes"]["char_default_2"] == {"w": 420, "h": 468}
 
-        # Static asset query string must be v1.13.3
+        # Static asset query string must be v1.13.4
         resp = client.get("/")
-        assert "js/01-core-state.js?v=1.13.3" in resp.text
-        assert "js/03-tabs-renderers.js?v=1.13.3" in resp.text
+        assert "js/01-core-state.js?v=1.13.4" in resp.text
+        assert "js/03-tabs-renderers.js?v=1.13.4" in resp.text
 
         # Verify 03-tabs-renderers.js restricts compact mode exclusively to Mesa:
         js_resp = client.get("/js/03-tabs-renderers.js")
@@ -473,6 +473,95 @@ def test_v1_13_2_features(tmp_path: Path) -> None:
             p = main.STATIC_DIR / u.replace("/static/", "")
             if p.exists():
                 p.unlink()
+
+
+def test_v1_13_4_turn_start_charges_and_enemy_guards(tmp_path: Path) -> None:
+    _setup_isolated_state(tmp_path)
+    client_master = TestClient(main.app, client=("127.0.0.1", 53020))
+    client_p1 = TestClient(main.app, client=("26.88.77.66", 53021))
+
+    # 1. HTML badge tooltip verification
+    resp_html = client_master.get("/")
+    assert 'title="Cargas de Combate (+1 automático no início do turno de cada jogador)"' in resp_html.text
+
+    # 2. JS rules verification in static/js/02-websocket-combat.js
+    resp_js = client_master.get("/js/02-websocket-combat.js")
+    assert "+1 Carga de Batalha gerada no início do turno de ${actingChar.name}" in resp_js.text
+    assert "Cargas NÃO são concedidas ao finalizar o turno" in resp_js.text
+
+    with client_master.websocket_connect("/ws") as ws_m, client_p1.websocket_connect("/ws") as ws_p1:
+        _drain_until_type(ws_m, "state_sync")
+        _drain_until_type(ws_m, "state_sync")
+        _drain_until_type(ws_p1, "state_sync")
+
+        # Cenário A: Iniciar combate com JOGADOR primeiro na fila -> charges inicia em 1
+        start_battle_player_first = copy.deepcopy(main.state_manager.state["battle"])
+        start_battle_player_first["isActive"] = True
+        start_battle_player_first["orderIds"] = ["char_default_1", "char_enemy_test_1"]
+        start_battle_player_first["currentTurnIndex"] = 0
+        start_battle_player_first["charges"] = 1
+        ws_m.send_json({"type": "update_state", "battle": start_battle_player_first})
+        sync = _drain_until_type(ws_m, "state_sync")
+        assert sync["battle"]["isActive"] is True
+        assert sync["battle"]["charges"] == 1
+
+        # Avançar turno para INIMIGO (index 1) -> Inimigo NÃO gera carga, mantém 1
+        advance_to_enemy = copy.deepcopy(sync["battle"])
+        advance_to_enemy["currentTurnIndex"] = 1
+        advance_to_enemy["charges"] = 1
+        ws_m.send_json({"type": "update_state", "battle": advance_to_enemy})
+        sync = _drain_until_type(ws_m, "state_sync")
+        assert sync["battle"]["currentTurnIndex"] == 1
+        assert sync["battle"]["charges"] == 1
+
+        # Se alguém tentar forjar aumento de cargas no turno de inimigo, servidor barra
+        forged_enemy_charge = copy.deepcopy(sync["battle"])
+        forged_enemy_charge["currentTurnIndex"] = 1
+        forged_enemy_charge["charges"] = 99
+        ws_p1.send_json({"type": "update_state", "battle": forged_enemy_charge})
+        sync = _drain_until_type(ws_m, "state_sync")
+        assert sync["battle"]["charges"] == 1
+
+        # Avançar turno do INIMIGO para o JOGADOR (index 0 / rodada 2) -> Jogador ganha +1 no início do turno (Total: 2)
+        advance_to_player = copy.deepcopy(sync["battle"])
+        advance_to_player["currentTurnIndex"] = 0
+        advance_to_player["roundNumber"] = 2
+        advance_to_player["charges"] = 2
+        ws_m.send_json({"type": "update_state", "battle": advance_to_player})
+        sync = _drain_until_type(ws_m, "state_sync")
+        assert sync["battle"]["currentTurnIndex"] == 0
+        assert sync["battle"]["roundNumber"] == 2
+        assert sync["battle"]["charges"] == 2
+
+        # Resetar combate
+        end_battle = copy.deepcopy(sync["battle"])
+        end_battle["isActive"] = False
+        end_battle["charges"] = 0
+        ws_m.send_json({"type": "update_state", "battle": end_battle})
+        sync = _drain_until_type(ws_m, "state_sync")
+        assert sync["battle"]["isActive"] is False
+        assert sync["battle"]["charges"] == 0
+
+        # Cenário B: Iniciar combate com INIMIGO primeiro na fila -> charges inicia em 0
+        start_battle_enemy_first = copy.deepcopy(sync["battle"])
+        start_battle_enemy_first["isActive"] = True
+        start_battle_enemy_first["orderIds"] = ["char_enemy_test_1", "char_default_1"]
+        start_battle_enemy_first["currentTurnIndex"] = 0
+        start_battle_enemy_first["charges"] = 0
+        ws_m.send_json({"type": "update_state", "battle": start_battle_enemy_first})
+        sync = _drain_until_type(ws_m, "state_sync")
+        assert sync["battle"]["isActive"] is True
+        assert sync["battle"]["charges"] == 0
+
+        # Avançar do INIMIGO para o JOGADOR -> Jogador recebe sua primeira carga no início do turno (+1)
+        first_player_turn = copy.deepcopy(sync["battle"])
+        first_player_turn["currentTurnIndex"] = 1
+        first_player_turn["charges"] = 1
+        ws_m.send_json({"type": "update_state", "battle": first_player_turn})
+        sync = _drain_until_type(ws_m, "state_sync")
+        assert sync["battle"]["currentTurnIndex"] == 1
+        assert sync["battle"]["charges"] == 1
+
 
 
 

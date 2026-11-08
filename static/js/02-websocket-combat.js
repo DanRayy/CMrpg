@@ -1476,7 +1476,17 @@
 
     // 2. Se ainda estiver vivo após Veneno/expirações:
     if (Number(actingChar.hp || 0) > 0 && !actingChar.isDead) {
-      // 2.1 Reset Automático de PA no Início do Turno (descontando penalidades ativas, ex: Atordoamento)
+      // 2.1 Cargas do Grupo: +1 no INÍCIO do turno se for JOGADOR (inimigos não geram cargas)
+      const isEnemy = Boolean(actingChar.isEnemy);
+      if (!isEnemy) {
+        if (!st.battle) st.battle = {};
+        st.battle.charges = Math.max(0, Number(st.battle.charges || 0)) + 1;
+        toasts.push(
+          `+1 Carga de Batalha gerada no início do turno de ${actingChar.name} (Total: ${st.battle.charges}).`
+        );
+      }
+
+      // 2.2 Reset Automático de PA no Início do Turno (descontando penalidades ativas, ex: Atordoamento)
       resetTurnCombatantPa(actingChar);
 
       // 2.2 Reduz em 1 a duração dos Buffs e Nerfs temporários no INÍCIO DO TURNO
@@ -1614,12 +1624,8 @@
         }
       }
 
-      // 2. Regra de Cargas: +1 APENAS se for JOGADOR E NÃO ESTIVER MORTO (hp > 0 e !isDead)
-      const isFinishingEnemy = Boolean(finishingChar && finishingChar.isEnemy);
-      const isFinishingDead = !finishingChar || Number(finishingChar.hp || 0) <= 0 || Boolean(finishingChar.isDead);
-      if (finishingChar && !isFinishingEnemy && !isFinishingDead) {
-        b.charges = Math.max(0, Number(b.charges || 0)) + 1;
-      }
+      // 2. Regra de Cargas: Cargas NÃO são concedidas ao finalizar o turno.
+      // A concessão de +1 carga ocorre no INÍCIO do turno do jogador (processStartOfTurn / handleConfirmBattleOrder). Inimigos não geram cargas.
 
       // 3. Avança na fila procurando o próximo combatente VIVO e NÃO CONGELADO (Auto-Skip)
       let nextIdx = Number(b.currentTurnIndex || 0);
@@ -2088,6 +2094,15 @@
         const firstChar = (st.characters || []).find((c) => c.id === firstId);
         if (firstChar) {
           resetTurnCombatantPa(firstChar);
+          // Regra de Cargas: Já no primeiro turno do jogador deve haver uma carga (+1). Inimigos não geram cargas.
+          const isEnemy = Boolean(firstChar.isEnemy);
+          const isDead = Number(firstChar.hp || 0) <= 0 || Boolean(firstChar.isDead);
+          if (!isEnemy && !isDead) {
+            st.battle.charges = 1;
+            toasts.push(
+              `+1 Carga de Batalha gerada no início do turno de ${firstChar.name} (Total: 1).`
+            );
+          }
         }
         if (typeof enterMesaBattleClient === 'function') {
           enterMesaBattleClient(st);
