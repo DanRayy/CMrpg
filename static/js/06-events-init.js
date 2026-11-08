@@ -580,12 +580,16 @@
       if (!file) return;
       openCircularImageCropperModal(file, {
         category: 'personagens',
-        onComplete: (url) => {
+        onComplete: (res) => {
+          const avatarUrl = typeof res === 'object' ? (res.avatarUrl || res.url) : res;
+          const originalUrl = typeof res === 'object' ? (res.originalUrl || res.imageUrl || res.url) : res;
           updateFormImagePreviewUI({
             inputId: 'char-image-url',
+            avatarInputId: 'char-avatar-url',
             previewId: 'char-image-preview',
             clearBtnId: 'btn-char-clear-image',
-            imageUrl: url,
+            imageUrl: originalUrl,
+            avatarUrl: avatarUrl,
           });
         },
       });
@@ -594,9 +598,11 @@
     document.getElementById('btn-char-clear-image')?.addEventListener('click', () => {
       updateFormImagePreviewUI({
         inputId: 'char-image-url',
+        avatarInputId: 'char-avatar-url',
         previewId: 'char-image-preview',
         clearBtnId: 'btn-char-clear-image',
         imageUrl: '',
+        avatarUrl: '',
       });
       if (document.getElementById('char-image-file')) document.getElementById('char-image-file').value = '';
     });
@@ -609,12 +615,16 @@
       if (!file) return;
       openCircularImageCropperModal(file, {
         category: 'inimigos',
-        onComplete: (url) => {
+        onComplete: (res) => {
+          const avatarUrl = typeof res === 'object' ? (res.avatarUrl || res.url) : res;
+          const originalUrl = typeof res === 'object' ? (res.originalUrl || res.imageUrl || res.url) : res;
           updateFormImagePreviewUI({
             inputId: 'enemy-image-url',
+            avatarInputId: 'enemy-avatar-url',
             previewId: 'enemy-image-preview',
             clearBtnId: 'btn-enemy-clear-image',
-            imageUrl: url,
+            imageUrl: originalUrl,
+            avatarUrl: avatarUrl,
           });
         },
       });
@@ -623,9 +633,11 @@
     document.getElementById('btn-enemy-clear-image')?.addEventListener('click', () => {
       updateFormImagePreviewUI({
         inputId: 'enemy-image-url',
+        avatarInputId: 'enemy-avatar-url',
         previewId: 'enemy-image-preview',
         clearBtnId: 'btn-enemy-clear-image',
         imageUrl: '',
+        avatarUrl: '',
       });
       if (document.getElementById('enemy-image-file')) document.getElementById('enemy-image-file').value = '';
     });
@@ -640,12 +652,16 @@
       openCircularImageCropperModal(file, {
         category: 'itens',
         itemType,
-        onComplete: (url) => {
+        onComplete: (res) => {
+          const avatarUrl = typeof res === 'object' ? (res.avatarUrl || res.url) : res;
+          const originalUrl = typeof res === 'object' ? (res.originalUrl || res.imageUrl || res.url) : res;
           updateFormImagePreviewUI({
             inputId: 'cat-item-image-url',
+            avatarInputId: 'cat-item-avatar-url',
             previewId: 'cat-item-image-preview',
             clearBtnId: 'btn-cat-item-clear-image',
-            imageUrl: url,
+            imageUrl: originalUrl,
+            avatarUrl: avatarUrl,
             fallbackIconHtml: '<iconify-icon icon="game-icons:knapsack" class="text-xl text-amber-300/80"></iconify-icon>',
           });
         },
@@ -655,9 +671,11 @@
     document.getElementById('btn-cat-item-clear-image')?.addEventListener('click', () => {
       updateFormImagePreviewUI({
         inputId: 'cat-item-image-url',
+        avatarInputId: 'cat-item-avatar-url',
         previewId: 'cat-item-image-preview',
         clearBtnId: 'btn-cat-item-clear-image',
         imageUrl: '',
+        avatarUrl: '',
         fallbackIconHtml: '<iconify-icon icon="game-icons:knapsack" class="text-xl text-amber-300/80"></iconify-icon>',
       });
       if (document.getElementById('cat-item-image-file')) document.getElementById('cat-item-image-file').value = '';
@@ -1213,9 +1231,7 @@
       const row = document.createElement('div');
       row.className = 'grid grid-cols-12 gap-2 items-center';
       row.innerHTML = `
-        <select data-eff-target class="col-span-5 px-2 py-1.5 app-input font-bold">
-          ${renderEffectTargetOptionsHtml(eff.targetStat)}
-        </select>
+        ${renderCustomModifierDropdownHtml(eff.targetStat, 'data-eff-target', 'col-span-5')}
         <select data-eff-type class="col-span-3 px-2 py-1.5 app-input font-bold">
           <option value="FLAT" ${eff.modifierType === 'FLAT' ? 'selected' : ''}>Fixo (FLAT)</option>
           <option value="PERCENT" ${eff.modifierType === 'PERCENT' ? 'selected' : ''}>Percentual (%)</option>
@@ -1295,9 +1311,11 @@
         document.getElementById('cat-item-visible').checked = it.visivelParaJogadores !== false;
         updateFormImagePreviewUI({
           inputId: 'cat-item-image-url',
+          avatarInputId: 'cat-item-avatar-url',
           previewId: 'cat-item-image-preview',
           clearBtnId: 'btn-cat-item-clear-image',
           imageUrl: it.image || '',
+          avatarUrl: it.avatar || '',
           fallbackIconHtml: '<iconify-icon icon="game-icons:knapsack" class="text-xl text-amber-300/80"></iconify-icon>',
         });
         if (document.getElementById('cat-item-image-file')) document.getElementById('cat-item-image-file').value = '';
@@ -1341,7 +1359,9 @@
       const naoNegociavel = document.getElementById('cat-item-non-tradable').checked;
       const visivelParaJogadores = document.getElementById('cat-item-visible').checked;
       const rawItemImg = (document.getElementById('cat-item-image-url')?.value || '').trim();
+      const rawItemAvatar = (document.getElementById('cat-item-avatar-url')?.value || '').trim();
       const itemImage = rawItemImg ? rawItemImg : null;
+      const itemAvatar = rawItemAvatar ? rawItemAvatar : null;
 
       const effects = [];
       if (tipo !== 'OUTRO') {
@@ -1363,6 +1383,7 @@
               nome,
               tipo,
               image: itemImage,
+              avatar: itemAvatar,
               descricao,
               peso,
               preco,
@@ -1383,6 +1404,7 @@
               nome,
               tipo,
               image: itemImage,
+              avatar: itemAvatar,
               descricao,
               peso,
               preco,
@@ -2123,7 +2145,9 @@
 
       const generalSkills = document.getElementById('enemy-general-skills').value.trim();
       const rawEnemyImg = (document.getElementById('enemy-image-url')?.value || '').trim();
+      const rawEnemyAvatar = (document.getElementById('enemy-avatar-url')?.value || '').trim();
       const enemyImage = rawEnemyImg ? rawEnemyImg : null;
+      const enemyAvatar = rawEnemyAvatar ? rawEnemyAvatar : null;
 
       commitMutation(
         (st, toasts) => {
@@ -2136,6 +2160,7 @@
               ...st.bestiary[idx],
               name,
               image: enemyImage,
+              avatar: enemyAvatar,
               level,
               reveladoParaJogadores,
               maxHp,
@@ -2155,6 +2180,7 @@
             (st.characters || []).forEach((c) => {
               if (c.bestiaryId === enemyId) {
                 c.image = enemyImage;
+                if (enemyAvatar) c.avatar = enemyAvatar;
                 c.reveladoParaJogadores = reveladoParaJogadores;
                 c.generalSkills = generalSkills;
                 c.elementalResistances = { ...elementalResistances };
@@ -2167,6 +2193,7 @@
               id: `bestiary_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
               name,
               image: enemyImage,
+              avatar: enemyAvatar,
               level,
               reveladoParaJogadores,
               maxHp,
@@ -3169,9 +3196,97 @@
       if (typeof cb === 'function') cb();
     });
 
+    // -------------------------------------------------------------------------
+    // Gerenciador Global de Dropdowns Dark Fantasy Fosco
+    // -------------------------------------------------------------------------
+    document.addEventListener('click', (e) => {
+      const trigger = e.target.closest('.fantasy-dropdown-trigger');
+      if (trigger) {
+        e.preventDefault();
+        e.stopPropagation();
+        const wrapper = trigger.closest('.fantasy-dropdown-wrapper');
+        const menu = wrapper?.querySelector('.fantasy-dropdown-menu');
+        if (!menu) return;
+
+        const isCurrentlyOpen = !menu.classList.contains('hidden');
+        document.querySelectorAll('.fantasy-dropdown-menu:not(.hidden)').forEach((m) => {
+          m.classList.add('hidden');
+          const trig = m.closest('.fantasy-dropdown-wrapper')?.querySelector('.fantasy-dropdown-trigger');
+          if (trig) trig.setAttribute('aria-expanded', 'false');
+        });
+
+        if (!isCurrentlyOpen) {
+          menu.classList.remove('hidden');
+          trigger.setAttribute('aria-expanded', 'true');
+          const selectedItem = menu.querySelector('.fantasy-dropdown-item.is-selected');
+          if (selectedItem) {
+            selectedItem.scrollIntoView({ block: 'nearest' });
+          }
+        }
+        return;
+      }
+
+      const item = e.target.closest('.fantasy-dropdown-item');
+      if (item) {
+        e.preventDefault();
+        e.stopPropagation();
+        const wrapper = item.closest('.fantasy-dropdown-wrapper');
+        if (!wrapper) return;
+        const input = wrapper.querySelector('.fantasy-dropdown-input');
+        const labelSpan = wrapper.querySelector('.fantasy-dropdown-selected-label');
+        const menu = wrapper.querySelector('.fantasy-dropdown-menu');
+        const trigger = wrapper.querySelector('.fantasy-dropdown-trigger');
+        const newVal = item.getAttribute('data-dropdown-value');
+        const itemText = item.querySelector('span')?.textContent || '';
+
+        if (input) {
+          input.value = newVal;
+          input.dispatchEvent(new Event('change', { bubbles: true }));
+          input.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+        if (labelSpan) {
+          labelSpan.textContent = itemText;
+        }
+
+        wrapper.querySelectorAll('.fantasy-dropdown-item').forEach((it) => {
+          const isSel = it === item;
+          it.classList.toggle('is-selected', isSel);
+          it.setAttribute('aria-selected', isSel ? 'true' : 'false');
+          const checkIcon = it.querySelector('svg');
+          if (isSel && !checkIcon) {
+            it.insertAdjacentHTML('beforeend', '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5 text-[#c8aa6e] shrink-0 ml-1.5"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>');
+          } else if (!isSel && checkIcon) {
+            checkIcon.remove();
+          }
+        });
+
+        if (menu) {
+          menu.classList.add('hidden');
+          if (trigger) trigger.setAttribute('aria-expanded', 'false');
+        }
+        return;
+      }
+
+      // Clique fora: fecha qualquer menu de dropdown aberto
+      document.querySelectorAll('.fantasy-dropdown-menu:not(.hidden)').forEach((m) => {
+        m.classList.add('hidden');
+        const trig = m.closest('.fantasy-dropdown-wrapper')?.querySelector('.fantasy-dropdown-trigger');
+        if (trig) trig.setAttribute('aria-expanded', 'false');
+      });
+    });
+
     // Atalhos de Teclado (Ctrl+Z, Ctrl+Y, Escape)
     window.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
+        const openDropdowns = document.querySelectorAll('.fantasy-dropdown-menu:not(.hidden)');
+        if (openDropdowns.length > 0) {
+          openDropdowns.forEach((m) => {
+            m.classList.add('hidden');
+            const trig = m.closest('.fantasy-dropdown-wrapper')?.querySelector('.fantasy-dropdown-trigger');
+            if (trig) trig.setAttribute('aria-expanded', 'false');
+          });
+          return;
+        }
         if (!document.getElementById('modal-image-viewer')?.classList.contains('hidden')) {
           closeImageViewerModal();
           return;

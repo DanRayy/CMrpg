@@ -28,7 +28,7 @@
   <!-- Iconify Web Component (game-icons) -->
   <script src="https://code.iconify.design/iconify-icon/2.1.0/iconify-icon.min.js"></script>
   <!-- Estilos Customizados -->
-  <link rel="stylesheet" href="styles.css?v=1.13.0" />
+  <link rel="stylesheet" href="styles.css?v=1.13.2" />
 </head>
 <body class="min-h-screen flex select-none">
 
@@ -515,18 +515,6 @@
             >
               Padrão
             </button>
-            <span class="h-4 w-px bg-amber-500/20 mx-0.5"></span>
-            <div class="flex items-center gap-1" title="Ajuste de qualidade gráfica e nitidez para zoom elevado">
-              <label for="select-mesa-render-quality" class="text-[10px] uppercase font-bold text-slate-400 select-none">Qualidade:</label>
-              <select
-                id="select-mesa-render-quality"
-                class="bg-slate-900 border border-amber-500/30 rounded px-1.5 py-0.5 text-[10px] font-bold text-amber-200 focus:outline-none focus:border-amber-400 cursor-pointer"
-              >
-                <option value="1">Padrão (1x)</option>
-                <option value="1.5">Alta (1.5x)</option>
-                <option value="2">Ultra / Nítido (2x)</option>
-              </select>
-            </div>
           </div>
 
           <!-- Indicador de Batalha Ativa + Ações do Mestre e Criação -->
@@ -1301,6 +1289,7 @@
       <form id="form-character" class="p-5 overflow-y-auto space-y-5 flex-1 text-xs">
         <input type="hidden" id="char-form-id" value="" />
         <input type="hidden" id="char-image-url" value="" />
+        <input type="hidden" id="char-avatar-url" value="" />
         <input type="file" id="char-image-file" accept="image/*" class="hidden" />
 
         <!-- Avatar Circular Opcional da Ficha -->
@@ -2057,6 +2046,7 @@
       <form id="form-catalog-item" class="p-5 overflow-y-auto space-y-4 text-xs flex-1">
         <input type="hidden" id="cat-item-id" value="" />
         <input type="hidden" id="cat-item-image-url" value="" />
+        <input type="hidden" id="cat-item-avatar-url" value="" />
         <input type="file" id="cat-item-image-file" accept="image/*" class="hidden" />
 
         <!-- Imagem Opcional do Item -->
@@ -2844,6 +2834,7 @@
         <!-- Upload Opcional de Foto / Avatar Circular do Inimigo -->
         <div class="p-3 rounded-xl bg-black/30 border app-divider-border flex flex-wrap items-center justify-between gap-3">
           <input type="hidden" id="enemy-image-url" value="" />
+          <input type="hidden" id="enemy-avatar-url" value="" />
           <input type="file" id="enemy-image-file" accept="image/*" class="hidden" />
           <div class="flex items-center gap-3">
             <div id="enemy-image-preview" class="w-14 h-14 rounded-full border-2 border-amber-500/80 bg-black/60 flex items-center justify-center overflow-hidden shrink-0 shadow-md">
@@ -4064,7 +4055,7 @@
         id="image-viewer-img"
         src=""
         alt="Visualização ampliada"
-        class="max-w-[90vw] max-h-[82vh] w-auto h-auto object-contain rounded-2xl border-2 border-amber-500/55 shadow-[0_24px_80px_rgba(0,0,0,0.95)] bg-[#0c0a08] pointer-events-auto select-none"
+        class="max-w-[90vw] max-h-[82vh] w-auto h-auto object-contain rounded-xl border border-amber-500/40 shadow-[0_24px_80px_rgba(0,0,0,0.95)] pointer-events-auto select-none"
       />
       <div
         id="image-viewer-caption"
@@ -4074,12 +4065,12 @@
   </div>
 
     <!-- Módulos Sequenciais da Aplicação -->
-    <script src="js/01-core-state.js?v=1.13.1"></script>
-    <script src="js/02-websocket-combat.js?v=1.13.1"></script>
-    <script src="js/03-tabs-renderers.js?v=1.13.1"></script>
-    <script src="js/04-modals-character-buffs.js?v=1.13.1"></script>
-    <script src="js/05-modals-notes-inventory-bestiary.js?v=1.13.1"></script>
-    <script src="js/05b-mesa-board.js?v=1.13.1"></script>
-    <script src="js/06-events-init.js?v=1.13.1"></script>
+    <script src="js/01-core-state.js?v=1.13.2"></script>
+    <script src="js/02-websocket-combat.js?v=1.13.2"></script>
+    <script src="js/03-tabs-renderers.js?v=1.13.2"></script>
+    <script src="js/04-modals-character-buffs.js?v=1.13.2"></script>
+    <script src="js/05-modals-notes-inventory-bestiary.js?v=1.13.2"></script>
+    <script src="js/05b-mesa-board.js?v=1.13.2"></script>
+    <script src="js/06-events-init.js?v=1.13.2"></script>
 </body>
 </html>

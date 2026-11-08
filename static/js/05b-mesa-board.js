@@ -528,6 +528,22 @@ function clampCameraToBounds(x, y, zoom) {
   return { x: Math.round(cx * 10) / 10, y: Math.round(cy * 10) / 10, zoom: Math.round(z * 1000) / 1000 };
 }
 
+let mesaLastAppliedZoom = 1;
+let mesaRerasterRaf = null;
+
+function triggerMesaZoomRerasterization() {
+  const worldEl = document.getElementById('mesa-world');
+  if (!worldEl) return;
+  if (mesaRerasterRaf) cancelAnimationFrame(mesaRerasterRaf);
+  mesaRerasterRaf = requestAnimationFrame(() => {
+    mesaRerasterRaf = null;
+    // Micro-escala e reflow para invalidar o cache de textura da GPU, forçando super-sampling nítido no zoom
+    worldEl.style.willChange = 'auto';
+    void worldEl.offsetHeight;
+    worldEl.style.willChange = 'transform';
+  });
+}
+
 function applyMesaCameraTransform() {
   const worldEl = document.getElementById('mesa-world');
   if (worldEl) {
@@ -536,6 +552,10 @@ function applyMesaCameraTransform() {
   const zoomLabel = document.getElementById('mesa-zoom-label');
   if (zoomLabel) {
     zoomLabel.textContent = `${Math.round(mesaCamera.zoom * 100)}%`;
+  }
+  if (Math.abs(mesaCamera.zoom - mesaLastAppliedZoom) > 0.0001) {
+    mesaLastAppliedZoom = mesaCamera.zoom;
+    triggerMesaZoomRerasterization();
   }
   if (typeof refreshAllRemoteCursorsVisibility === 'function' && state.activeTab === 'mesa') {
     refreshAllRemoteCursorsVisibility();
@@ -1383,11 +1403,11 @@ function getMesaRenderQuality() {
     const val = localStorage.getItem(STORAGE_KEY_MESA_QUALITY);
     if (val === '1' || val === '1.5' || val === '2') return val;
   } catch (_) {}
-  return '1.5';
+  return '2';
 }
 
 function updateTableRenderQuality(qualityStr) {
-  const q = qualityStr === '1' || qualityStr === '2' ? qualityStr : '1.5';
+  const q = qualityStr === '1' || qualityStr === '1.5' ? qualityStr : '2';
   try {
     localStorage.setItem(STORAGE_KEY_MESA_QUALITY, q);
   } catch (_) {}

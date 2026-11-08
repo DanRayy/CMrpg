@@ -6,16 +6,17 @@
   }
 
   function renderItemThumbnailHtml(item, sizeClasses = 'w-9 h-9') {
-    const imgUrl = item?.image ? String(item.image).trim() : '';
-    if (imgUrl) {
+    const fullImgUrl = (item?.image && String(item.image).trim()) || (item?.avatar && String(item.avatar).trim()) || '';
+    const tokenImgUrl = (item?.avatar && String(item.avatar).trim()) || fullImgUrl;
+    if (tokenImgUrl) {
       return `
         <span
           class="${sizeClasses} rounded-full border border-amber-500/70 bg-black/60 overflow-hidden flex items-center justify-center shrink-0 shadow-sm image-viewer-trigger"
-          data-view-image-src="${escapeHtml(imgUrl)}"
+          data-view-image-src="${escapeHtml(fullImgUrl)}"
           data-view-image-title="${escapeHtml(item?.nome || 'Item')}"
           title="Clique para ampliar imagem (${escapeHtml(item?.nome || 'Item')})"
         >
-          <img src="${escapeHtml(imgUrl)}" alt="${escapeHtml(item?.nome || 'Item')}" class="w-full h-full object-cover rounded-full pointer-events-none" loading="lazy" />
+          <img src="${escapeHtml(tokenImgUrl)}" alt="${escapeHtml(item?.nome || 'Item')}" class="w-full h-full object-cover rounded-full pointer-events-none" loading="lazy" />
         </span>
       `;
     }
@@ -34,9 +35,14 @@
     const bestiaryRef = isEnemy ? (state.bestiary || []).find((b) => b.id === char.bestiaryId) : null;
     const isRevealed = !isEnemy || (bestiaryRef ? Boolean(bestiaryRef.reveladoParaJogadores) : Boolean(char.reveladoParaJogadores));
     const isMasked = isEnemy && !isMaster && !isRevealed;
-    const entityImage = (char.image && String(char.image).trim())
+    const entityFullImage = (char.image && String(char.image).trim())
       || (isEnemy && bestiaryRef?.image && String(bestiaryRef.image).trim())
+      || (char.avatar && String(char.avatar).trim().startsWith('/') ? String(char.avatar).trim() : null)
       || null;
+    const entityTokenImage = (char.avatar && String(char.avatar).trim().startsWith('/') ? String(char.avatar).trim() : null)
+      || (isEnemy && bestiaryRef?.avatar && String(bestiaryRef.avatar).trim().startsWith('/') ? String(bestiaryRef.avatar).trim() : null)
+      || entityFullImage;
+    const entityImage = entityFullImage;
     const forMesa = Boolean(opts && opts.forMesa);
     const isCompact = forMesa && (typeof isCharMesaCompact === 'function' ? isCharMesaCompact(char) : Boolean(char.mesaCompact !== undefined ? char.mesaCompact : char.isCompact));
 
@@ -505,11 +511,11 @@
       `;
     }
 
-    const avatarInnerHtml = entityImage
-      ? `<img src="${escapeHtml(entityImage)}" alt="${escapeHtml(char.name)}" class="char-card-avatar-img" />`
+    const avatarInnerHtml = entityTokenImage
+      ? `<img src="${escapeHtml(entityTokenImage)}" alt="${escapeHtml(char.name)}" class="char-card-avatar-img" />`
       : getDefaultUserAvatarSvg('char-card-avatar-fallback');
-    const avatarViewerAttrs = entityImage
-      ? `data-view-image-src="${escapeHtml(entityImage)}" data-view-image-title="${escapeHtml(char.name)}"`
+    const avatarViewerAttrs = entityFullImage
+      ? `data-view-image-src="${escapeHtml(entityFullImage)}" data-view-image-title="${escapeHtml(char.name)}"`
       : '';
     const compactTagText = isEnemy
       ? `${char.name}`
@@ -523,7 +529,7 @@
           title="${escapeHtml(char.name)} (${isMasked ? 'NV. ?' : `NV. ${char.level || 1}`})"
         >
           <div
-            class="compact-token-circle ${isEnemy ? 'enemy-token' : ''} ${char.isDead ? 'dead-token' : ''} ${isCurrentTurn ? 'active-turn-token' : ''} ${canReorderChar ? 'char-drag-handle' : ''} ${entityImage ? 'image-viewer-trigger' : ''}"
+            class="compact-token-circle ${isEnemy ? 'enemy-token' : ''} ${char.isDead ? 'dead-token' : ''} ${isCurrentTurn ? 'active-turn-token' : ''} ${canReorderChar ? 'char-drag-handle' : ''} ${entityFullImage ? 'image-viewer-trigger' : ''}"
             ${canReorderChar ? `data-drag-char-id="${escapeHtml(char.id)}"` : ''}
             ${avatarViewerAttrs}
           >
@@ -559,9 +565,9 @@
         >
           <!-- Avatar Circular no Topo Central -->
           <div
-            class="char-card-top-avatar-wrap ${isEnemy ? 'enemy-avatar-ring' : ''} ${entityImage ? 'image-viewer-trigger' : ''}"
+            class="char-card-top-avatar-wrap ${isEnemy ? 'enemy-avatar-ring' : ''} ${entityFullImage ? 'image-viewer-trigger' : ''}"
             ${avatarViewerAttrs}
-            title="${entityImage ? `Clique para ampliar imagem (${escapeHtml(char.name)})` : escapeHtml(char.name)}"
+            title="${entityFullImage ? `Clique para ampliar imagem (${escapeHtml(char.name)})` : escapeHtml(char.name)}"
           >
             ${avatarInnerHtml}
           </div>
@@ -1316,17 +1322,20 @@
             `;
           }).join('');
 
+          const bFullImg = (e.image && String(e.image).trim()) || (e.avatar && String(e.avatar).trim().startsWith('/') ? String(e.avatar).trim() : null) || '';
+          const bTokenImg = (e.avatar && String(e.avatar).trim().startsWith('/') ? String(e.avatar).trim() : null) || bFullImg;
+
           return `
           <article class="char-card character-card character-card-with-avatar p-4 sm:p-5 flex flex-col justify-between gap-3.5 relative border border-rose-950/40 hover:border-amber-500/40 transition">
             <!-- Avatar Circular no Topo do Card do Bestiário -->
             <div
-              class="char-card-top-avatar-wrap enemy-avatar-ring ${e.image && String(e.image).trim() ? 'image-viewer-trigger' : ''}"
-              ${e.image && String(e.image).trim() ? `data-view-image-src="${escapeHtml(String(e.image).trim())}" data-view-image-title="${escapeHtml(e.name)}"` : ''}
+              class="char-card-top-avatar-wrap enemy-avatar-ring ${bFullImg ? 'image-viewer-trigger' : ''}"
+              ${bFullImg ? `data-view-image-src="${escapeHtml(bFullImg)}" data-view-image-title="${escapeHtml(e.name)}"` : ''}
               title="${escapeHtml(e.name)}"
             >
               ${
-                e.image && String(e.image).trim()
-                  ? `<img src="${escapeHtml(String(e.image).trim())}" alt="${escapeHtml(e.name)}" class="char-card-avatar-img" />`
+                bTokenImg
+                  ? `<img src="${escapeHtml(bTokenImg)}" alt="${escapeHtml(e.name)}" class="char-card-avatar-img" />`
                   : getDefaultUserAvatarSvg('char-card-avatar-fallback')
               }
             </div>
@@ -1335,12 +1344,12 @@
               <div class="min-w-0 flex-1">
                 <div class="flex items-center gap-2">
                   <span
-                    class="w-8 h-8 rounded-lg bg-rose-950/60 border border-rose-500/40 flex items-center justify-center text-rose-400 text-lg shrink-0 overflow-hidden ${e.image && String(e.image).trim() ? 'image-viewer-trigger' : ''}"
-                    ${e.image && String(e.image).trim() ? `data-view-image-src="${escapeHtml(String(e.image).trim())}" data-view-image-title="${escapeHtml(e.name)}"` : ''}
+                    class="w-8 h-8 rounded-lg bg-rose-950/60 border border-rose-500/40 flex items-center justify-center text-rose-400 text-lg shrink-0 overflow-hidden ${bFullImg ? 'image-viewer-trigger' : ''}"
+                    ${bFullImg ? `data-view-image-src="${escapeHtml(bFullImg)}" data-view-image-title="${escapeHtml(e.name)}"` : ''}
                   >
                     ${
-                      e.image && String(e.image).trim()
-                        ? `<img src="${escapeHtml(String(e.image).trim())}" alt="${escapeHtml(e.name)}" class="w-full h-full object-cover pointer-events-none" />`
+                      bTokenImg
+                        ? `<img src="${escapeHtml(bTokenImg)}" alt="${escapeHtml(e.name)}" class="w-full h-full object-cover pointer-events-none" />`
                         : '<iconify-icon icon="game-icons:monster-grasp"></iconify-icon>'
                     }
                   </span>

@@ -1003,6 +1003,13 @@ def normalize_character(
     char["reveladoParaJogadores"] = bool(char.get("reveladoParaJogadores", False))
     raw_img = char.get("image")
     char["image"] = str(raw_img).strip() if isinstance(raw_img, str) and raw_img.strip() else None
+    raw_avatar = char.get("avatar")
+    if isinstance(raw_avatar, str) and raw_avatar.strip():
+        char["avatar"] = raw_avatar.strip()
+    elif char.get("isEnemy"):
+        char["avatar"] = "monster-grasp"
+    else:
+        char["avatar"] = None
     if "mesaCompact" in char:
         char["mesaCompact"] = bool(char["mesaCompact"])
     else:
@@ -1012,8 +1019,6 @@ def normalize_character(
     if char["isEnemy"]:
         char["baseMaxWeight"] = 999
         char["maxWeight"] = 999
-        if not char.get("avatar"):
-            char["avatar"] = "monster-grasp"
     else:
         raw_base_weight = float(char.get("baseMaxWeight", char.get("maxWeight", 27)))
         if raw_base_weight < 0:
@@ -2091,7 +2096,7 @@ async def lifespan(app_instance: FastAPI) -> AsyncIterator[None]:
 app = FastAPI(
     title="CMrpg Server",
     description="Sistema de Gestão de RPG Local via Radmin VPN.",
-    version="1.13.1",
+    version="1.13.2",
     lifespan=lifespan,
 )
 
@@ -2159,9 +2164,14 @@ async def preview_damage(request: Request) -> JSONResponse:
 async def upload_image(request: Request) -> JSONResponse:
     ensure_upload_directories()
     content_type = request.headers.get("content-type", "")
-    file_bytes: Optional[bytes] = None
-    filename_hint = "upload.png"
-    mime_hint = "image/png"
+    cropped_bytes: Optional[bytes] = None
+    cropped_filename_hint = "upload.png"
+    cropped_mime_hint = "image/png"
+
+    original_bytes: Optional[bytes] = None
+    original_filename_hint = "original.png"
+    original_mime_hint = "image/png"
+
     fields: Dict[str, str] = {}
 
     for k, v in request.query_params.items():
@@ -2177,15 +2187,21 @@ async def upload_image(request: Request) -> JSONResponse:
         msg = BytesParser(policy=default_email_policy).parsebytes(header_bytes + raw_body)
         if msg.is_multipart():
             for part in msg.iter_parts():
-                part_name = str(part.get_param("name", header="content-disposition") or "")
+                part_name = str(part.get_param("name", header="content-disposition") or "").strip()
                 part_filename = part.get_filename()
                 payload = part.get_payload(decode=True)
-                if part_filename is not None or part_name in ("file", "image", "avatar"):
+                if part_name in ("original_file", "original", "raw_file", "raw_image", "full_image"):
                     if payload:
-                        file_bytes = payload
+                        original_bytes = payload
                         if part_filename:
-                            filename_hint = str(part_filename)
-                        mime_hint = part.get_content_type() or "image/png"
+                            original_filename_hint = str(part_filename)
+                        original_mime_hint = part.get_content_type() or "image/png"
+                elif part_filename is not None or part_name in ("file", "image", "avatar", "token", "cropped_file"):
+                    if payload:
+                        cropped_bytes = payload
+                        if part_filename:
+                            cropped_filename_hint = str(part_filename)
+                        cropped_mime_hint = part.get_content_type() or "image/png"
                 else:
                     if payload is not None:
                         fields[part_name] = payload.decode("utf-8", errors="replace").strip()
@@ -2194,23 +2210,35 @@ async def upload_image(request: Request) -> JSONResponse:
             body_json = await request.json()
             if isinstance(body_json, dict):
                 for k, v in body_json.items():
-                    if k not in ("file", "image", "data") and isinstance(v, (str, int, float)):
+                    if k not in ("file", "image", "data", "original_file", "original") and isinstance(v, (str, int, float)):
                         fields[str(k)] = str(v)
                 raw_data = body_json.get("image") or body_json.get("file") or body_json.get("data") or ""
                 if isinstance(raw_data, str) and raw_data:
                     if "," in raw_data and raw_data.startswith("data:"):
                         header_part, b64_part = raw_data.split(",", 1)
                         if "image/webp" in header_part:
-                            mime_hint = "image/webp"
-                            filename_hint = "upload.webp"
-                        file_bytes = base64.b64decode(b64_part)
+                            cropped_mime_hint = "image/webp"
+                            cropped_filename_hint = "upload.webp"
+                        cropped_bytes = base64.b64decode(b64_part)
                     else:
-                        file_bytes = base64.b64decode(raw_data)
+                        cropped_bytes = base64.b64decode(raw_data)
+                orig_raw = body_json.get("original_file") or body_json.get("original") or ""
+                if isinstance(orig_raw, str) and orig_raw:
+                    if "," in orig_raw and orig_raw.startswith("data:"):
+                        h_part, b_part = orig_raw.split(",", 1)
+                        original_bytes = base64.b64decode(b_part)
+                    else:
+                        original_bytes = base64.b64decode(orig_raw)
         except Exception:
             pass
 
-    if not file_bytes:
+    if not cropped_bytes and not original_bytes:
         return JSONResponse(status_code=400, content={"error": "Nenhum arquivo de imagem enviado."})
+
+    if not cropped_bytes and original_bytes:
+        cropped_bytes = original_bytes
+        cropped_filename_hint = original_filename_hint
+        cropped_mime_hint = original_mime_hint
 
     raw_cat = (
         fields.get("category")
@@ -2247,15 +2275,56 @@ async def upload_image(request: Request) -> JSONResponse:
         rel_folder = "fichas/personagens"
         prefix = "char"
 
-    ext = ".webp" if (filename_hint.lower().endswith(".webp") or "webp" in mime_hint.lower()) else ".png"
-    unique_name = f"{prefix}_{uuid.uuid4().hex[:12]}{ext}"
     target_dir = STATIC_DIR / "img" / Path(rel_folder)
     os.makedirs(target_dir, exist_ok=True)
-    target_path = target_dir / unique_name
-    await asyncio.to_thread(target_path.write_bytes, file_bytes)
+    file_id = uuid.uuid4().hex[:12]
 
-    url = f"/static/img/{rel_folder}/{unique_name}"
-    return JSONResponse(content={"url": url, "filename": unique_name, "folder": rel_folder})
+    # Se uma imagem original completa separada foi enviada junto com o recorte circular
+    if original_bytes:
+        orig_ext = Path(original_filename_hint).suffix.lower()
+        if orig_ext not in (".png", ".webp", ".jpg", ".jpeg"):
+            orig_ext = ".webp" if "webp" in original_mime_hint.lower() else ".png"
+        orig_name = f"{prefix}_{file_id}_orig{orig_ext}"
+        orig_path = target_dir / orig_name
+        await asyncio.to_thread(orig_path.write_bytes, original_bytes)
+        original_url = f"/static/img/{rel_folder}/{orig_name}"
+
+        crop_ext = ".webp" if (cropped_filename_hint.lower().endswith(".webp") or "webp" in cropped_mime_hint.lower()) else ".png"
+        crop_name = f"{prefix}_{file_id}_token{crop_ext}"
+        crop_path = target_dir / crop_name
+        await asyncio.to_thread(crop_path.write_bytes, cropped_bytes)
+        avatar_url = f"/static/img/{rel_folder}/{crop_name}"
+
+        return JSONResponse(
+            content={
+                "url": avatar_url,
+                "avatarUrl": avatar_url,
+                "tokenUrl": avatar_url,
+                "originalUrl": original_url,
+                "imageUrl": original_url,
+                "filename": crop_name,
+                "originalFilename": orig_name,
+                "folder": rel_folder,
+            }
+        )
+    else:
+        # Upload direto de imagem única (sem corte circular adicional)
+        ext = ".webp" if (cropped_filename_hint.lower().endswith(".webp") or "webp" in cropped_mime_hint.lower()) else ".png"
+        unique_name = f"{prefix}_{file_id}{ext}"
+        target_path = target_dir / unique_name
+        await asyncio.to_thread(target_path.write_bytes, cropped_bytes)
+        url = f"/static/img/{rel_folder}/{unique_name}"
+        return JSONResponse(
+            content={
+                "url": url,
+                "avatarUrl": url,
+                "tokenUrl": url,
+                "originalUrl": url,
+                "imageUrl": url,
+                "filename": unique_name,
+                "folder": rel_folder,
+            }
+        )
 
 
 @app.websocket("/ws")

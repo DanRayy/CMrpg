@@ -3,6 +3,7 @@
   // ---------------------------------------------------------------------------
   const imageCropperState = {
     img: null,
+    rawFile: null,
     zoom: 1,
     panX: 0,
     panY: 0,
@@ -18,17 +19,23 @@
     isUploading: false,
   };
 
-  function updateFormImagePreviewUI({ inputId, previewId, clearBtnId, imageUrl, fallbackIconHtml }) {
+  function updateFormImagePreviewUI({ inputId, avatarInputId, previewId, clearBtnId, imageUrl, avatarUrl, fallbackIconHtml }) {
     const hiddenInput = document.getElementById(inputId);
+    const hiddenAvatarInput = avatarInputId
+      ? document.getElementById(avatarInputId)
+      : (inputId ? document.getElementById(inputId.replace('-image-url', '-avatar-url')) : null);
     const previewEl = document.getElementById(previewId);
     const clearBtn = document.getElementById(clearBtnId);
     const cleanUrl = imageUrl && String(imageUrl).trim() ? String(imageUrl).trim() : '';
+    const cleanAvatarUrl = avatarUrl && String(avatarUrl).trim() ? String(avatarUrl).trim() : '';
 
     if (hiddenInput) hiddenInput.value = cleanUrl;
-    if (clearBtn) clearBtn.classList.toggle('hidden', !cleanUrl);
+    if (hiddenAvatarInput) hiddenAvatarInput.value = cleanAvatarUrl;
+    if (clearBtn) clearBtn.classList.toggle('hidden', !cleanUrl && !cleanAvatarUrl);
     if (previewEl) {
-      if (cleanUrl) {
-        previewEl.innerHTML = `<img src="${escapeHtml(cleanUrl)}" alt="Preview" class="w-full h-full object-cover rounded-full" />`;
+      const displayUrl = cleanAvatarUrl || cleanUrl;
+      if (displayUrl) {
+        previewEl.innerHTML = `<img src="${escapeHtml(displayUrl)}" alt="Preview" class="w-full h-full object-cover rounded-full" />`;
       } else {
         previewEl.innerHTML =
           fallbackIconHtml ||
@@ -99,6 +106,7 @@
       const img = new Image();
       img.onload = () => {
         imageCropperState.img = img;
+        imageCropperState.rawFile = file;
         imageCropperState.zoom = 1;
         imageCropperState.panX = 0;
         imageCropperState.panY = 0;
@@ -171,18 +179,21 @@
         formData.append('itemType', imageCropperState.itemType);
       }
       formData.append('file', blob, 'cropped.png');
+      if (imageCropperState.rawFile) {
+        formData.append('original_file', imageCropperState.rawFile, imageCropperState.rawFile.name || 'original.png');
+      }
 
       const resp = await fetch('/api/upload-image', {
         method: 'POST',
         body: formData,
       });
       const data = await resp.json();
-      if (!resp.ok || !data?.url) {
+      if (!resp.ok || (!data?.url && !data?.avatarUrl)) {
         throw new Error(data?.error || 'Falha no upload da imagem');
       }
 
       if (typeof imageCropperState.onComplete === 'function') {
-        imageCropperState.onComplete(data.url);
+        imageCropperState.onComplete(data);
       }
       closeModal('modal-image-cropper');
       showToast('Imagem recortada e aplicada com sucesso!');
@@ -516,9 +527,11 @@
     document.getElementById('char-history-input').value = '';
     updateFormImagePreviewUI({
       inputId: 'char-image-url',
+      avatarInputId: 'char-avatar-url',
       previewId: 'char-image-preview',
       clearBtnId: 'btn-char-clear-image',
       imageUrl: '',
+      avatarUrl: '',
     });
     if (document.getElementById('char-image-file')) document.getElementById('char-image-file').value = '';
     if (document.getElementById('char-skills-input')) document.getElementById('char-skills-input').value = '';
@@ -566,9 +579,11 @@
     document.getElementById('char-history-input').value = char.history || '';
     updateFormImagePreviewUI({
       inputId: 'char-image-url',
+      avatarInputId: 'char-avatar-url',
       previewId: 'char-image-preview',
       clearBtnId: 'btn-char-clear-image',
       imageUrl: char.image || '',
+      avatarUrl: char.avatar || '',
     });
     if (document.getElementById('char-image-file')) document.getElementById('char-image-file').value = '';
     if (document.getElementById('char-skills-input')) {
@@ -640,7 +655,9 @@
     const height = document.getElementById('char-height-input').value.trim();
     const history = document.getElementById('char-history-input').value.trim();
     const rawCharImage = (document.getElementById('char-image-url')?.value || '').trim();
+    const rawCharAvatar = (document.getElementById('char-avatar-url')?.value || '').trim();
     const charImage = rawCharImage ? rawCharImage : null;
+    const charAvatar = rawCharAvatar ? rawCharAvatar : null;
     const skillsDescription = (document.getElementById('char-skills-input')?.value || '').trim();
     const skillPassive = (document.getElementById('char-skill-passive')?.value || '').trim();
     const skillActive = (document.getElementById('char-skill-active')?.value || '').trim();
@@ -695,6 +712,7 @@
             ownerMemberId: creatorMemberId,
             ownerIp: creatorIp,
             image: charImage,
+            avatar: charAvatar,
             mesaCompact: false,
             isCompact: false,
             age,
@@ -784,6 +802,7 @@
 
           target.name = name;
           target.image = charImage;
+          target.avatar = charAvatar;
           target.age = age;
           target.height = height;
           target.history = history;
@@ -1396,9 +1415,7 @@
     const currentTarget = mod.targetStat || mod.stat || 'VIDA';
     const currentType = String(mod.modifierType || mod.mode || 'FLAT').toUpperCase() === 'PERCENT' ? 'PERCENT' : 'FLAT';
     row.innerHTML = `
-      <select data-mod-target class="col-span-6 px-2 py-1.5 app-input font-bold text-xs">
-        ${renderEffectTargetOptionsHtml(currentTarget)}
-      </select>
+      ${renderCustomModifierDropdownHtml(currentTarget, 'data-mod-target', 'col-span-6')}
       <select data-mod-type class="col-span-3 px-2 py-1.5 app-input font-bold text-xs">
         <option value="FLAT" ${currentType === 'FLAT' ? 'selected' : ''}>Fixo (+/-)</option>
         <option value="PERCENT" ${currentType === 'PERCENT' ? 'selected' : ''}>Porcento (%)</option>
@@ -3266,9 +3283,7 @@
 
     row.innerHTML = `
       <div class="sm:col-span-6">
-        <select data-st-comp-target class="w-full px-2.5 py-1.5 text-xs font-bold app-input">
-          ${renderEffectTargetOptionsHtml(currentTarget)}
-        </select>
+        ${renderCustomModifierDropdownHtml(currentTarget, 'data-st-comp-target', 'w-full')}
       </div>
       <div class="sm:col-span-3">
         <select data-st-comp-type class="w-full px-2.5 py-1.5 text-xs font-mono font-bold app-input">
@@ -3411,9 +3426,7 @@
 
     row.innerHTML = `
       <div class="sm:col-span-6">
-        <select data-sn-eff-target class="w-full px-2.5 py-1.5 text-xs font-bold app-input">
-          ${renderEffectTargetOptionsHtml(currentTarget)}
-        </select>
+        ${renderCustomModifierDropdownHtml(currentTarget, 'data-sn-eff-target', 'w-full')}
       </div>
       <div class="sm:col-span-3">
         <select data-sn-eff-type class="w-full px-2.5 py-1.5 text-xs font-mono font-bold app-input">

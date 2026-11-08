@@ -401,10 +401,10 @@ def test_decoupled_mesa_compact_state_and_cards_rendering(tmp_path: Path) -> Non
         assert sync["table"]["sizes"]["char_default_1"] == {"w": 72, "h": 96}
         assert sync["table"]["sizes"]["char_default_2"] == {"w": 420, "h": 468}
 
-        # Static asset query string must be v1.13.1
+        # Static asset query string must be v1.13.2
         resp = client.get("/")
-        assert "js/01-core-state.js?v=1.13.1" in resp.text
-        assert "js/03-tabs-renderers.js?v=1.13.1" in resp.text
+        assert "js/01-core-state.js?v=1.13.2" in resp.text
+        assert "js/03-tabs-renderers.js?v=1.13.2" in resp.text
 
         # Verify 03-tabs-renderers.js restricts compact mode exclusively to Mesa:
         js_resp = client.get("/js/03-tabs-renderers.js")
@@ -412,5 +412,67 @@ def test_decoupled_mesa_compact_state_and_cards_rendering(tmp_path: Path) -> Non
         assert "const isCompact = forMesa &&" in js_resp.text
         assert "${forMesa ? `" in js_resp.text
         assert "<!-- Rodapé Inferior: Botão Modo Compacto (Exclusivo da Mesa) -->" in js_resp.text
+
+
+def test_v1_13_2_features(tmp_path: Path) -> None:
+    _setup_isolated_state(tmp_path)
+    client = TestClient(main.app, client=("127.0.0.1", 53040))
+
+    # 1. Manual quality selector removed from index.html
+    resp = client.get("/")
+    assert resp.status_code == 200
+    assert 'id="select-mesa-render-quality"' not in resp.text
+    assert 'bg-[#0c0a08]' not in resp.text
+    assert 'id="char-avatar-url"' in resp.text
+    assert 'id="enemy-avatar-url"' in resp.text
+    assert 'id="cat-item-avatar-url"' in resp.text
+
+    # 2. Upload image with both cropped token and original full-res artwork
+    fake_cropped = b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15c4\x00\x00\x00\nIDATx\x9cc\x00\x01\x00\x00\x05\x00\x01\r\n-\xb4\x00\x00\x00\x00IEND\xaeB`\x82"
+    fake_orig = b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x02\x00\x00\x00\x02\x08\x06\x00\x00\x00\x1f\x15c4\x00\x00\x00\nIDATx\x9cc\x00\x01\x00\x00\x05\x00\x01\r\n-\xb4\x00\x00\x00\x00IEND\xaeB`\x82"
+
+    files = [
+        ("file", ("token.png", fake_cropped, "image/png")),
+        ("original_file", ("full_art.png", fake_orig, "image/png")),
+    ]
+    data = {"category": "personagens"}
+    up_resp = client.post("/api/upload-image", data=data, files=files)
+    assert up_resp.status_code == 200
+    res_json = up_resp.json()
+    assert "_token.png" in res_json["avatarUrl"]
+    assert "_orig.png" in res_json["originalUrl"]
+    assert res_json["url"] == res_json["avatarUrl"]
+
+    # 3. State normalization preserves avatar and image
+    with client.websocket_connect("/ws") as ws:
+        _drain_until_type(ws, "state_sync")
+        chars = copy.deepcopy(main.state_manager.state["characters"])
+        chars[0]["image"] = res_json["originalUrl"]
+        chars[0]["avatar"] = res_json["avatarUrl"]
+        ws.send_json({"type": "update_state", "characters": chars})
+        sync = _drain_until_type(ws, "state_sync")
+        c0 = next(c for c in sync["characters"] if c["id"] == chars[0]["id"])
+        assert c0["image"] == res_json["originalUrl"]
+        assert c0["avatar"] == res_json["avatarUrl"]
+
+    # 4. Custom dropdown component exists in js and css
+    css_resp = client.get("/styles.css")
+    assert ".fantasy-dropdown-wrapper" in css_resp.text
+    assert ".fantasy-dropdown-menu" in css_resp.text
+    assert "#12100d" in css_resp.text
+    assert "#241f18" in css_resp.text
+
+    core_js = client.get("/js/01-core-state.js")
+    assert "renderCustomModifierDropdownHtml" in core_js.text
+
+    # Limpeza dos arquivos de teste gerados
+    for key in ("avatarUrl", "originalUrl"):
+        u = res_json.get(key)
+        if u and u.startswith("/static/"):
+            p = main.STATIC_DIR / u.replace("/static/", "")
+            if p.exists():
+                p.unlink()
+
+
 
 

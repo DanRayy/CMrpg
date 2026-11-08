@@ -1481,9 +1481,11 @@
     document.getElementById('enemy-revealed-input').checked = enemy ? Boolean(enemy.reveladoParaJogadores) : false;
     updateFormImagePreviewUI({
       inputId: 'enemy-image-url',
+      avatarInputId: 'enemy-avatar-url',
       previewId: 'enemy-image-preview',
       clearBtnId: 'btn-enemy-clear-image',
       imageUrl: enemy?.image || '',
+      avatarUrl: enemy?.avatar || '',
     });
     if (document.getElementById('enemy-image-file')) document.getElementById('enemy-image-file').value = '';
 
@@ -1613,16 +1615,19 @@
 
     container.innerHTML = enemies
       .map(
-        (e) => `
+        (e) => {
+          const bFullImg = (e.image && String(e.image).trim()) || (e.avatar && String(e.avatar).trim().startsWith('/') ? String(e.avatar).trim() : null) || '';
+          const bTokenImg = (e.avatar && String(e.avatar).trim().startsWith('/') ? String(e.avatar).trim() : null) || bFullImg;
+          return `
         <div class="p-3 rounded-xl bg-black/40 border app-divider-border flex flex-wrap items-center justify-between gap-3 text-xs">
           <div class="flex items-center gap-3">
             <div
-              class="w-9 h-9 rounded-full bg-rose-950/60 border border-rose-500/40 flex items-center justify-center text-rose-400 text-lg shrink-0 overflow-hidden ${e.image && String(e.image).trim() ? 'image-viewer-trigger' : ''}"
-              ${e.image && String(e.image).trim() ? `data-view-image-src="${escapeHtml(String(e.image).trim())}" data-view-image-title="${escapeHtml(e.name)}"` : ''}
+              class="w-9 h-9 rounded-full bg-rose-950/60 border border-rose-500/40 flex items-center justify-center text-rose-400 text-lg shrink-0 overflow-hidden ${bFullImg ? 'image-viewer-trigger' : ''}"
+              ${bFullImg ? `data-view-image-src="${escapeHtml(bFullImg)}" data-view-image-title="${escapeHtml(e.name)}"` : ''}
             >
               ${
-                e.image && String(e.image).trim()
-                  ? `<img src="${escapeHtml(String(e.image).trim())}" alt="${escapeHtml(e.name)}" class="w-full h-full object-cover rounded-full pointer-events-none" />`
+                bTokenImg
+                  ? `<img src="${escapeHtml(bTokenImg)}" alt="${escapeHtml(e.name)}" class="w-full h-full object-cover rounded-full pointer-events-none" />`
                   : '<iconify-icon icon="game-icons:monster-grasp"></iconify-icon>'
               }
             </div>
@@ -1650,7 +1655,8 @@
             <span>Trazer p/ Mesa</span>
           </button>
         </div>
-      `
+      `;
+        }
       )
       .join('');
   }
@@ -1701,7 +1707,7 @@
           bestiaryId: bestiaryEnemy.id,
           reveladoParaJogadores: Boolean(bestiaryEnemy.reveladoParaJogadores),
           level: Number(bestiaryEnemy.level || 1),
-          avatar: 'monster-grasp',
+          avatar: bestiaryEnemy.avatar || 'monster-grasp',
           image: bestiaryEnemy.image || null,
           mesaCompact: false,
           isCompact: false,

@@ -205,6 +205,61 @@
     return html;
   }
 
+  function renderCustomModifierDropdownHtml(selectedValue, dataAttr = 'data-eff-target', extraContainerClass = '') {
+    const currentVal = selectedValue || (EFFECT_TARGET_OPTIONS[0] ? EFFECT_TARGET_OPTIONS[0].value : 'VIDA');
+    const matchedOpt = EFFECT_TARGET_OPTIONS.find((o) => o.value === currentVal);
+    const currentLabel = matchedOpt ? matchedOpt.label : formatEffectTargetLabel(currentVal);
+
+    let optionsListHtml = '';
+    let currentGroup = null;
+
+    for (const opt of EFFECT_TARGET_OPTIONS) {
+      if (opt.group && opt.group !== currentGroup) {
+        currentGroup = opt.group;
+        optionsListHtml += `
+          <div class="fantasy-dropdown-group-header">
+            ${escapeHtml(currentGroup)}
+          </div>
+        `;
+      }
+      const isSelected = opt.value === currentVal;
+      optionsListHtml += `
+        <div
+          class="fantasy-dropdown-item ${isSelected ? 'is-selected' : ''}"
+          data-dropdown-value="${escapeHtml(opt.value)}"
+          role="option"
+          aria-selected="${isSelected ? 'true' : 'false'}"
+        >
+          <span>${escapeHtml(opt.label)}</span>
+          ${isSelected ? '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5 text-[#c8aa6e] shrink-0 ml-1.5"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>' : ''}
+        </div>
+      `;
+    }
+
+    return `
+      <div class="fantasy-dropdown-wrapper ${extraContainerClass}">
+        <input type="hidden" ${dataAttr} value="${escapeHtml(currentVal)}" class="fantasy-dropdown-input" />
+        <button
+          type="button"
+          class="fantasy-dropdown-trigger"
+          aria-haspopup="listbox"
+          aria-expanded="false"
+        >
+          <span class="fantasy-dropdown-selected-label">${escapeHtml(currentLabel)}</span>
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="fantasy-dropdown-chevron">
+            <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+          </svg>
+        </button>
+        <div
+          class="fantasy-dropdown-menu hidden"
+          role="listbox"
+        >
+          ${optionsListHtml}
+        </div>
+      </div>
+    `;
+  }
+
   // ===========================================================================
   // Estado Global no Cliente
   // ===========================================================================
