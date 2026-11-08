@@ -3218,6 +3218,18 @@
         if (!isCurrentlyOpen) {
           menu.classList.remove('hidden');
           trigger.setAttribute('aria-expanded', 'true');
+
+          const rect = trigger.getBoundingClientRect();
+          const spaceAbove = rect.top;
+          const spaceBelow = window.innerHeight - rect.bottom;
+          if (spaceAbove < 160 && spaceBelow > spaceAbove) {
+            menu.style.bottom = 'auto';
+            menu.style.top = 'calc(100% + 4px)';
+          } else {
+            menu.style.top = 'auto';
+            menu.style.bottom = 'calc(100% + 4px)';
+          }
+
           const selectedItem = menu.querySelector('.fantasy-dropdown-item.is-selected');
           if (selectedItem) {
             selectedItem.scrollIntoView({ block: 'nearest' });

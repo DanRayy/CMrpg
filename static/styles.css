@@ -2132,7 +2132,8 @@ iconify-icon {
 .fantasy-dropdown-menu {
   position: absolute;
   left: 0;
-  top: calc(100% + 4px);
+  bottom: calc(100% + 4px);
+  top: auto;
   width: 100%;
   min-width: 240px;
   max-width: 340px;

@@ -401,10 +401,10 @@ def test_decoupled_mesa_compact_state_and_cards_rendering(tmp_path: Path) -> Non
         assert sync["table"]["sizes"]["char_default_1"] == {"w": 72, "h": 96}
         assert sync["table"]["sizes"]["char_default_2"] == {"w": 420, "h": 468}
 
-        # Static asset query string must be v1.13.2
+        # Static asset query string must be v1.13.3
         resp = client.get("/")
-        assert "js/01-core-state.js?v=1.13.2" in resp.text
-        assert "js/03-tabs-renderers.js?v=1.13.2" in resp.text
+        assert "js/01-core-state.js?v=1.13.3" in resp.text
+        assert "js/03-tabs-renderers.js?v=1.13.3" in resp.text
 
         # Verify 03-tabs-renderers.js restricts compact mode exclusively to Mesa:
         js_resp = client.get("/js/03-tabs-renderers.js")
@@ -455,10 +455,11 @@ def test_v1_13_2_features(tmp_path: Path) -> None:
         assert c0["image"] == res_json["originalUrl"]
         assert c0["avatar"] == res_json["avatarUrl"]
 
-    # 4. Custom dropdown component exists in js and css
+    # 4. Custom dropdown component exists in js and css and opens upward (bottom: calc(100% + 4px))
     css_resp = client.get("/styles.css")
     assert ".fantasy-dropdown-wrapper" in css_resp.text
     assert ".fantasy-dropdown-menu" in css_resp.text
+    assert "bottom: calc(100% + 4px)" in css_resp.text
     assert "#12100d" in css_resp.text
     assert "#241f18" in css_resp.text
 
