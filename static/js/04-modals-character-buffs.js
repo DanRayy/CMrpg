@@ -1421,9 +1421,9 @@
         <option value="PERCENT" ${currentType === 'PERCENT' ? 'selected' : ''}>Porcento (%)</option>
       </select>
       <input data-mod-val type="number" step="any" value="${mod.value ?? 10}" class="col-span-2 px-2 py-1.5 font-mono font-bold app-input text-xs" />
-      <button type="button" class="col-span-1 py-1.5 rounded app-secondary-btn text-rose-400 hover:text-rose-300 text-xs flex items-center justify-center font-bold" title="Remover modificador">✕</button>
+      <button type="button" data-remove-bn-modifier class="col-span-1 py-1.5 rounded app-secondary-btn text-rose-400 hover:text-rose-300 text-xs flex items-center justify-center font-bold" title="Remover modificador">✕</button>
     `;
-    row.querySelector('button')?.addEventListener('click', () => row.remove());
+    row.querySelector('[data-remove-bn-modifier]')?.addEventListener('click', () => row.remove());
     list.appendChild(row);
   }
 

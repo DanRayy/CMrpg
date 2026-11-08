@@ -1237,9 +1237,9 @@
           <option value="PERCENT" ${eff.modifierType === 'PERCENT' ? 'selected' : ''}>Percentual (%)</option>
         </select>
         <input data-eff-val type="number" step="any" value="${eff.value ?? 10}" class="col-span-3 px-2 py-1.5 font-mono font-bold app-input" />
-        <button type="button" class="col-span-1 py-1.5 rounded app-secondary-btn text-rose-400">✕</button>
+        <button type="button" data-remove-cat-item-effect class="col-span-1 py-1.5 rounded app-secondary-btn text-rose-400" title="Remover efeito">✕</button>
       `;
-      row.querySelector('button')?.addEventListener('click', () => row.remove());
+      row.querySelector('[data-remove-cat-item-effect]')?.addEventListener('click', () => row.remove());
       list.appendChild(row);
     };
 
