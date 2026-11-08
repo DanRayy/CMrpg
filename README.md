@@ -1,6 +1,6 @@
 # CMrpg — Mesa de RPG & Combate em Tempo Real
 
-O **CMrpg** é uma aplicação web completa para gerenciamento de jogos de RPG de mesa, combate tático em tempo real, fichas dinâmicas, controle de inventário e regras sincronizadas via WebSockets.
+O **CMrpg** é uma aplicação web completa para gerenciamento de jogos de RPG de mesa, combate em tempo real, fichas dinâmicas, controle de inventário e regras sincronizadas via WebSockets.
 
 Desenvolvido para proporcionar uma experiência fluida, o sistema atende tanto ao Mestre da mesa quanto aos Jogadores, permitindo sessões colaborativas locais ou remotas via rede virtual.
 
@@ -19,7 +19,7 @@ Desenvolvido para proporcionar uma experiência fluida, o sistema atende tanto a
 
 ### • Combate Tático e Fila de Turnos
 - **Iniciativa Dinâmica:** Ordenação automática e reordenável por Drag & Drop.
-- **Pipeline de Dano:** Aplicação rápida ou tática com cálculo automático de resistências (Física, Mágica e Elementais: Fogo, Gelo, Raio, Luz e Trevas).
+- **Pipeline de Dano:** Aplicação rápida ou tática com cálculo automático de resistências (Física, Mágica e Elementais: Fogo, Gelo, Elétrico, etc).
 - **Acúmulos e Condições:** Gerenciamento de status como **Chamas** (dano progressivo no fim do turno) e **Congelamento** (perda de turno e imunidade temporária).
 
 ### • Fichas de Personagens e Bestiário
@@ -35,7 +35,7 @@ Desenvolvido para proporcionar uma experiência fluida, o sistema atende tanto a
 - **Interruptores Rápidos (Toggle):** Ative ou desative temporariamente qualquer efeito com um clique.
 
 ### • Bloco de Notas & Diário da Ficha
-- **Persistência Segura por ID Único:** Cada página possui identificador próprio imutável, prevenindo embaralhamento de anotações.
+- **Persistência Segura por ID Único:** Cada página possui identificador próprio, prevenindo embaralhamento de anotações.
 - **Autosave Isolado:** Sincronização automática a cada digitação e antes de trocar ou fechar abas.
 - **Validação de Nomes:** Modal para criação de novas páginas com checagem automática de nomes duplicados.
 - **Editor Flutuante:** Menus suspensos de cor e realce sobrepostos sem barras de rolagem internas.
@@ -46,8 +46,8 @@ Desenvolvido para proporcionar uma experiência fluida, o sistema atende tanto a
 - **Quests:** Painel de missões com concessão de recompensas individuais ou em lote.
 
 ### • Multiplayer Colaborativo
-- **Cursores em Tempo Real:** Visualização dos cursores dos jogadores na tela (estilo Figma/Miro).
-- **Controle de Acesso:** Permissões granulares para Mestre (Host) e Jogadores com histórico de ações (Undo/Redo).
+- **Cursores em Tempo Real:** Visualização dos cursores dos jogadores na tela (estilo Figma/Miro/Milanote).
+- **Controle de Acesso:** Permissões granulares para Mestre (Host) e Jogadores com histórico de ações.
 - **Arquitetura Frontend Modular:** Código cliente estruturado em módulos independentes em `static/js/`.
 
 ---
@@ -76,7 +76,7 @@ O CMrpg já possui inicialização automatizada no Windows através do script **
    ```text
    http://26.XX.XX.XX:8000
    ```
-4. Pronto! O jogador já estará conectado à mesa com sincronização em tempo real.
+4. Feito! O jogador já estará conectado à mesa.
 
 ---
 
@@ -90,8 +90,8 @@ A maioria dos provedores residenciais de internet utiliza **CGNAT** (*Carrier-Gr
 ### Vantagens do Radmin VPN no CMrpg:
 1. **Rede Local Virtual Segura (VLAN):** Cria um túnel criptografado ponto a ponto direto entre você e seus jogadores como se todos estivessem conectados no mesmo cabo de rede.
 2. **Supera CGNAT e Bloqueios:** Não exige abrir portas no modem/roteador nem contratar IP fixo com a operadora.
-3. **Identificação Precisa:** Permite que o servidor do CMrpg identifique cada jogador com precisão pelo IP `26.x.x.x`, gerenciando quem é o Mestre e quem são os jogadores sem necessidade de login complexo.
-4. **Baixa Latência:** Comunicação direta ideal para a atualização instantânea dos WebSockets e cursores multiplayer.
+3. **Identificação Precisa:** Permite que o servidor do CMrpg identifique cada jogador com precisão pelo IP `26.x.x.x`, gerenciando quem é o Mestre e quem são os jogadores sem necessidade de um login.
+4. **Baixa Latência:** Comunicação direta ideal para a atualização instantânea dos WebSockets.
 
 ---
 
