@@ -714,7 +714,7 @@
 
     if (grid && emptyState) {
       if (filtered.length === 0) {
-        grid.innerHTML = '';
+        if (grid.innerHTML !== '') grid.innerHTML = '';
         grid.classList.add('hidden');
         emptyState.classList.remove('hidden');
         emptyState.classList.add('flex');
@@ -722,7 +722,17 @@
         emptyState.classList.add('hidden');
         emptyState.classList.remove('flex');
         grid.classList.remove('hidden');
-        grid.innerHTML = filtered.map((char) => buildCharacterCardHtml(char, { forMesa: false })).join('');
+        const nextHtml = filtered.map((char) => buildCharacterCardHtml(char, { forMesa: false })).join('');
+        if (grid.innerHTML !== nextHtml) {
+          const scrollParent = grid.closest('main') || document.documentElement;
+          const prevScrollY = scrollParent.scrollTop !== undefined ? scrollParent.scrollTop : window.scrollY;
+          grid.innerHTML = nextHtml;
+          if (scrollParent.scrollTop !== undefined) {
+            scrollParent.scrollTop = prevScrollY;
+          } else {
+            window.scrollTo(window.scrollX, prevScrollY);
+          }
+        }
       }
     }
 
@@ -2181,17 +2191,26 @@
 
   function renderAll() {
     renderHeaderAndSidebarBadges();
-    renderOverviewTab();
-    renderCharactersTab();
-    if (typeof renderMesaTab === 'function') {
+    const active = state.activeTab;
+    if (active === 'overview') {
+      renderOverviewTab();
+    } else if (active === 'characters') {
+      renderCharactersTab();
+    } else if (active === 'mesa' && typeof renderMesaTab === 'function') {
       renderMesaTab();
+    } else if (active === 'catalog') {
+      renderCatalogTab();
+    } else if (active === 'shop') {
+      renderShopTab();
+    } else if (active === 'bestiary') {
+      renderBestiaryTab();
+    } else if (active === 'quests') {
+      renderQuestsTab();
+    } else if (active === 'skill-trees') {
+      renderSkillTreesTab();
+    } else if (active === 'admin') {
+      renderAdminTab();
     }
-    renderCatalogTab();
-    renderShopTab();
-    renderBestiaryTab();
-    renderQuestsTab();
-    renderSkillTreesTab();
-    renderAdminTab();
     renderBattleSidebar();
     refreshOpenModalsIfAny();
     refreshAllRemoteCursorsVisibility();

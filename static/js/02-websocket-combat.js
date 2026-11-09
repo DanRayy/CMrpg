@@ -292,6 +292,8 @@
           color: identity.color,
           isMaster: identity.isMaster,
           activeTab: state.activeTab,
+          currentTab: state.activeTab === 'characters' ? 'fichas' : state.activeTab,
+          location: state.activeTab === 'characters' ? 'fichas' : state.activeTab,
           ...coords,
         })
       );
@@ -405,12 +407,11 @@
 
     for (const cursor of state.remoteCursors.values()) {
       if (now - cursor.lastSeen > CURSOR_INACTIVITY_MS) continue;
-      const tab = cursor.activeTab || 'overview';
+      let tab = cursor.activeTab || 'overview';
+      if (tab === 'fichas') tab = 'characters';
       if (!byTab[tab]) byTab[tab] = [];
-      // Exibe bolinha + nome no menu lateral quando o jogador está noutra aba (ou para identificar em qual seção está)
-      if (tab !== state.activeTab) {
-        byTab[tab].push(cursor);
-      }
+      // Exibe indicador em formato pílula na respectiva aba do menu lateral
+      byTab[tab].push(cursor);
     }
 
     document.querySelectorAll('[data-nav-cursors]').forEach((container) => {
@@ -496,7 +497,8 @@
       String(data.nickname || '').trim() ||
       (isMaster ? 'Mestre' : `Jogador (${data.ip || ''})`);
 
-    const normalizedTab = data.activeTab === 'characters' ? 'mesa' : (data.activeTab || 'overview');
+    const rawTab = String(data.location || data.currentTab || data.activeTab || 'overview').trim();
+    const normalizedTab = (rawTab === 'fichas' || rawTab === 'characters') ? 'characters' : (rawTab || 'overview');
     let existing = state.remoteCursors.get(cursorId);
     if (!existing) {
       existing = {
@@ -788,6 +790,7 @@
     overview: 'VISÃO GERAL',
     mesa: 'MESA',
     characters: 'FICHAS',
+    fichas: 'FICHAS',
     catalog: 'CATÁLOGO DE ITENS',
     shop: 'LOJA & MERCADORES',
     bestiary: 'BESTIÁRIO',
@@ -797,9 +800,11 @@
   };
 
   function switchTab(tabId) {
+    if (tabId === 'fichas') tabId = 'characters';
     state.activeTab = tabId;
     document.querySelectorAll('[data-nav-tab]').forEach((btn) => {
-      if (btn.getAttribute('data-nav-tab') === tabId) {
+      const btnTab = btn.getAttribute('data-nav-tab');
+      if (btnTab === tabId || (tabId === 'characters' && btnTab === 'fichas')) {
         btn.classList.add('active');
       } else {
         btn.classList.remove('active');
@@ -807,7 +812,7 @@
     });
 
     document.querySelectorAll('.tab-section').forEach((sec) => {
-      if (sec.id === `tab-${tabId}`) {
+      if (sec.id === `tab-${tabId}` || (tabId === 'characters' && sec.id === 'tab-fichas')) {
         sec.classList.remove('hidden');
       } else {
         sec.classList.add('hidden');
@@ -819,8 +824,21 @@
       mainContainer.classList.toggle('mesa-fullbleed', tabId === 'mesa');
     }
 
+    const bcRoom = document.getElementById('topbar-room-breadcrumb');
+    if (bcRoom) {
+      bcRoom.textContent = state.room?.name || 'RPG';
+    }
+
     const bcSec = document.getElementById('topbar-section-breadcrumb');
-    if (bcSec) bcSec.textContent = TAB_TITLES[tabId] || 'VISÃO GERAL';
+    if (bcSec) {
+      if (tabId === 'characters' || tabId === 'fichas') {
+        bcSec.textContent = 'FICHAS';
+      } else if (tabId === 'mesa') {
+        bcSec.textContent = 'MESA';
+      } else {
+        bcSec.textContent = TAB_TITLES[tabId] || 'VISÃO GERAL';
+      }
+    }
 
     // Fecha menu mobile caso aberto
     document.getElementById('app-sidebar')?.classList.add('-translate-x-full');
@@ -828,9 +846,10 @@
 
     renderAll();
     refreshAllRemoteCursorsVisibility();
-    if (state.lastLocalPointer.hasMoved) {
-      sendCursorMoveNow(state.lastLocalPointer.x, state.lastLocalPointer.y);
-    }
+    sendCursorMoveNow(
+      state.lastLocalPointer.hasMoved ? state.lastLocalPointer.x : (window.innerWidth / 2),
+      state.lastLocalPointer.hasMoved ? state.lastLocalPointer.y : (window.innerHeight / 2)
+    );
   }
 
   // ===========================================================================
@@ -844,7 +863,7 @@
   function renderHeaderAndSidebarBadges() {
     updateRoleUI();
 
-    const rName = state.room?.name || 'SALA1';
+    const rName = state.room?.name || 'RPG';
     const rSub = state.room?.subtitle || 'TESTES DE TUDOO';
     const rQuote = state.room?.quote || '';
     const curName = state.room?.currencyName || 'Ouro';
@@ -857,6 +876,18 @@
     setTxt('sidebar-room-name', rName);
     setTxt('sidebar-room-subtitle', rSub);
     setTxt('topbar-room-breadcrumb', rName);
+
+    const bcSec = document.getElementById('topbar-section-breadcrumb');
+    if (bcSec) {
+      const curTab = state.activeTab;
+      if (curTab === 'characters' || curTab === 'fichas') {
+        bcSec.textContent = 'FICHAS';
+      } else if (curTab === 'mesa') {
+        bcSec.textContent = 'MESA';
+      } else {
+        bcSec.textContent = TAB_TITLES[curTab] || 'VISÃO GERAL';
+      }
+    }
     setTxt('hero-room-name', rName);
     setTxt('hero-room-subtitle', rSub);
     setTxt('hero-room-quote', rQuote);

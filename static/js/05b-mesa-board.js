@@ -529,19 +529,23 @@ function clampCameraToBounds(x, y, zoom) {
 }
 
 let mesaLastAppliedZoom = 1;
-let mesaRerasterRaf = null;
+let mesaRerasterTimer = null;
 
 function triggerMesaZoomRerasterization() {
-  const worldEl = document.getElementById('mesa-world');
-  if (!worldEl) return;
-  if (mesaRerasterRaf) cancelAnimationFrame(mesaRerasterRaf);
-  mesaRerasterRaf = requestAnimationFrame(() => {
-    mesaRerasterRaf = null;
-    // Micro-escala e reflow para invalidar o cache de textura da GPU, forçando super-sampling nítido no zoom
-    worldEl.style.willChange = 'auto';
-    void worldEl.offsetHeight;
-    worldEl.style.willChange = 'transform';
-  });
+  if (mesaRerasterTimer) clearTimeout(mesaRerasterTimer);
+  mesaRerasterTimer = setTimeout(() => {
+    mesaRerasterTimer = null;
+    const worldEl = document.getElementById('mesa-world');
+    if (!worldEl) return;
+    // Disparado estritamente uma única vez após o término da ação de zoom (debounce de 150ms)
+    // Sem loops contínuos de reflow ou micro-alternâncias de escala na GPU
+    const canvases = worldEl.querySelectorAll('canvas[data-supersample]');
+    canvases.forEach((cv) => {
+      if (typeof applyCanvasSuperSampling === 'function') {
+        applyCanvasSuperSampling(cv, mesaCamera.zoom);
+      }
+    });
+  }, 150);
 }
 
 function applyMesaCameraTransform() {
@@ -1440,19 +1444,8 @@ function updateTableRenderQuality(qualityStr) {
     worldEl.style.setProperty('--mesa-effective-dpr', String(effectiveDpr));
     worldEl.style.imageRendering = imageRenderingMode;
     worldEl.style.backfaceVisibility = 'hidden';
-    worldEl.style.transformStyle = q === '1' ? 'flat' : 'preserve-3d';
-
-    // Invalida o buffer de textura da GPU para forçar re-rasterização imediata na nova resolução sem precisar de F5
-    worldEl.style.willChange = 'auto';
-    void worldEl.offsetHeight;
+    worldEl.style.transformStyle = 'preserve-3d';
     applyMesaCameraTransform();
-    if (typeof requestAnimationFrame === 'function') {
-      requestAnimationFrame(() => {
-        if (worldEl) worldEl.style.willChange = 'transform';
-      });
-    } else {
-      worldEl.style.willChange = 'transform';
-    }
   }
 
   if (tokensLayer) {

@@ -401,10 +401,10 @@ def test_decoupled_mesa_compact_state_and_cards_rendering(tmp_path: Path) -> Non
         assert sync["table"]["sizes"]["char_default_1"] == {"w": 72, "h": 96}
         assert sync["table"]["sizes"]["char_default_2"] == {"w": 420, "h": 468}
 
-        # Static asset query string must be v1.13.4
+        # Static asset query string must be v1.13.5
         resp = client.get("/")
-        assert "js/01-core-state.js?v=1.13.4" in resp.text
-        assert "js/03-tabs-renderers.js?v=1.13.4" in resp.text
+        assert "js/01-core-state.js?v=1.13.5" in resp.text
+        assert "js/03-tabs-renderers.js?v=1.13.5" in resp.text
 
         # Verify 03-tabs-renderers.js restricts compact mode exclusively to Mesa:
         js_resp = client.get("/js/03-tabs-renderers.js")
@@ -561,6 +561,62 @@ def test_v1_13_4_turn_start_charges_and_enemy_guards(tmp_path: Path) -> None:
         sync = _drain_until_type(ws_m, "state_sync")
         assert sync["battle"]["currentTurnIndex"] == 1
         assert sync["battle"]["charges"] == 1
+
+
+def test_v1_13_5_navigation_presence_and_render_stability(tmp_path: Path) -> None:
+    _setup_isolated_state(tmp_path)
+    client = TestClient(main.app, client=("127.0.0.1", 53030))
+
+    # 1. HTML and assets checks
+    resp_html = client.get("/")
+    assert 'styles.css?v=1.13.5' in resp_html.text
+    assert 'js/02-websocket-combat.js?v=1.13.5' in resp_html.text
+    assert 'js/05b-mesa-board.js?v=1.13.5' in resp_html.text
+
+    # 2. CSS Subpixel stabilization & GPU layer rules
+    resp_css = client.get("/styles.css")
+    assert "transform-style: preserve-3d" in resp_css.text
+    assert "backface-visibility: hidden" in resp_css.text
+    assert "transform: translate3d(0, 0, 0)" in resp_css.text
+    assert "-webkit-transform-style: preserve-3d" in resp_css.text
+    assert "-webkit-backface-visibility: hidden" in resp_css.text
+    assert ".tabletop-container" in resp_css.text
+    assert ".mesa-viewport" in resp_css.text
+
+    # 3. JS zoom debounce (150ms) and no cyclic reflow loop
+    resp_mesa_js = client.get("/js/05b-mesa-board.js")
+    assert "debounce de 150ms" in resp_mesa_js.text
+    assert "void worldEl.offsetHeight" not in resp_mesa_js.text
+
+    # 4. JS Tab navigation and presence
+    resp_combat_js = client.get("/js/02-websocket-combat.js")
+    assert "bcSec.textContent = 'FICHAS'" in resp_combat_js.text
+    assert "bcSec.textContent = 'MESA'" in resp_combat_js.text
+    assert "location: state.activeTab === 'characters' ? 'fichas' : state.activeTab" in resp_combat_js.text
+    assert "const normalizedTab = (rawTab === 'fichas' || rawTab === 'characters') ? 'characters' : (rawTab || 'overview')" in resp_combat_js.text
+
+    # 5. WebSocket cursor_move retains fichas/characters and does not force-convert to mesa
+    client_m = TestClient(main.app, client=("127.0.0.1", 53031))
+    client_p = TestClient(main.app, client=("26.77.66.55", 53032))
+    with client_m.websocket_connect("/ws") as ws_m, client_p.websocket_connect("/ws") as ws_p:
+        _drain_until_type(ws_m, "state_sync")
+        _drain_until_type(ws_p, "state_sync")
+
+        # Player moves cursor while on Fichas tab
+        ws_p.send_json({
+            "type": "cursor_move",
+            "clientId": "client_fichas_test",
+            "activeTab": "characters",
+            "currentTab": "fichas",
+            "location": "fichas",
+            "relX": 0.5,
+            "relY": 0.5,
+        })
+        msg = _drain_until_type(ws_m, "cursor_move")
+        assert msg["activeTab"] == "characters"
+        # Must not be converted to mesa on broadcast
+        assert msg["activeTab"] != "mesa"
+
 
 
 
