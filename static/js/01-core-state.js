@@ -1611,14 +1611,18 @@
 
     const masterMode = isEffectiveMaster();
     if (roleBtn && roleIcon && roleText) {
-      if (masterMode) {
-        roleBtn.classList.remove('role-player');
-        roleIcon.innerHTML = '<iconify-icon icon="game-icons:crown"></iconify-icon>';
-        roleText.textContent = 'MODO MESTRE';
-      } else {
-        roleBtn.classList.add('role-player');
-        roleIcon.innerHTML = '<iconify-icon icon="game-icons:hooded-figure"></iconify-icon>';
-        roleText.textContent = state.isHost ? 'VISÃO JOGADOR' : 'MODO JOGADOR';
+      const currentRole = masterMode ? 'master' : (state.isHost ? 'player_host' : 'player');
+      if (roleBtn.dataset.currentRole !== currentRole) {
+        roleBtn.dataset.currentRole = currentRole;
+        if (masterMode) {
+          roleBtn.classList.remove('role-player');
+          roleIcon.innerHTML = '<iconify-icon icon="game-icons:crown"></iconify-icon>';
+          roleText.textContent = 'MODO MESTRE';
+        } else {
+          roleBtn.classList.add('role-player');
+          roleIcon.innerHTML = '<iconify-icon icon="game-icons:hooded-figure"></iconify-icon>';
+          roleText.textContent = state.isHost ? 'VISÃO JOGADOR' : 'MODO JOGADOR';
+        }
       }
     }
 

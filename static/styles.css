@@ -58,6 +58,10 @@ body {
 .app-sidebar {
   background-color: var(--bg-sidebar);
   border-right: 1px solid var(--border-subtle);
+  contain: layout style;
+  transform: translate3d(0, 0, 0);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
 }
 
 .app-topbar {
@@ -610,9 +614,12 @@ body {
   left: 0;
   pointer-events: none;
   z-index: 9999;
-  will-change: transform, opacity;
-  transition: transform 40ms linear, opacity 220ms ease;
+  will-change: transform;
+  transition: opacity 220ms ease;
   opacity: 1;
+  transform: translate3d(0, 0, 0);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
 }
 
 .remote-cursor.cursor-hidden {
@@ -661,6 +668,7 @@ body {
   gap: 4px;
   flex-wrap: wrap;
   justify-content: flex-end;
+  contain: layout style;
 }
 
 .sidebar-cursor-pill {

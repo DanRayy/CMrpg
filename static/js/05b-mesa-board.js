@@ -1033,6 +1033,10 @@ function handleIncomingTableDrag(data) {
   if (tbl && Number.isFinite(data.x) && Number.isFinite(data.y)) {
     tbl.positions[charId] = { x: Math.round(data.x), y: Math.round(data.y) };
   }
+
+  // Se o usuário não está na aba da Mesa, atualiza apenas em memória e não mexe no DOM da Mesa
+  if (state.activeTab !== 'mesa') return;
+
   const tokensLayer = document.getElementById('mesa-tokens-layer');
   const tokenEl = tokensLayer?.querySelector(`.mesa-token[data-token-char-id="${CSS.escape(charId)}"]`);
   if (tokenEl && Number.isFinite(data.x) && Number.isFinite(data.y)) {
@@ -1046,7 +1050,10 @@ function handleIncomingTableDrag(data) {
       badgeEl.className = 'mesa-remote-drag-badge';
       tokenEl.appendChild(badgeEl);
     }
-    badgeEl.textContent = `Arrastando: ${userName}`;
+    const desiredBadgeText = `Arrastando: ${userName}`;
+    if (badgeEl.textContent !== desiredBadgeText) {
+      badgeEl.textContent = desiredBadgeText;
+    }
 
     if (mesaRemoteDragWatchdogs.has(charId)) {
       clearTimeout(mesaRemoteDragWatchdogs.get(charId));
@@ -1078,6 +1085,9 @@ function handleIncomingTableUpdate(data) {
     mesaRemoteDragWatchdogs.delete(charId);
   }
 
+  // Se o usuário não está na aba da Mesa, não manipula o DOM da Mesa
+  if (state.activeTab !== 'mesa') return;
+
   if (mesaDrag.charId === charId && mesaDrag.movedBeyondThreshold) return;
 
   const tokensLayer = document.getElementById('mesa-tokens-layer');
@@ -1098,7 +1108,9 @@ function handleIncomingTableMoveRejected(data) {
     const tbl = ensureClientTableState();
     if (tbl) tbl.positions[charId] = data.position;
   }
-  renderMesaTab();
+  if (state.activeTab === 'mesa') {
+    renderMesaTab();
+  }
   showToast('Você não tem permissão para movimentar este card na Mesa.', 'warning');
 }
 
@@ -1106,9 +1118,8 @@ function handleIncomingTableSync(data) {
   if (!data.table || typeof data.table !== 'object') return;
   state.table = data.table;
   saveStateToLocalStorage();
-  renderMesaTab();
-  if (typeof renderCharactersTab === 'function') {
-    renderCharactersTab();
+  if (state.activeTab === 'mesa' && typeof renderMesaTab === 'function') {
+    renderMesaTab();
   }
 }
 

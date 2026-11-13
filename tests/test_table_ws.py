@@ -401,10 +401,10 @@ def test_decoupled_mesa_compact_state_and_cards_rendering(tmp_path: Path) -> Non
         assert sync["table"]["sizes"]["char_default_1"] == {"w": 72, "h": 96}
         assert sync["table"]["sizes"]["char_default_2"] == {"w": 420, "h": 468}
 
-        # Static asset query string must be v1.13.5
+        # Static asset query string must be v1.13.6
         resp = client.get("/")
-        assert "js/01-core-state.js?v=1.13.5" in resp.text
-        assert "js/03-tabs-renderers.js?v=1.13.5" in resp.text
+        assert "js/01-core-state.js?v=1.13.6" in resp.text
+        assert "js/03-tabs-renderers.js?v=1.13.6" in resp.text
 
         # Verify 03-tabs-renderers.js restricts compact mode exclusively to Mesa:
         js_resp = client.get("/js/03-tabs-renderers.js")
@@ -569,9 +569,9 @@ def test_v1_13_5_navigation_presence_and_render_stability(tmp_path: Path) -> Non
 
     # 1. HTML and assets checks
     resp_html = client.get("/")
-    assert 'styles.css?v=1.13.5' in resp_html.text
-    assert 'js/02-websocket-combat.js?v=1.13.5' in resp_html.text
-    assert 'js/05b-mesa-board.js?v=1.13.5' in resp_html.text
+    assert 'styles.css?v=1.13.6' in resp_html.text
+    assert 'js/02-websocket-combat.js?v=1.13.6' in resp_html.text
+    assert 'js/05b-mesa-board.js?v=1.13.6' in resp_html.text
 
     # 2. CSS Subpixel stabilization & GPU layer rules
     resp_css = client.get("/styles.css")
@@ -616,6 +616,31 @@ def test_v1_13_5_navigation_presence_and_render_stability(tmp_path: Path) -> Non
         assert msg["activeTab"] == "characters"
         # Must not be converted to mesa on broadcast
         assert msg["activeTab"] != "mesa"
+
+
+def test_cross_tab_flicker_and_sidebar_stability():
+    client = TestClient(main.app)
+
+    # 1. Sidebar containment & cursor styles
+    resp_css = client.get("/styles.css")
+    assert "contain: layout style" in resp_css.text
+    assert "transition: transform 40ms linear" not in resp_css.text
+
+    # 2. WebSocket cursor throttling & presence diffing
+    resp_combat_js = client.get("/js/02-websocket-combat.js")
+    assert "container.dataset.renderedSig === sig" in resp_combat_js.text
+    assert "if (navPresenceChanged)" in resp_combat_js.text
+    assert "if (!isSameTab || !isFresh)" in resp_combat_js.text
+
+    # 3. Mesa drag/sync isolation from non-mesa tabs
+    resp_mesa_js = client.get("/js/05b-mesa-board.js")
+    assert "if (state.activeTab !== 'mesa') return;" in resp_mesa_js.text
+    assert "renderCharactersTab" not in resp_mesa_js.text
+
+    # 4. Fichas tab DOM signature caching
+    resp_tabs_js = client.get("/js/03-tabs-renderers.js")
+    assert "grid.dataset.renderedSig === sig" in resp_tabs_js.text
+
 
 
 

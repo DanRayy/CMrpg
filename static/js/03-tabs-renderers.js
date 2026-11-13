@@ -709,12 +709,16 @@
     const filtered = (state.characters || []).filter((c) => (c.name || '').toLowerCase().includes(q));
 
     if (countLabel) {
-      countLabel.textContent = `${filtered.length} / ${(state.characters || []).length} CHAR(S)`;
+      const countText = `${filtered.length} / ${(state.characters || []).length} CHAR(S)`;
+      if (countLabel.textContent !== countText) {
+        countLabel.textContent = countText;
+      }
     }
 
     if (grid && emptyState) {
       if (filtered.length === 0) {
         if (grid.innerHTML !== '') grid.innerHTML = '';
+        grid.dataset.renderedSig = 'empty';
         grid.classList.add('hidden');
         emptyState.classList.remove('hidden');
         emptyState.classList.add('flex');
@@ -722,16 +726,36 @@
         emptyState.classList.add('hidden');
         emptyState.classList.remove('flex');
         grid.classList.remove('hidden');
+
+        const battle = getBattleState();
+        const actingCharId = battle.isActive && battle.orderIds?.length
+          ? battle.orderIds[battle.currentTurnIndex % battle.orderIds.length]
+          : null;
+
+        const sig = `${q}:${isEffectiveMaster()}:${battle.isActive}:${actingCharId}:` +
+          filtered.map((c) => [
+            c.id, c.name, c.level, c.hp, c.maxHp, c.armor, c.maxArmor, c.mana, c.maxMana,
+            c.pa, c.xp, c.image, c.avatar, c.isEnemy, c.reveladoParaJogadores,
+            c.pendingAttributePoints, c.skillPoints,
+            c.conditions?.length || 0,
+            c.resistances ? Object.keys(c.resistances).length : 0
+          ].join(',')).join(';');
+
+        if (grid.dataset.renderedSig === sig) {
+          renderBattleSidebar();
+          updateBattleToggleButton();
+          return;
+        }
+
         const nextHtml = filtered.map((char) => buildCharacterCardHtml(char, { forMesa: false })).join('');
-        if (grid.innerHTML !== nextHtml) {
-          const scrollParent = grid.closest('main') || document.documentElement;
-          const prevScrollY = scrollParent.scrollTop !== undefined ? scrollParent.scrollTop : window.scrollY;
-          grid.innerHTML = nextHtml;
-          if (scrollParent.scrollTop !== undefined) {
-            scrollParent.scrollTop = prevScrollY;
-          } else {
-            window.scrollTo(window.scrollX, prevScrollY);
-          }
+        const scrollParent = grid.closest('main') || document.documentElement;
+        const prevScrollY = scrollParent.scrollTop !== undefined ? scrollParent.scrollTop : window.scrollY;
+        grid.innerHTML = nextHtml;
+        grid.dataset.renderedSig = sig;
+        if (scrollParent.scrollTop !== undefined) {
+          scrollParent.scrollTop = prevScrollY;
+        } else {
+          window.scrollTo(window.scrollX, prevScrollY);
         }
       }
     }

@@ -325,6 +325,17 @@
   }
 
   function createOrUpdateRemoteCursorElement(cursor) {
+    const isSameTab = cursor.activeTab === state.activeTab;
+    const isFresh = Date.now() - cursor.lastSeen <= CURSOR_INACTIVITY_MS;
+
+    // Se o cursor estiver noutra aba ou inativo, garanta que está oculto e não processe DOM
+    if (!isSameTab || !isFresh) {
+      if (cursor.el && !cursor.el.classList.contains('cursor-hidden')) {
+        cursor.el.classList.add('cursor-hidden');
+      }
+      return;
+    }
+
     const layer = document.getElementById('multiplayer-cursors-layer');
     if (!layer) return;
 
@@ -356,45 +367,53 @@
       `;
       layer.appendChild(el);
       cursor.el = el;
+      el._lastColor = cursor.color;
+      el._lastMaster = isMaster;
+      el._lastNick = '';
     }
 
-    if (isMaster) {
-      el.classList.add('cursor-master-rgb');
-      const badge = el.querySelector('.remote-cursor-badge');
-      if (badge && !badge.querySelector('iconify-icon[icon="game-icons:crown"]')) {
-        badge.innerHTML = `
-          <iconify-icon icon="game-icons:crown" class="text-amber-300"></iconify-icon>
-          <span class="remote-cursor-badge-name"></span>
-        `;
+    if (el._lastMaster !== isMaster) {
+      el._lastMaster = isMaster;
+      if (isMaster) {
+        el.classList.add('cursor-master-rgb');
+        const badge = el.querySelector('.remote-cursor-badge');
+        if (badge) {
+          badge.innerHTML = `
+            <iconify-icon icon="game-icons:crown" class="text-amber-300"></iconify-icon>
+            <span class="remote-cursor-badge-name">${escapeHtml(cursor.nickname)}</span>
+          `;
+          el._lastNick = cursor.nickname;
+        }
+      } else {
+        el.classList.remove('cursor-master-rgb');
+        const badge = el.querySelector('.remote-cursor-badge');
+        if (badge) {
+          badge.innerHTML = `
+            <span class="remote-cursor-badge-dot"></span>
+            <span class="remote-cursor-badge-name">${escapeHtml(cursor.nickname)}</span>
+          `;
+          el._lastNick = cursor.nickname;
+        }
       }
-    } else {
-      el.classList.remove('cursor-master-rgb');
+    }
+
+    if (!isMaster && el._lastColor !== cursor.color) {
+      el._lastColor = cursor.color;
       el.style.setProperty('--cursor-color', cursor.color);
       const arrowPath = el.querySelector('.remote-cursor-arrow-path');
       if (arrowPath) arrowPath.setAttribute('fill', cursor.color);
-      const badge = el.querySelector('.remote-cursor-badge');
-      if (badge && !badge.querySelector('.remote-cursor-badge-dot')) {
-        badge.innerHTML = `
-          <span class="remote-cursor-badge-dot"></span>
-          <span class="remote-cursor-badge-name"></span>
-        `;
-      }
     }
 
-    const nameEl = el.querySelector('.remote-cursor-badge-name');
-    if (nameEl && nameEl.textContent !== cursor.nickname) {
-      nameEl.textContent = cursor.nickname;
+    if (el._lastNick !== cursor.nickname) {
+      el._lastNick = cursor.nickname;
+      const nameEl = el.querySelector('.remote-cursor-badge-name');
+      if (nameEl) nameEl.textContent = cursor.nickname;
     }
 
-    const isSameTab = cursor.activeTab === state.activeTab;
-    const isFresh = Date.now() - cursor.lastSeen <= CURSOR_INACTIVITY_MS;
-
-    if (isSameTab && isFresh) {
-      const { x, y } = computeRemoteCursorScreenXY(cursor);
-      el.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+    const { x, y } = computeRemoteCursorScreenXY(cursor);
+    el.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+    if (el.classList.contains('cursor-hidden')) {
       el.classList.remove('cursor-hidden');
-    } else {
-      el.classList.add('cursor-hidden');
     }
   }
 
@@ -417,6 +436,18 @@
     document.querySelectorAll('[data-nav-cursors]').forEach((container) => {
       const tabId = container.getAttribute('data-nav-cursors');
       const list = byTab[tabId] || [];
+      const sig = list
+        .map(
+          (c) =>
+            `${c.cursorId || c.nickname}:${c.nickname}:${c.color}:${Boolean(
+              c.isMaster || c.color === 'RGB_CHROMA'
+            )}`
+        )
+        .join('|');
+
+      if (container.dataset.renderedSig === sig) return;
+      container.dataset.renderedSig = sig;
+
       if (list.length === 0) {
         if (container.innerHTML !== '') container.innerHTML = '';
         return;
@@ -500,7 +531,10 @@
     const rawTab = String(data.location || data.currentTab || data.activeTab || 'overview').trim();
     const normalizedTab = (rawTab === 'fichas' || rawTab === 'characters') ? 'characters' : (rawTab || 'overview');
     let existing = state.remoteCursors.get(cursorId);
+    let navPresenceChanged = false;
+
     if (!existing) {
+      navPresenceChanged = true;
       existing = {
         cursorId,
         connId: data.connId || '',
@@ -523,6 +557,14 @@
       };
       state.remoteCursors.set(cursorId, existing);
     } else {
+      if (
+        existing.activeTab !== normalizedTab ||
+        existing.nickname !== resolvedNickname ||
+        existing.color !== resolvedColor ||
+        existing.isMaster !== isMaster
+      ) {
+        navPresenceChanged = true;
+      }
       existing.connId = data.connId || existing.connId;
       existing.memberId = data.memberId || existing.memberId;
       existing.ip = data.ip || existing.ip;
@@ -542,7 +584,9 @@
     }
 
     createOrUpdateRemoteCursorElement(existing);
-    renderSidebarRemoteCursorIndicators();
+    if (navPresenceChanged) {
+      renderSidebarRemoteCursorIndicators();
+    }
   }
 
   function handleIncomingCursorDisconnect(data) {
@@ -870,7 +914,9 @@
 
     const setTxt = (id, val) => {
       const el = document.getElementById(id);
-      if (el) el.textContent = val;
+      if (el && el.textContent !== String(val)) {
+        el.textContent = String(val);
+      }
     };
 
     setTxt('sidebar-room-name', rName);
@@ -909,9 +955,12 @@
 
     const combatDot = document.getElementById('combat-nav-dot');
     if (combatDot) {
-      combatDot.className = state.battle?.isActive
+      const targetDotCls = state.battle?.isActive
         ? 'w-2.5 h-2.5 rounded-full bg-red-400 animate-ping'
         : 'w-2.5 h-2.5 rounded-full bg-red-500/60';
+      if (combatDot.className !== targetDotCls) {
+        combatDot.className = targetDotCls;
+      }
     }
 
     const hostIp = state.network?.preferred_ip || window.location.hostname || '127.0.0.1';
@@ -2219,7 +2268,14 @@
     const queueListEl = document.getElementById('battle-queue-list');
     if (queueListEl) {
       const canReorderQueue = isEffectiveMaster() || hasPermission('combat_edit_order');
-      queueListEl.innerHTML = battle.orderIds.map((id, index) => {
+      const queueSig = `${actingIndex}:${canReorderQueue}:` + battle.orderIds.map((id) => {
+        const c = (state.characters || []).find((char) => char.id === id);
+        return `${id}:${c?.hp}:${c?.isDead}:${battle.turnCounts?.[id] || 0}`;
+      }).join(';');
+
+      if (queueListEl.dataset.renderedSig !== queueSig) {
+        queueListEl.dataset.renderedSig = queueSig;
+        queueListEl.innerHTML = battle.orderIds.map((id, index) => {
         const c = (state.characters || []).find((char) => char.id === id);
         if (!c) return '';
         const isDead = Number(c.hp || 0) <= 0 || Boolean(c.isDead);
@@ -2339,6 +2395,7 @@
             }
           });
         });
+      }
       }
     }
   }
