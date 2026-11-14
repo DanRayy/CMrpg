@@ -1020,18 +1020,92 @@ function sendMesaFinalMove(charId, x, y) {
 }
 
 // ===========================================================================
-// Handlers de Mensagens WebSocket da Mesa
+// Handlers de Mensagens WebSocket da Mesa & Interpolação 60 FPS
 // ===========================================================================
 const mesaRemoteDragWatchdogs = new Map();
+const mesaRemoteInterpolations = new Map(); // charId -> { currentX, currentY, targetX, targetY, tokenEl, isDragging }
+let mesaInterpolationRafId = null;
+
+function stepMesaInterpolations() {
+  mesaInterpolationRafId = null;
+  if (mesaRemoteInterpolations.size === 0) return;
+
+  const LERP_FACTOR = 0.22;
+  const MIN_DELTA = 0.2;
+  let hasActiveMovement = false;
+
+  for (const [charId, entry] of mesaRemoteInterpolations.entries()) {
+    const dx = entry.targetX - entry.currentX;
+    const dy = entry.targetY - entry.currentY;
+
+    if (Math.abs(dx) > MIN_DELTA || Math.abs(dy) > MIN_DELTA) {
+      entry.currentX += dx * LERP_FACTOR;
+      entry.currentY += dy * LERP_FACTOR;
+      hasActiveMovement = true;
+    } else {
+      entry.currentX = entry.targetX;
+      entry.currentY = entry.targetY;
+      if (!entry.isDragging) {
+        mesaRemoteInterpolations.delete(charId);
+      }
+    }
+
+    if (entry.tokenEl) {
+      entry.tokenEl.style.transform = `translate3d(${entry.currentX.toFixed(1)}px, ${entry.currentY.toFixed(1)}px, 0)`;
+    }
+  }
+
+  if (hasActiveMovement || mesaRemoteInterpolations.size > 0) {
+    mesaInterpolationRafId = requestAnimationFrame(stepMesaInterpolations);
+  }
+}
+
+function startMesaInterpolation(charId, tokenEl, targetX, targetY, isDragging = true) {
+  let entry = mesaRemoteInterpolations.get(charId);
+  if (!entry) {
+    let initX = targetX;
+    let initY = targetY;
+    if (tokenEl && tokenEl.style.transform) {
+      const match = tokenEl.style.transform.match(/translate3d\(([-0-9.]+)px,\s*([-0-9.]+)px/);
+      if (match) {
+        const parsedX = parseFloat(match[1]);
+        const parsedY = parseFloat(match[2]);
+        if (Number.isFinite(parsedX)) initX = parsedX;
+        if (Number.isFinite(parsedY)) initY = parsedY;
+      }
+    }
+    entry = {
+      currentX: initX,
+      currentY: initY,
+      targetX,
+      targetY,
+      tokenEl,
+      isDragging,
+    };
+    mesaRemoteInterpolations.set(charId, entry);
+  } else {
+    entry.targetX = targetX;
+    entry.targetY = targetY;
+    entry.tokenEl = tokenEl;
+    entry.isDragging = isDragging;
+  }
+
+  if (!mesaInterpolationRafId) {
+    mesaInterpolationRafId = requestAnimationFrame(stepMesaInterpolations);
+  }
+}
 
 function handleIncomingTableDrag(data) {
   const charId = data.cardId || data.charId || data.id;
   if (!charId) return;
   if (mesaDrag.charId === charId && mesaDrag.movedBeyondThreshold) return;
 
+  const targetX = Math.round(data.x);
+  const targetY = Math.round(data.y);
+
   const tbl = ensureClientTableState();
-  if (tbl && Number.isFinite(data.x) && Number.isFinite(data.y)) {
-    tbl.positions[charId] = { x: Math.round(data.x), y: Math.round(data.y) };
+  if (tbl && Number.isFinite(targetX) && Number.isFinite(targetY)) {
+    tbl.positions[charId] = { x: targetX, y: targetY };
   }
 
   // Se o usuário não está na aba da Mesa, atualiza apenas em memória e não mexe no DOM da Mesa
@@ -1039,9 +1113,8 @@ function handleIncomingTableDrag(data) {
 
   const tokensLayer = document.getElementById('mesa-tokens-layer');
   const tokenEl = tokensLayer?.querySelector(`.mesa-token[data-token-char-id="${CSS.escape(charId)}"]`);
-  if (tokenEl && Number.isFinite(data.x) && Number.isFinite(data.y)) {
+  if (tokenEl && Number.isFinite(targetX) && Number.isFinite(targetY)) {
     tokenEl.classList.add('mesa-token-remote-dragging');
-    tokenEl.style.transform = `translate3d(${Math.round(data.x)}px, ${Math.round(data.y)}px, 0)`;
 
     const userName = String(data.user || 'Jogador');
     let badgeEl = tokenEl.querySelector('.mesa-remote-drag-badge');
@@ -1055,6 +1128,8 @@ function handleIncomingTableDrag(data) {
       badgeEl.textContent = desiredBadgeText;
     }
 
+    startMesaInterpolation(charId, tokenEl, targetX, targetY, true);
+
     if (mesaRemoteDragWatchdogs.has(charId)) {
       clearTimeout(mesaRemoteDragWatchdogs.get(charId));
     }
@@ -1063,6 +1138,8 @@ function handleIncomingTableDrag(data) {
       const b = tokenEl.querySelector('.mesa-remote-drag-badge');
       if (b) b.remove();
       mesaRemoteDragWatchdogs.delete(charId);
+      const interp = mesaRemoteInterpolations.get(charId);
+      if (interp) interp.isDragging = false;
     }, 400);
     mesaRemoteDragWatchdogs.set(charId, timer);
   }
@@ -1073,9 +1150,12 @@ function handleIncomingTableUpdate(data) {
   const pos = data.position || (Number.isFinite(data.x) && Number.isFinite(data.y) ? { x: data.x, y: data.y } : null);
   if (!charId || !pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.y)) return;
 
+  const finalX = Math.round(pos.x);
+  const finalY = Math.round(pos.y);
+
   const tbl = ensureClientTableState();
   if (tbl) {
-    tbl.positions[charId] = { x: Math.round(pos.x), y: Math.round(pos.y) };
+    tbl.positions[charId] = { x: finalX, y: finalY };
     if (Number.isFinite(data.rev)) tbl.rev = data.rev;
   }
   saveStateToLocalStorage();
@@ -1096,7 +1176,7 @@ function handleIncomingTableUpdate(data) {
     tokenEl.classList.remove('mesa-token-remote-dragging');
     const badge = tokenEl.querySelector('.mesa-remote-drag-badge');
     if (badge) badge.remove();
-    tokenEl.style.transform = `translate3d(${Math.round(pos.x)}px, ${Math.round(pos.y)}px, 0)`;
+    startMesaInterpolation(charId, tokenEl, finalX, finalY, false);
   }
 }
 

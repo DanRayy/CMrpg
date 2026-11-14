@@ -401,10 +401,10 @@ def test_decoupled_mesa_compact_state_and_cards_rendering(tmp_path: Path) -> Non
         assert sync["table"]["sizes"]["char_default_1"] == {"w": 72, "h": 96}
         assert sync["table"]["sizes"]["char_default_2"] == {"w": 420, "h": 468}
 
-        # Static asset query string must be v1.13.6
+        # Static asset query string must be v1.13.7
         resp = client.get("/")
-        assert "js/01-core-state.js?v=1.13.6" in resp.text
-        assert "js/03-tabs-renderers.js?v=1.13.6" in resp.text
+        assert "js/01-core-state.js?v=1.13.7" in resp.text
+        assert "js/03-tabs-renderers.js?v=1.13.7" in resp.text
 
         # Verify 03-tabs-renderers.js restricts compact mode exclusively to Mesa:
         js_resp = client.get("/js/03-tabs-renderers.js")
@@ -569,9 +569,9 @@ def test_v1_13_5_navigation_presence_and_render_stability(tmp_path: Path) -> Non
 
     # 1. HTML and assets checks
     resp_html = client.get("/")
-    assert 'styles.css?v=1.13.6' in resp_html.text
-    assert 'js/02-websocket-combat.js?v=1.13.6' in resp_html.text
-    assert 'js/05b-mesa-board.js?v=1.13.6' in resp_html.text
+    assert 'styles.css?v=1.13.7' in resp_html.text
+    assert 'js/02-websocket-combat.js?v=1.13.7' in resp_html.text
+    assert 'js/05b-mesa-board.js?v=1.13.7' in resp_html.text
 
     # 2. CSS Subpixel stabilization & GPU layer rules
     resp_css = client.get("/styles.css")
@@ -640,6 +640,16 @@ def test_cross_tab_flicker_and_sidebar_stability():
     # 4. Fichas tab DOM signature caching
     resp_tabs_js = client.get("/js/03-tabs-renderers.js")
     assert "grid.dataset.renderedSig === sig" in resp_tabs_js.text
+
+    # 5. LERP 60 FPS Interpolation engine on Mesa tokens and remote cursors
+    assert "stepMesaInterpolations" in resp_mesa_js.text
+    assert "startMesaInterpolation" in resp_mesa_js.text
+    assert "requestAnimationFrame(stepMesaInterpolations)" in resp_mesa_js.text
+    assert "stepRemoteCursorsInterpolations" in resp_combat_js.text
+    assert "startRemoteCursorsInterpolation" in resp_combat_js.text
+    assert "requestAnimationFrame(stepRemoteCursorsInterpolations)" in resp_combat_js.text
+    assert ".mesa-token-remote-dragging" in resp_css.text
+    assert "transition: transform 0.08s" not in resp_css.text
 
 
 

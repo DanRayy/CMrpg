@@ -411,9 +411,54 @@
     }
 
     const { x, y } = computeRemoteCursorScreenXY(cursor);
-    el.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+    cursor.targetX = x;
+    cursor.targetY = y;
+    if (cursor.currentX === undefined || !Number.isFinite(cursor.currentX)) {
+      cursor.currentX = x;
+      cursor.currentY = y;
+      el.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0)`;
+    }
+    startRemoteCursorsInterpolation();
     if (el.classList.contains('cursor-hidden')) {
       el.classList.remove('cursor-hidden');
+    }
+  }
+
+  let remoteCursorRafId = null;
+
+  function stepRemoteCursorsInterpolations() {
+    remoteCursorRafId = null;
+    const LERP_FACTOR = 0.35;
+    const MIN_DELTA = 0.2;
+    let hasActiveMovement = false;
+
+    for (const cursor of state.remoteCursors.values()) {
+      if (!cursor.el || cursor.activeTab !== state.activeTab) continue;
+      if (cursor.targetX === undefined || cursor.targetY === undefined) continue;
+
+      const dx = cursor.targetX - cursor.currentX;
+      const dy = cursor.targetY - cursor.currentY;
+
+      if (Math.abs(dx) > MIN_DELTA || Math.abs(dy) > MIN_DELTA) {
+        cursor.currentX += dx * LERP_FACTOR;
+        cursor.currentY += dy * LERP_FACTOR;
+        cursor.el.style.transform = `translate3d(${cursor.currentX.toFixed(1)}px, ${cursor.currentY.toFixed(1)}px, 0)`;
+        hasActiveMovement = true;
+      } else if (cursor.currentX !== cursor.targetX || cursor.currentY !== cursor.targetY) {
+        cursor.currentX = cursor.targetX;
+        cursor.currentY = cursor.targetY;
+        cursor.el.style.transform = `translate3d(${cursor.targetX.toFixed(1)}px, ${cursor.targetY.toFixed(1)}px, 0)`;
+      }
+    }
+
+    if (hasActiveMovement) {
+      remoteCursorRafId = requestAnimationFrame(stepRemoteCursorsInterpolations);
+    }
+  }
+
+  function startRemoteCursorsInterpolation() {
+    if (!remoteCursorRafId) {
+      remoteCursorRafId = requestAnimationFrame(stepRemoteCursorsInterpolations);
     }
   }
 

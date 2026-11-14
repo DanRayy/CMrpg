@@ -1740,7 +1740,6 @@ iconify-icon {
 /* Arraste Remoto Fluido a 60 FPS com Aceleração de Hardware */
 .mesa-token-remote-dragging {
   will-change: transform;
-  transition: transform 0.08s cubic-bezier(0.2, 0.8, 0.2, 1);
   pointer-events: none;
   z-index: 55 !important;
 }
