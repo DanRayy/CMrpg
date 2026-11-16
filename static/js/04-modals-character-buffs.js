@@ -979,6 +979,10 @@
   function openDamageModal(charId) {
     const char = state.characters.find((c) => c.id === charId);
     if (!char) return;
+    if (!canApplyCombatActions(char)) {
+      showToast('Você não possui permissão para aplicar dano a este combatente!', 'warning');
+      return;
+    }
 
     document.getElementById('damage-char-id').value = char.id;
     document.getElementById('damage-char-name').textContent = `${char.name} (DEF: ${char.defense} • Res: ${char.resistancePercent || 0}%)`;
@@ -997,6 +1001,10 @@
     const charId = document.getElementById('damage-char-id').value;
     const char = state.characters.find((c) => c.id === charId);
     if (!char) return;
+    if (!canApplyCombatActions(char)) {
+      showToast('Você não possui permissão para aplicar dano a este combatente!', 'warning');
+      return;
+    }
 
     const outcome = computeCurrentModalDamageResult(char);
 
@@ -1044,6 +1052,10 @@
     const char = state.characters.find((c) => c.id === charId);
     const meta = ATTR_META[attrKey];
     if (!char || !meta) return;
+    if (!canApplyCombatActions(char)) {
+      showToast('Você não possui permissão para alterar os atributos de combate deste personagem!', 'warning');
+      return;
+    }
 
     document.getElementById('attr-char-id').value = char.id;
     document.getElementById('attr-type-key').value = attrKey;
@@ -1064,6 +1076,11 @@
     const attrKey = document.getElementById('attr-type-key').value;
     const meta = ATTR_META[attrKey];
     if (!meta) return;
+    const char = state.characters.find((c) => c.id === charId);
+    if (!char || !canApplyCombatActions(char)) {
+      showToast('Você não possui permissão para alterar os atributos de combate deste personagem!', 'warning');
+      return;
+    }
 
     const val = Math.max(0, Math.round(Number(document.getElementById('attr-value-input').value || 0)));
     const allowOverflow = document.getElementById('attr-overflow-switch').checked;
@@ -1105,6 +1122,11 @@
   // Ações Rápidas: Regeneração de Mana (REGEN) e Resetar (RESETAR)
   // ---------------------------------------------------------------------------
   function triggerInstantManaRegen(charId) {
+    const char = state.characters.find((c) => c.id === charId);
+    if (!char || !canApplyCombatActions(char)) {
+      showToast('Você não possui permissão para usar ações rápidas neste personagem!', 'warning');
+      return;
+    }
     commitMutation((st) => {
       const target = st.characters.find((c) => c.id === charId);
       if (!target) return false;
@@ -1128,7 +1150,7 @@
   function requestResetCharacter(charId) {
     const char = state.characters.find((c) => c.id === charId);
     if (!char) return;
-    if (!isEffectiveMaster() && !isCharacterOwner(char) && !hasPermission('char_combat_adjust_others')) {
+    if (!canApplyCombatActions(char) && !canEditCharacter(char)) {
       showToast('Você não possui permissão para resetar este personagem!', 'warning');
       return;
     }
@@ -1318,6 +1340,10 @@
     const char = state.characters.find((c) => c.id === charId);
     const meta = RESISTANCE_TYPES.find((r) => r.name === resName);
     if (!char || !meta) return;
+    if (!canManageAccumulations(char) && !canEditCharacter(char)) {
+      showToast('Você não possui permissão para alterar acúmulos deste combatente!', 'warning');
+      return;
+    }
 
     const entry = char.resistances?.[resName] || { current: 0, max: 100 };
     const isImmune = resName === 'Congelamento' && (char.buffsNerfs || []).some(
@@ -1342,6 +1368,11 @@
     const resName = document.getElementById('single-res-name').value;
     const val = Math.max(0, Math.round(Number(document.getElementById('single-res-value-input').value || 0)));
     const op = state.activeResOp;
+    const char = state.characters.find((c) => c.id === charId);
+    if (!char || (!canManageAccumulations(char) && !canEditCharacter(char))) {
+      showToast('Você não possui permissão para alterar acúmulos deste combatente!', 'warning');
+      return;
+    }
 
     commitMutation((st, toasts) => {
       const target = st.characters.find((c) => c.id === charId);
@@ -1458,6 +1489,10 @@
   function editBuffNerf(charId, effectId) {
     const char = state.characters.find((c) => c.id === charId);
     if (!char || !Array.isArray(char.buffsNerfs)) return;
+    if (!canManageAccumulations(char) && !canEditCharacter(char)) {
+      showToast('Você não possui permissão para editar efeitos deste combatente!', 'warning');
+      return;
+    }
     const eff = char.buffsNerfs.find((e) => e.id === effectId);
     if (!eff) return;
 
@@ -1503,6 +1538,12 @@
   }
 
   function toggleBuffNerf(charId, effectId) {
+    const checkChar = state.characters.find((c) => c.id === charId);
+    if (!checkChar || (!canManageAccumulations(checkChar) && !canEditCharacter(checkChar))) {
+      showToast('Você não possui permissão para alterar efeitos deste combatente!', 'warning');
+      renderAll();
+      return;
+    }
     commitMutation((st, toasts) => {
       const char = st.characters.find((c) => c.id === charId);
       if (!char || !Array.isArray(char.buffsNerfs)) return false;
@@ -1536,7 +1577,7 @@
 
     const buffsContainer = document.getElementById('buffs-list-container');
     const nerfsContainer = document.getElementById('nerfs-list-container');
-    const canManage = isEffectiveMaster() || isCharacterOwner(char) || hasPermission('combat_manage_accumulations_others') || canEditCharacter(char);
+    const canManage = canManageAccumulations(char) || canEditCharacter(char);
 
     const formContainer = document.getElementById('container-form-buff-nerf');
     if (formContainer) {
@@ -1687,6 +1728,11 @@
   }
 
   function removeBuffNerf(charId, effectId) {
+    const checkChar = state.characters.find((c) => c.id === charId);
+    if (!checkChar || (!canManageAccumulations(checkChar) && !canEditCharacter(checkChar))) {
+      showToast('Você não possui permissão para remover efeitos deste combatente!', 'warning');
+      return;
+    }
     commitMutation((st, toasts) => {
       const char = st.characters.find((c) => c.id === charId);
       if (!char || !Array.isArray(char.buffsNerfs)) return false;
@@ -1701,6 +1747,11 @@
       }
       return true;
     });
+    if (document.getElementById('bn-editing-id')?.value === effectId) {
+      resetBnForm();
+    }
+    const updatedChar = state.characters.find((c) => c.id === charId);
+    if (updatedChar) renderBuffsNerfsModalContent(updatedChar);
   }
 
   function handleAddBuffNerfSubmit(e) {
@@ -1708,6 +1759,10 @@
     const charId = document.getElementById('buffs-nerfs-char-id')?.value;
     const char = state.characters.find((c) => c.id === charId);
     if (!char) return;
+    if (!canManageAccumulations(char) && !canEditCharacter(char)) {
+      showToast('Você não possui permissão para adicionar efeitos neste combatente!', 'warning');
+      return;
+    }
 
     const editingId = document.getElementById('bn-editing-id')?.value.trim();
     const desc = document.getElementById('bn-effect-desc')?.value.trim();
@@ -2290,6 +2345,7 @@
     if (!bodyContainer || !tabsContainer) return;
 
     const isMaster = isEffectiveMaster();
+    const canManageTrees = canManageSkillTrees();
     const heroes = (state.characters || []).filter((c) => !c.isEnemy);
 
     if (charSelect) {
@@ -2337,7 +2393,7 @@
       masterPtsBtns.classList.toggle('hidden', !(isMaster && activeChar));
     }
     if (masterToolbar) {
-      masterToolbar.classList.toggle('hidden', !isMaster);
+      masterToolbar.classList.toggle('hidden', !canManageTrees);
     }
 
     const visibleTrees = getVisibleSkillTrees();
@@ -2393,7 +2449,7 @@
           <h4 class="font-serif-fantasy font-bold text-base app-title">Nenhuma Árvore de Habilidades Disponível</h4>
           <p class="text-xs app-muted mt-1">
             ${
-              isMaster
+              canManageTrees
                 ? 'Clique em "Nova Árvore" no topo para criar uma árvore de habilidades.'
                 : 'O Mestre ainda não liberou árvores de habilidades visíveis para os jogadores.'
             }
@@ -2513,7 +2569,7 @@
     const tiersHtml = visibleTiers
       .map((tier) => {
         const catNodes = nodes.filter((n) => String(n.category || 'TALENTO').toUpperCase() === tier.key);
-        if (catNodes.length === 0 && (!isMaster || hasActiveFilter)) return '';
+        if (catNodes.length === 0 && (!canManageTrees || hasActiveFilter)) return '';
         return `
           <div class="constellation-tier-section p-4 sm:p-5 rounded-2xl space-y-3.5">
             <div class="flex flex-wrap items-center justify-between gap-2 pb-2 border-b app-divider-border">
@@ -2533,7 +2589,7 @@
               </div>
               <div class="flex items-center gap-2">
                 ${
-                  isMaster
+                  canManageTrees
                     ? `<span class="text-[10px] font-mono app-muted hidden sm:inline">Arraste os cards para reordenar</span>
                        <button
                          type="button"
@@ -2558,7 +2614,7 @@
                     activeTree.id
                   )}">
                     ${catNodes
-                      .map((node) => renderConstellationNodeCardHtml(activeChar, activeTree, node, canEditChar, isMaster))
+                      .map((node) => renderConstellationNodeCardHtml(activeChar, activeTree, node, canEditChar, canManageTrees))
                       .join('')}
                   </div>`
             }
@@ -2744,8 +2800,9 @@
     // Botões de ação do jogador/mestre (Liberar, + Melhorar, - Reembolsar)
     let actionButtonsHtml = '';
     if (char && canEditChar) {
+      const masterFreePts = isEffectiveMaster();
       if (isTalent) {
-        const canBuyNext = ns.rank < ns.maxRanks && (availablePts >= ns.costPerRank || isMaster);
+        const canBuyNext = ns.rank < ns.maxRanks && (availablePts >= ns.costPerRank || masterFreePts);
         const nextBtnLabel =
           ns.rank === 0
             ? `Liberar (-${ns.costPerRank} pt${ns.costPerRank !== 1 ? 's' : ''}) [${ns.rank}/${ns.maxRanks}]`
@@ -2790,7 +2847,7 @@
       } else {
         // PASSIVA, ATIVA ou SUPREMA
         if (!ns.unlocked) {
-          const canUnlock = availablePts >= ns.unlockCost || isMaster;
+          const canUnlock = availablePts >= ns.unlockCost || masterFreePts;
           actionButtonsHtml = `
             <div class="flex flex-wrap items-center gap-1.5 pt-2 border-t app-divider-border">
               <button
@@ -2810,7 +2867,7 @@
           `;
         } else {
           const hasUpgradesLeft = ns.upgrades < ns.maxUpgrades;
-          const canUpgrade = hasUpgradesLeft && (availablePts >= ns.upgradeCost || isMaster);
+          const canUpgrade = hasUpgradesLeft && (availablePts >= ns.upgradeCost || masterFreePts);
           const refundPts = ns.upgrades > 0 ? ns.upgradeCost : ns.unlockCost;
           actionButtonsHtml = `
             <div class="flex flex-wrap items-center gap-1.5 pt-2 border-t app-divider-border">
@@ -3236,8 +3293,8 @@
   }
 
   function seedGeomanciaSkillTree() {
-    if (!isEffectiveMaster()) {
-      showToast('Apenas o Mestre pode carregar templates de Árvore de Habilidades!', 'warning');
+    if (!canManageSkillTrees()) {
+      showToast('Você não tem permissão para carregar templates de Árvore de Habilidades!', 'warning');
       return;
     }
     commitMutation(
@@ -3303,8 +3360,8 @@
   }
 
   function openSkillTreeFormModal(treeId = null) {
-    if (!isEffectiveMaster()) {
-      showToast('Apenas o Mestre pode configurar Árvores de Habilidades!', 'warning');
+    if (!canManageSkillTrees()) {
+      showToast('Você não tem permissão para configurar Árvores de Habilidades!', 'warning');
       return;
     }
     const existing = treeId ? (state.skillTrees || []).find((t) => t.id === treeId) : null;
@@ -3332,7 +3389,7 @@
 
   function handleSkillTreeFormSubmit(e) {
     e.preventDefault();
-    if (!isEffectiveMaster()) return;
+    if (!canManageSkillTrees()) return;
 
     const treeId = document.getElementById('st-form-id')?.value.trim();
     const name = document.getElementById('st-form-name')?.value.trim() || 'Árvore Sem Nome';
@@ -3392,7 +3449,7 @@
   }
 
   function deleteSkillTree(treeId) {
-    if (!isEffectiveMaster()) return;
+    if (!canManageSkillTrees()) return;
     const tree = (state.skillTrees || []).find((t) => t.id === treeId);
     if (!tree) return;
 
@@ -3469,8 +3526,8 @@
   }
 
   function openSkillNodeFormModal(treeId, nodeId = null, defaultCategory = 'TALENTO') {
-    if (!isEffectiveMaster()) {
-      showToast('Apenas o Mestre pode criar ou editar nós da Árvore de Habilidades!', 'warning');
+    if (!canManageSkillTrees()) {
+      showToast('Você não tem permissão para criar ou editar nós da Árvore de Habilidades!', 'warning');
       return;
     }
     const tree = (state.skillTrees || []).find((t) => t.id === treeId);
@@ -3518,7 +3575,7 @@
 
   function handleSkillNodeFormSubmit(e) {
     e.preventDefault();
-    if (!isEffectiveMaster()) return;
+    if (!canManageSkillTrees()) return;
 
     const treeId = document.getElementById('sn-form-tree-id')?.value.trim();
     const nodeId = document.getElementById('sn-form-node-id')?.value.trim();
@@ -3606,7 +3663,7 @@
   }
 
   function deleteSkillNode(treeId, nodeId) {
-    if (!isEffectiveMaster()) return;
+    if (!canManageSkillTrees()) return;
     const tree = (state.skillTrees || []).find((t) => t.id === treeId);
     const node = (tree?.nodes || []).find((n) => n.id === nodeId);
     if (!tree || !node) return;
@@ -3635,7 +3692,7 @@
   }
 
   function reorderSkillTreeNodes(treeId, draggedNodeId, targetNodeId) {
-    if (!isEffectiveMaster() || !draggedNodeId || !targetNodeId || draggedNodeId === targetNodeId) return;
+    if (!canManageSkillTrees() || !draggedNodeId || !targetNodeId || draggedNodeId === targetNodeId) return;
     commitMutation(
       (st) => {
         const tree = (st.skillTrees || []).find((t) => t.id === treeId);
@@ -3659,8 +3716,8 @@
   }
 
   function duplicateSkillTree(treeId) {
-    if (!isEffectiveMaster()) {
-      showToast('Apenas o Mestre pode duplicar Árvores de Habilidades!', 'warning');
+    if (!canManageSkillTrees()) {
+      showToast('Você não tem permissão para duplicar Árvores de Habilidades!', 'warning');
       return;
     }
     const origTree = (state.skillTrees || []).find((t) => t.id === treeId);
@@ -3707,8 +3764,8 @@
   }
 
   function duplicateSkillNode(treeId, nodeId) {
-    if (!isEffectiveMaster()) {
-      showToast('Apenas o Mestre pode duplicar nós da Árvore de Habilidades!', 'warning');
+    if (!canManageSkillTrees()) {
+      showToast('Você não tem permissão para duplicar nós da Árvore de Habilidades!', 'warning');
       return;
     }
     const tree = (state.skillTrees || []).find((t) => t.id === treeId);

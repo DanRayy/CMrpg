@@ -890,6 +890,14 @@
 
   function switchTab(tabId) {
     if (tabId === 'fichas') tabId = 'characters';
+    if (tabId === 'skill-trees' && !canManageSkillTrees()) {
+      showToast('Você não tem permissão para gerenciar Árvores de Habilidades.', 'warning');
+      tabId = 'characters';
+    }
+    if (tabId === 'admin' && !isEffectiveMaster()) {
+      showToast('Acesso restrito ao Mestre.', 'warning');
+      tabId = 'characters';
+    }
     state.activeTab = tabId;
     document.querySelectorAll('[data-nav-tab]').forEach((btn) => {
       const btnTab = btn.getAttribute('data-nav-tab');
@@ -987,7 +995,7 @@
     setTxt('topbar-currency-name', curName.toUpperCase());
 
     const visibleItems = (state.itemsCatalog || []).filter(
-      (i) => isEffectiveMaster() || i.visivelParaJogadores !== false
+      (i) => isEffectiveMaster() || hasPermission('item_manage_catalog') || i.visivelParaJogadores !== false
     );
     setTxt('badge-chars-count', String(state.characters.length));
     setTxt('badge-mesa-count', String(state.characters.length));
@@ -995,7 +1003,8 @@
     setTxt('badge-npcs-count', String(state.npcs.length));
     setTxt('badge-quests-count', String(state.quests.length));
     setTxt('badge-skill-trees-count', String((state.skillTrees || []).length));
-    const visibleBestiary = isEffectiveMaster() ? (state.bestiary || []) : (state.bestiary || []).filter((b) => b.reveladoParaJogadores);
+    const canSeeAllBestiary = isEffectiveMaster() || hasPermission('bestiary_view_hidden') || hasPermission('bestiary_manage');
+    const visibleBestiary = canSeeAllBestiary ? (state.bestiary || []) : (state.bestiary || []).filter((b) => b.reveladoParaJogadores);
     setTxt('badge-bestiary-count', String(visibleBestiary.length));
 
     const combatDot = document.getElementById('combat-nav-dot');
@@ -1870,6 +1879,8 @@
 
   function updateBattleToggleButton() {
     const battle = getBattleState();
+    const canManageBattle = isEffectiveMaster() || hasPermission('combat_manage_battle');
+    const hiddenCls = canManageBattle ? '' : ' hidden';
     const pairs = [
       {
         btn: document.getElementById('btn-battle-toggle'),
@@ -1885,12 +1896,12 @@
     pairs.forEach(({ btn, icon, text }) => {
       if (!btn || !text) return;
       if (battle.isActive) {
-        btn.className = 'master-only-el rounded-lg px-3.5 py-2 text-xs font-serif-fantasy uppercase tracking-wider bg-rose-950/80 hover:bg-rose-900 border border-rose-500/70 text-rose-200 font-extrabold flex items-center gap-1.5 shadow-md transition';
+        btn.className = `master-only-el rounded-lg px-3.5 py-2 text-xs font-serif-fantasy uppercase tracking-wider bg-rose-950/80 hover:bg-rose-900 border border-rose-500/70 text-rose-200 font-extrabold flex items-center gap-1.5 shadow-md transition${hiddenCls}`;
         if (icon) icon.setAttribute('icon', 'game-icons:skull-crossed-bones');
         text.textContent = 'ENCERRAR BATALHA';
         btn.title = 'Encerrar o combate ativo e zerar contadores de turno e cargas';
       } else {
-        btn.className = 'master-only-el rounded-lg px-3.5 py-2 text-xs font-serif-fantasy uppercase tracking-wider btn-gold flex items-center gap-1.5 shadow-md transition';
+        btn.className = `master-only-el rounded-lg px-3.5 py-2 text-xs font-serif-fantasy uppercase tracking-wider btn-gold flex items-center gap-1.5 shadow-md transition${hiddenCls}`;
         if (icon) icon.setAttribute('icon', 'game-icons:crossed-swords');
         text.textContent = 'INICIAR BATALHA';
         btn.title = 'Configurar ordem e iniciar combate';

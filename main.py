@@ -244,6 +244,10 @@ def master_full_permissions() -> Dict[str, Any]:
         "mission_approve": True,
         "system_undo_redo": True,
         "system_view_audit_log": True,
+        # Categoria 7: Árvore de Habilidades
+        "manageSkillTrees": True,
+        "skill_tree_manage": True,
+        "canManageSkillTrees": True,
         # Retrocompatibilidade
         "canEditRoom": True,
         "canViewAudit": True,
@@ -311,6 +315,10 @@ def default_permissions(preset: str = "JOGADOR_COMUM") -> Dict[str, Any]:
         "mission_approve": False,
         "system_undo_redo": False,
         "system_view_audit_log": True,
+        # Categoria 7: Árvore de Habilidades
+        "manageSkillTrees": False,
+        "skill_tree_manage": False,
+        "canManageSkillTrees": False,
         # Retrocompatibilidade
         "canEditRoom": False,
         "canViewAudit": True,
@@ -346,6 +354,9 @@ def default_permissions(preset: str = "JOGADOR_COMUM") -> Dict[str, Any]:
             "mission_manage": True,
             "mission_approve": True,
             "system_view_audit_log": True,
+            "manageSkillTrees": True,
+            "skill_tree_manage": True,
+            "canManageSkillTrees": True,
             # Aliases
             "canCreateCharacters": True,
             "canEditOtherCharacters": True,
@@ -1240,18 +1251,37 @@ def normalize_members_list(raw_members: List[Dict[str, Any]]) -> List[Dict[str, 
 
         display_name = nickname if nickname else f"Sem apelido ({mip})"
         perms = m.get("permissions")
-        raw_preset = perms.get("preset", "JOGADOR_COMUM") if isinstance(perms, dict) else "JOGADOR_COMUM"
+        raw_preset = (
+            str(perms.get("preset", "JOGADOR_COMUM")).strip()
+            if isinstance(perms, dict) and perms.get("preset")
+            else "JOGADOR_COMUM"
+        )
         base_perms = default_permissions(raw_preset)
         if isinstance(perms, dict):
             for k, v in perms.items():
-                if k in base_perms:
-                    if raw_preset == "JOGADOR_COMUM" and k in (
-                        "char_create", "char_manage_own", "combat_manage_charges",
-                        "inventory_transfer_any", "system_view_audit_log",
-                        "canCreateCharacters", "canViewAudit", "combat_apply_damage_others"
-                    ):
-                        continue
-                    base_perms[k] = bool(v) if k != "preset" else v
+                if k in base_perms and k != "preset":
+                    base_perms[k] = bool(v)
+            if "manageSkillTrees" in perms or "skill_tree_manage" in perms or "canManageSkillTrees" in perms:
+                mt_val = bool(
+                    perms.get(
+                        "manageSkillTrees",
+                        perms.get("skill_tree_manage", perms.get("canManageSkillTrees", False)),
+                    )
+                )
+                base_perms["manageSkillTrees"] = mt_val
+                base_perms["skill_tree_manage"] = mt_val
+                base_perms["canManageSkillTrees"] = mt_val
+            base_perms["canCreateCharacters"] = bool(base_perms.get("char_create", False))
+            base_perms["canEditOwnCharacter"] = bool(base_perms.get("char_manage_own", False))
+            base_perms["canEditOtherCharacters"] = bool(base_perms.get("char_edit_others", False))
+            base_perms["canDeleteCharacters"] = bool(base_perms.get("char_delete", False))
+            base_perms["canViewOtherInventories"] = bool(base_perms.get("inventory_view_others", False))
+            base_perms["canManageItemsCatalog"] = bool(base_perms.get("item_manage_catalog", False))
+            base_perms["canApproveSales"] = bool(base_perms.get("shop_approve_escrow", False))
+            base_perms["canManageShopNpcs"] = bool(base_perms.get("shop_manage_npcs", False))
+            base_perms["canManageGold"] = bool(base_perms.get("gold_manage", False))
+            base_perms["canManageQuests"] = bool(base_perms.get("mission_manage", False))
+            base_perms["canViewAudit"] = bool(base_perms.get("system_view_audit_log", False))
             base_perms["preset"] = raw_preset
         perms = base_perms
 
@@ -2534,6 +2564,20 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                     perms = (member_obj or {}).get("permissions") or {}
                     can_summon = bool(perms.get("bestiary_summon", False))
                     can_manage_battle = bool(perms.get("combat_manage_battle", False))
+                    can_manage_trees = bool(
+                        perms.get("manageSkillTrees", perms.get("skill_tree_manage", False))
+                    )
+                    can_manage_catalog = bool(perms.get("item_manage_catalog", False))
+                    can_manage_bestiary = bool(perms.get("bestiary_manage", False))
+
+                    if not can_manage_trees and "skillTrees" in data:
+                        data["skillTrees"] = copy.deepcopy(state_manager.state.get("skillTrees") or [])
+
+                    if not can_manage_catalog and "itemsCatalog" in data:
+                        data["itemsCatalog"] = copy.deepcopy(state_manager.state.get("itemsCatalog") or [])
+
+                    if not can_manage_bestiary and "bestiary" in data:
+                        data["bestiary"] = copy.deepcopy(state_manager.state.get("bestiary") or [])
 
                     if not can_summon and isinstance(data.get("characters"), list):
                         old_chars_list = state_manager.state.get("characters") or []
@@ -2579,14 +2623,16 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                             (c for c in state_manager.state.get("characters") or [] if c.get("id") == acting_id),
                             None,
                         )
-                        if not is_host:
-                            is_turn_allowed = False
-                            if acting_char and not acting_char.get("isEnemy"):
-                                if (
+                        if not is_master_role:
+                            perms = (member_obj or {}).get("permissions") or {}
+                            is_turn_allowed = bool(perms.get("combat_advance_any_turn", False))
+                            if not is_turn_allowed and acting_char and not acting_char.get("isEnemy"):
+                                is_owner = bool(
                                     acting_char.get("ownerIp") == canonical_ip
                                     or acting_char.get("ownerMemberId") == member_id
                                     or (member_obj and member_obj.get("characterId") == acting_id)
-                                ):
+                                )
+                                if is_owner and bool(perms.get("combat_advance_own_turn", True)):
                                     is_turn_allowed = True
                             if not is_turn_allowed:
                                 incoming_battle["currentTurnIndex"] = old_idx
@@ -2637,6 +2683,12 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                 await ws_manager.broadcast(payload)
 
             elif msg_type == "undo":
+                can_undo_redo = is_master_role or bool(
+                    ((member_obj or {}).get("permissions") or {}).get("system_undo_redo", False)
+                )
+                if not can_undo_redo:
+                    await websocket.send_json(state_manager.get_sync_payload())
+                    continue
                 payload = await state_manager.undo()
                 if payload is not None:
                     await ws_manager.broadcast(payload)
@@ -2644,6 +2696,12 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                     await websocket.send_json(state_manager.get_sync_payload())
 
             elif msg_type == "redo":
+                can_undo_redo = is_master_role or bool(
+                    ((member_obj or {}).get("permissions") or {}).get("system_undo_redo", False)
+                )
+                if not can_undo_redo:
+                    await websocket.send_json(state_manager.get_sync_payload())
+                    continue
                 payload = await state_manager.redo()
                 if payload is not None:
                     await ws_manager.broadcast(payload)

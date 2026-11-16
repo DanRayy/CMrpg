@@ -1281,7 +1281,11 @@
       showToast('Inimigos não podem vender itens na loja!', 'error');
       return;
     }
-    if (!isEffectiveMaster() && !isCharacterOwner(char)) {
+    if (!isEffectiveMaster() && !hasPermission('shop_buy_sell')) {
+      showToast('Você não possui permissão para vender itens na loja!', 'warning');
+      return;
+    }
+    if (!isEffectiveMaster() && !isCharacterOwner(char) && !hasPermission('inventory_edit_others')) {
       showToast('Você só pode solicitar venda de itens da sua própria ficha vinculada!', 'warning');
       return;
     }
@@ -1320,6 +1324,10 @@
     const customSalePrice = Number.isFinite(priceRaw) && priceRaw >= 0 ? Math.round(priceRaw) : 0;
 
     if (!charId || !invId) return;
+    if (!isEffectiveMaster() && !hasPermission('shop_buy_sell')) {
+      showToast('Você não possui permissão para vender itens na loja!', 'warning');
+      return;
+    }
 
     commitMutation(
       (st, toasts) => {
@@ -1327,11 +1335,11 @@
         const inv = c?.inventory?.find((i) => i.id === invId);
         if (!c || !inv) return false;
         if (c.isEnemy || c.type === 'enemy' || c.bestiaryId) {
-          toasts.push({ message: 'Inimigos não podem vender itens!', variant: 'error' });
+          toasts.push('Inimigos não podem vender itens!');
           return false;
         }
-        if (!isEffectiveMaster() && !isCharacterOwner(c)) {
-          toasts.push({ message: 'Você só pode vender itens da sua própria ficha vinculada!', variant: 'warning' });
+        if (!isEffectiveMaster() && !isCharacterOwner(c) && !hasPermission('inventory_edit_others')) {
+          toasts.push('Você só pode vender itens da sua própria ficha vinculada!');
           return false;
         }
         const tpl = st.itemsCatalog.find((it) => it.id === inv.itemId);
@@ -1468,6 +1476,10 @@
   // Gerenciamento do Bestiário, Invocação e Habilidades Gerais
   // ===========================================================================
   function openEnemyForm(enemyId = null) {
+    if (!isEffectiveMaster() && !hasPermission('bestiary_manage')) {
+      showToast('Você não possui permissão para gerenciar o Bestiário!', 'warning');
+      return;
+    }
     const isEdit = Boolean(enemyId);
     const enemy = isEdit ? (state.bestiary || []).find((b) => b.id === enemyId) : null;
 
@@ -1533,6 +1545,10 @@
   }
 
   function toggleEnemyReveal(enemyId) {
+    if (!isEffectiveMaster() && !hasPermission('bestiary_manage')) {
+      showToast('Você não possui permissão para gerenciar a visibilidade no Bestiário!', 'warning');
+      return;
+    }
     commitMutation(
       (st, toasts) => {
         const e = (st.bestiary || []).find((b) => b.id === enemyId);
@@ -1562,6 +1578,10 @@
   }
 
   function deleteEnemy(enemyId) {
+    if (!isEffectiveMaster() && !hasPermission('bestiary_manage')) {
+      showToast('Você não possui permissão para excluir criaturas do Bestiário!', 'warning');
+      return;
+    }
     const enemy = (state.bestiary || []).find((b) => b.id === enemyId);
     if (!enemy) return;
 
@@ -1662,6 +1682,10 @@
   }
 
   function openSpawnEnemyModal() {
+    if (!isEffectiveMaster() && !hasPermission('bestiary_summon')) {
+      showToast('Você não possui permissão para invocar criaturas na mesa!', 'warning');
+      return;
+    }
     const searchInput = document.getElementById('spawn-enemy-search');
     if (searchInput) searchInput.value = '';
     renderSpawnEnemyList();
@@ -1669,6 +1693,10 @@
   }
 
   function spawnEnemyInstance(bestiaryEnemy) {
+    if (!isEffectiveMaster() && !hasPermission('bestiary_summon')) {
+      showToast('Você não possui permissão para invocar criaturas na mesa!', 'warning');
+      return;
+    }
     const baseName = (bestiaryEnemy.name || 'Inimigo').trim();
     const escapedBase = baseName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const nameRegex = new RegExp(`^${escapedBase}(?: \\((\\d+)\\))?$`, 'i');
@@ -1793,6 +1821,10 @@
   }
 
   function dismissEnemyInstance(charId) {
+    if (!isEffectiveMaster() && !hasPermission('bestiary_summon')) {
+      showToast('Você não possui permissão para despachar criaturas da mesa!', 'warning');
+      return;
+    }
     const c = state.characters.find((x) => x.id === charId);
     if (!c || !c.isEnemy) return;
 
@@ -1841,6 +1873,8 @@
     if (!target) return;
 
     const isMaster = isEffectiveMaster();
+    const canViewHidden = isMaster || hasPermission('bestiary_view_hidden') || hasPermission('bestiary_manage');
+    const canEditSkills = isMaster || hasPermission('bestiary_manage');
     const isEnemy = targetType === 'bestiary' || Boolean(target.isEnemy);
     const bestiaryRef =
       targetType === 'bestiary'
@@ -1850,7 +1884,7 @@
       ? Boolean(bestiaryRef.reveladoParaJogadores)
       : Boolean(target.reveladoParaJogadores);
 
-    if (!isMaster && !isRevealed) {
+    if (!canViewHidden && !isRevealed) {
       showToast('As habilidades desta criatura estão ocultas pelo Mestre.', 'warning');
       return;
     }
@@ -1868,7 +1902,7 @@
     const saveBtn = document.getElementById('btn-save-general-skills');
     const textarea = document.getElementById('general-skills-textarea');
 
-    if (isMaster) {
+    if (canEditSkills) {
       if (editView) editView.classList.remove('hidden');
       if (readView) readView.classList.add('hidden');
       if (saveBtn) saveBtn.classList.remove('hidden');
@@ -1949,18 +1983,18 @@
         <button
           type="button"
           data-open-perm-cat="${escapeHtml(cat.id)}"
-          class="perm-cat-btn p-3 rounded-xl border flex flex-col justify-between gap-2.5 text-left transition ${
+          class="perm-cat-btn p-3 rounded-xl border flex flex-col justify-between gap-2 text-left transition ${
             catActive > 0
               ? 'border-amber-500/40 bg-amber-500/10 hover:border-amber-400'
               : 'border-app-divider-border bg-black/30 hover:border-amber-500/30'
           }"
         >
-          <div class="flex items-center justify-between gap-2">
-            <div class="flex items-center gap-2 min-w-0">
-              <span class="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 border border-amber-500/30 bg-amber-500/15 text-amber-300 text-sm">
+          <div class="flex items-start justify-between gap-2">
+            <div class="flex items-start gap-2 min-w-0">
+              <span class="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 border border-amber-500/30 bg-amber-500/15 text-amber-300 text-sm mt-0.5">
                 <iconify-icon icon="${escapeHtml(cat.icon)}"></iconify-icon>
               </span>
-              <div class="font-serif-fantasy font-black text-xs uppercase tracking-wider gold-title truncate">
+              <div class="font-serif-fantasy font-black text-[11px] leading-snug uppercase tracking-wide gold-title break-words">
                 ${escapeHtml(cat.title)}
               </div>
             </div>
@@ -1974,7 +2008,7 @@
               ${catActive}/${catTotal}
             </span>
           </div>
-          <div class="text-[10px] app-muted line-clamp-1 leading-snug">
+          <div class="text-[10px] app-muted line-clamp-2 leading-snug">
             ${escapeHtml(cat.description)}
           </div>
         </button>

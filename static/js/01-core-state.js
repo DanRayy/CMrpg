@@ -1236,6 +1236,20 @@
         },
       ],
     },
+    {
+      id: 'skill_trees',
+      title: 'Árvore de Habilidades',
+      icon: 'game-icons:tree-branch',
+      description: 'Gestão completa de árvores e nós.',
+      permissions: [
+        {
+          key: 'manageSkillTrees',
+          name: 'Gerenciar Árvores de Habilidades (Controle Total)',
+          description: 'Concede liberdade total para criar, editar, duplicar, ocultar, reordenar e excluir árvores de habilidades e seus nós.',
+          defaultVal: false,
+        },
+      ],
+    },
   ];
 
   const PRESET_DEFINITIONS = {
@@ -1271,6 +1285,7 @@
       mission_approve: false,
       system_undo_redo: false,
       system_view_audit_log: true,
+      manageSkillTrees: false,
     },
     SUB_MESTRE: {
       char_manage_own: true,
@@ -1304,6 +1319,7 @@
       mission_approve: true,
       system_undo_redo: false,
       system_view_audit_log: true,
+      manageSkillTrees: true,
     },
     ESPECTADOR: {
       char_manage_own: false,
@@ -1337,6 +1353,7 @@
       mission_approve: false,
       system_undo_redo: false,
       system_view_audit_log: false,
+      manageSkillTrees: false,
     },
   };
 
@@ -1353,6 +1370,10 @@
     perms.canManageGold = Boolean(perms.gold_manage);
     perms.canManageQuests = Boolean(perms.mission_manage);
     perms.canViewAudit = Boolean(perms.system_view_audit_log);
+    const manageTrees = Boolean(perms.manageSkillTrees ?? perms.skill_tree_manage ?? perms.canManageSkillTrees);
+    perms.manageSkillTrees = manageTrees;
+    perms.skill_tree_manage = manageTrees;
+    perms.canManageSkillTrees = manageTrees;
   }
 
   function getDefaultPermissionsForPreset(preset) {
@@ -1454,6 +1475,8 @@
     gold_manage: 'canManageGold',
     mission_manage: 'canManageQuests',
     system_view_audit_log: 'canViewAudit',
+    manageSkillTrees: 'skill_tree_manage',
+    skill_tree_manage: 'manageSkillTrees',
   };
   const LEGACY_TO_PERM_MAP = {
     canEditOwnCharacter: 'char_manage_own',
@@ -1467,6 +1490,8 @@
     canManageGold: 'gold_manage',
     canManageQuests: 'mission_manage',
     canViewAudit: 'system_view_audit_log',
+    canManageSkillTrees: 'manageSkillTrees',
+    skill_tree_manage: 'manageSkillTrees',
   };
 
   function hasPermission(permKey) {
@@ -1604,6 +1629,10 @@
     return hasPermission('combat_manage_accumulations_others');
   }
 
+  function canManageSkillTrees() {
+    return isEffectiveMaster() || hasPermission('manageSkillTrees');
+  }
+
   function updateRoleUI() {
     const roleBtn = document.getElementById('btn-role-badge');
     const roleIcon = document.getElementById('role-badge-icon');
@@ -1634,18 +1663,47 @@
       }
     });
 
+    // Controle da aba de Árvore de Habilidades (Mestre ou permissão manageSkillTrees)
+    const canManageTrees = canManageSkillTrees();
+    document.querySelectorAll('[data-nav-tab="skill-trees"]').forEach((el) => {
+      el.classList.toggle('hidden', !canManageTrees);
+    });
+    if (!canManageTrees) {
+      document.getElementById('modal-skill-tree-form')?.classList.add('hidden');
+      document.getElementById('modal-skill-node-form')?.classList.add('hidden');
+      if (state.activeTab === 'skill-trees') {
+        state.activeTab = 'characters';
+        document.querySelectorAll('[data-nav-tab]').forEach((btn) => {
+          const btnTab = btn.getAttribute('data-nav-tab');
+          btn.classList.toggle('active', btnTab === 'characters' || btnTab === 'fichas');
+        });
+        document.querySelectorAll('.tab-section').forEach((sec) => {
+          sec.classList.toggle('hidden', sec.id !== 'tab-characters' && sec.id !== 'tab-fichas');
+        });
+        const bcSec = document.getElementById('topbar-section-breadcrumb');
+        if (bcSec) bcSec.textContent = 'FICHAS';
+        if (typeof renderCharactersTab === 'function') {
+          renderCharactersTab();
+        }
+      }
+    }
+
     // Ajustes finos baseados no novo sistema granular de permissões
     const canCreateChar = hasPermission('char_create');
     document.getElementById('btn-create-char')?.classList.toggle('hidden', !canCreateChar);
+    document.getElementById('btn-fichas-create-char')?.classList.toggle('hidden', !canCreateChar);
 
     const canSummon = hasPermission('bestiary_summon');
     document.getElementById('btn-spawn-enemy')?.classList.toggle('hidden', !canSummon);
+    document.getElementById('btn-fichas-spawn-enemy')?.classList.toggle('hidden', !canSummon);
 
     const canManageBattle = hasPermission('combat_manage_battle');
     document.getElementById('btn-battle-toggle')?.classList.toggle('hidden', !canManageBattle);
+    document.getElementById('btn-fichas-battle-toggle')?.classList.toggle('hidden', !canManageBattle);
 
     const canGrantXp = hasPermission('char_grant_xp');
     document.getElementById('btn-bulk-rewards')?.classList.toggle('hidden', !canGrantXp);
+    document.getElementById('btn-fichas-bulk-rewards')?.classList.toggle('hidden', !canGrantXp);
     document.getElementById('btn-quests-bulk-xp')?.classList.toggle('hidden', !canGrantXp);
 
     const canManageCatalog = hasPermission('item_manage_catalog');
@@ -1673,6 +1731,7 @@
     const redoBtn = document.getElementById('btn-redo');
     if (undoBtn) undoBtn.classList.toggle('hidden', !canUndoRedo);
     if (redoBtn) redoBtn.classList.toggle('hidden', !canUndoRedo);
+    updateHistoryButtonsUI();
   }
 
   // ===========================================================================
@@ -1846,7 +1905,7 @@
 
   function getVisibleSkillTrees() {
     const trees = Array.isArray(state.skillTrees) ? state.skillTrees : [];
-    if (isEffectiveMaster()) return trees;
+    if (canManageSkillTrees()) return trees;
     return trees.filter((t) => t && !t.hiddenForPlayers && !t.ocultarParaJogadores);
   }
 
@@ -2067,7 +2126,7 @@
     if (!char) return results;
     for (const tree of state.skillTrees || []) {
       if (!tree || !Array.isArray(tree.nodes)) continue;
-      if (!isEffectiveMaster() && (tree.hiddenForPlayers || tree.ocultarParaJogadores)) continue;
+      if (!canManageSkillTrees() && (tree.hiddenForPlayers || tree.ocultarParaJogadores)) continue;
       for (const node of tree.nodes) {
         if (!node || String(node.category || '').toUpperCase() !== targetCat) continue;
         const nodeState = getCharacterSkillNodeState(char, node);

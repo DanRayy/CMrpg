@@ -28,7 +28,7 @@
   <!-- Iconify Web Component (game-icons) -->
   <script src="https://code.iconify.design/iconify-icon/2.1.0/iconify-icon.min.js"></script>
   <!-- Estilos Customizados -->
-  <link rel="stylesheet" href="styles.css?v=1.13.7" />
+  <link rel="stylesheet" href="styles.css?v=1.13.8" />
 </head>
 <body class="min-h-screen flex select-none">
 
@@ -2305,13 +2305,13 @@
   <!-- MODAL 11: PERFIL DO MEMBRO (APELIDO POR IP & PERMISSÕES GRANULARES)       -->
   <!-- ========================================================================= -->
   <div id="modal-member" class="modal-backdrop hidden fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
-    <div class="modal-panel w-full max-w-lg rounded-2xl overflow-hidden">
-      <div class="px-5 py-4 border-b flex items-center justify-between app-modal-header">
+    <div class="modal-panel w-full max-w-2xl max-h-[94vh] flex flex-col rounded-2xl overflow-hidden">
+      <div class="px-5 py-4 border-b flex items-center justify-between app-modal-header shrink-0">
         <h3 id="member-modal-title" class="font-serif-fantasy text-base font-black uppercase gold-title"><iconify-icon icon="game-icons:three-friends"></iconify-icon> <span>Definir Apelido &amp; Permissões do IP</span></h3>
         <button type="button" data-close-modal="modal-member" class="w-8 h-8 rounded-lg flex items-center justify-center app-icon-btn">✕</button>
       </div>
 
-      <form id="form-member" class="p-5 space-y-4 text-xs">
+      <form id="form-member" class="p-5 space-y-4 text-xs overflow-y-auto flex-1">
         <input type="hidden" id="member-form-id" value="" />
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
@@ -4065,12 +4065,12 @@
   </div>
 
     <!-- Módulos Sequenciais da Aplicação -->
-    <script src="js/01-core-state.js?v=1.13.7"></script>
-    <script src="js/02-websocket-combat.js?v=1.13.7"></script>
-    <script src="js/03-tabs-renderers.js?v=1.13.7"></script>
-    <script src="js/04-modals-character-buffs.js?v=1.13.7"></script>
-    <script src="js/05-modals-notes-inventory-bestiary.js?v=1.13.7"></script>
-    <script src="js/05b-mesa-board.js?v=1.13.7"></script>
-    <script src="js/06-events-init.js?v=1.13.7"></script>
+    <script src="js/01-core-state.js?v=1.13.8"></script>
+    <script src="js/02-websocket-combat.js?v=1.13.8"></script>
+    <script src="js/03-tabs-renderers.js?v=1.13.8"></script>
+    <script src="js/04-modals-character-buffs.js?v=1.13.8"></script>
+    <script src="js/05-modals-notes-inventory-bestiary.js?v=1.13.8"></script>
+    <script src="js/05b-mesa-board.js?v=1.13.8"></script>
+    <script src="js/06-events-init.js?v=1.13.8"></script>
 </body>
 </html>

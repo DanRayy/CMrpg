@@ -1438,6 +1438,10 @@
     });
 
     const requestDeleteNpc = (npcId) => {
+      if (!isEffectiveMaster() && !hasPermission('shop_manage_npcs')) {
+        showToast('Você não possui permissão para excluir mercadores NPC!', 'warning');
+        return;
+      }
       const npc = (state.npcs || []).find((n) => n.id === npcId);
       if (!npc) return;
 
@@ -1471,6 +1475,10 @@
     };
 
     const removeShopItemFromNpc = (npcId, itemId) => {
+      if (!isEffectiveMaster() && !hasPermission('shop_manage_npcs')) {
+        showToast('Você não possui permissão para gerenciar o estoque dos mercadores!', 'warning');
+        return;
+      }
       const npc = (state.npcs || []).find((n) => n.id === npcId);
       const item = (state.itemsCatalog || []).find((i) => i.id === itemId);
       if (!npc) return;
@@ -1530,6 +1538,10 @@
     });
 
     const openNpcModal = (npc = null) => {
+      if (!isEffectiveMaster() && !hasPermission('shop_manage_npcs')) {
+        showToast('Você não possui permissão para gerenciar mercadores NPC!', 'warning');
+        return;
+      }
       document.getElementById('npc-form-id').value = npc ? npc.id : '';
       document.getElementById('npc-name-input').value = npc ? npc.name : '';
       document.getElementById('npc-desc-input').value = npc ? npc.description || '' : '';
@@ -1605,6 +1617,10 @@
 
     document.getElementById('form-npc')?.addEventListener('submit', (e) => {
       e.preventDefault();
+      if (!isEffectiveMaster() && !hasPermission('shop_manage_npcs')) {
+        showToast('Você não possui permissão para gerenciar mercadores NPC!', 'warning');
+        return;
+      }
       const id = document.getElementById('npc-form-id').value.trim();
       const name = document.getElementById('npc-name-input').value.trim() || 'Mercador';
       const description = document.getElementById('npc-desc-input').value.trim();
@@ -2099,6 +2115,10 @@
     // Submissão do Formulário de Inimigo (Criar / Editar)
     document.getElementById('form-enemy')?.addEventListener('submit', (e) => {
       e.preventDefault();
+      if (!isEffectiveMaster() && !hasPermission('bestiary_manage')) {
+        showToast('Você não possui permissão para gerenciar o Bestiário!', 'warning');
+        return;
+      }
       const enemyId = document.getElementById('enemy-form-id').value;
       const isEdit = Boolean(enemyId);
 
@@ -2227,6 +2247,10 @@
 
     // Salvar Habilidades Gerais no Modal
     document.getElementById('btn-save-general-skills')?.addEventListener('click', () => {
+      if (!isEffectiveMaster() && !hasPermission('bestiary_manage')) {
+        showToast('Você não possui permissão para editar habilidades de criaturas!', 'warning');
+        return;
+      }
       const targetId = document.getElementById('general-skills-target-id').value;
       const targetType = document.getElementById('general-skills-target-type').value;
       const newText = (document.getElementById('general-skills-textarea').value || '').trim();
@@ -3084,7 +3108,7 @@
       if (!container) return;
 
       container.addEventListener('dragstart', (e) => {
-        if (!isEffectiveMaster()) return;
+        if (!canManageSkillTrees()) return;
         const card = e.target.closest('[data-skill-node-card]');
         if (!card) return;
         state.draggingSkillNodeId = card.getAttribute('data-skill-node-card');
@@ -3098,7 +3122,7 @@
       });
 
       container.addEventListener('dragover', (e) => {
-        if (!isEffectiveMaster() || !state.draggingSkillNodeId) return;
+        if (!canManageSkillTrees() || !state.draggingSkillNodeId) return;
         const overCard = e.target.closest('[data-skill-node-card]');
         if (!overCard) return;
         e.preventDefault();
@@ -3119,7 +3143,7 @@
       });
 
       container.addEventListener('drop', (e) => {
-        if (!isEffectiveMaster() || !state.draggingSkillNodeId) return;
+        if (!canManageSkillTrees() || !state.draggingSkillNodeId) return;
         const targetCard = e.target.closest('[data-skill-node-card]');
         container.querySelectorAll('.skill-node-drop-over, .skill-node-dragging').forEach((el) => {
           el.classList.remove('skill-node-drop-over', 'skill-node-dragging');

@@ -34,7 +34,7 @@
     const isEnemy = Boolean(char.isEnemy);
     const bestiaryRef = isEnemy ? (state.bestiary || []).find((b) => b.id === char.bestiaryId) : null;
     const isRevealed = !isEnemy || (bestiaryRef ? Boolean(bestiaryRef.reveladoParaJogadores) : Boolean(char.reveladoParaJogadores));
-    const isMasked = isEnemy && !isMaster && !isRevealed;
+    const isMasked = isEnemy && !isMaster && !isRevealed && !hasPermission('bestiary_view_hidden');
     const entityFullImage = (char.image && String(char.image).trim())
       || (isEnemy && bestiaryRef?.image && String(bestiaryRef.image).trim())
       || (char.avatar && String(char.avatar).trim().startsWith('/') ? String(char.avatar).trim() : null)
@@ -380,11 +380,22 @@
     }
 
     const activeBuffsNerfsCount = Array.isArray(char.buffsNerfs) ? char.buffsNerfs.length : 0;
+    const buffsNerfsSig = Array.isArray(char.buffsNerfs)
+      ? char.buffsNerfs
+          .map(
+            (b) =>
+              `${b.id}:${b.type}:${b.enabled !== false}:${b.duration}:${b.name || ''}:${b.paModifier || 0}:${(b.modifiers || [])
+                .map((m) => `${m.targetStat || m.stat}:${m.modifierType || m.mode}:${m.value}`)
+                .join('|')}`
+          )
+          .join(';')
+      : '';
     const buffsNerfsBtnHtml = !isMasked
       ? `<button
           type="button"
           data-action="open-buffs-nerfs"
           data-char-id="${escapeHtml(char.id)}"
+          data-buffs-sig="${escapeHtml(buffsNerfsSig)}"
           title="Buffs & Nerfs (Efeitos Ativos)"
           class="relative w-9 h-9 rounded-lg flex items-center justify-center text-base app-icon-btn shrink-0 transition"
         >
@@ -562,6 +573,7 @@
               : (isEnemy ? 'border-rose-950/40 hover:border-amber-500/40' : '')
           }"
           data-char-id="${escapeHtml(char.id)}"
+          data-buffs-sig="${escapeHtml(buffsNerfsSig)}"
         >
           <!-- Avatar Circular no Topo Central -->
           <div
@@ -732,14 +744,46 @@
           ? battle.orderIds[battle.currentTurnIndex % battle.orderIds.length]
           : null;
 
-        const sig = `${q}:${isEffectiveMaster()}:${battle.isActive}:${actingCharId}:` +
-          filtered.map((c) => [
+        const buildCharSignature = (c) => {
+          const bnSig = Array.isArray(c.buffsNerfs)
+            ? c.buffsNerfs
+                .map(
+                  (b) =>
+                    `${b.id}:${b.type}:${b.enabled !== false}:${b.duration}:${b.name || ''}:${b.paModifier || 0}:${(b.modifiers || [])
+                      .map((m) => `${m.targetStat || m.stat}:${m.modifierType || m.mode}:${m.value}`)
+                      .join('|')}`
+                )
+                .join(';')
+            : '';
+          const resSig = c.resistances
+            ? Object.entries(c.resistances)
+                .map(([k, v]) => `${k}:${v?.current || 0}/${v?.max || 100}`)
+                .join(',')
+            : '';
+          const elemSig = c.elementalResistances
+            ? Object.entries(c.elementalResistances)
+                .map(([k, v]) => `${k}:${v}`)
+                .join(',')
+            : '';
+          const activeBuffsSig = Array.isArray(c.activeBuffs)
+            ? c.activeBuffs.map((b) => `${b.id}:${b.remainingTurns}`).join(';')
+            : '';
+          return [
             c.id, c.name, c.level, c.hp, c.maxHp, c.armor, c.maxArmor, c.mana, c.maxMana,
-            c.pa, c.xp, c.image, c.avatar, c.isEnemy, c.reveladoParaJogadores,
-            c.pendingAttributePoints, c.skillPoints,
+            c.pa, c.maxPa, c.xp, c.xpNext, c.image, c.avatar, c.isEnemy, c.reveladoParaJogadores,
+            c.isDead ? 1 : 0, c.pendingAttributePoints, c.skillPoints,
+            c.defense, c.attack, c.arcana, c.santidade, c.regen,
+            c.maxWeight, c.derived?.totalWeight ?? 0,
             c.conditions?.length || 0,
-            c.resistances ? Object.keys(c.resistances).length : 0
-          ].join(',')).join(';');
+            resSig,
+            elemSig,
+            bnSig,
+            activeBuffsSig,
+          ].join(',');
+        };
+
+        const sig = `${q}:${isEffectiveMaster()}:${battle.isActive}:${actingCharId}:` +
+          filtered.map(buildCharSignature).join(';');
 
         if (grid.dataset.renderedSig === sig) {
           renderBattleSidebar();
@@ -780,9 +824,11 @@
 
     const q = state.catalogSearchQuery.trim().toLowerCase();
     const tFilter = state.catalogTypeFilter;
+    const canManage = isEffectiveMaster() || hasPermission('item_manage_catalog') || hasPermission('canManageItemsCatalog');
+    const canGrant = isEffectiveMaster() || hasPermission('inventory_edit_others');
 
     const items = (state.itemsCatalog || []).filter((it) => {
-      if (!isEffectiveMaster() && it.visivelParaJogadores === false) return false;
+      if (!canManage && it.visivelParaJogadores === false) return false;
       if (tFilter !== 'ALL' && it.tipo !== tFilter) return false;
       return it.nome.toLowerCase().includes(q) || (it.descricao || '').toLowerCase().includes(q);
     });
@@ -791,9 +837,6 @@
       grid.innerHTML = `<div class="col-span-full py-12 text-center app-muted">Nenhum item encontrado no catálogo.</div>`;
       return;
     }
-
-    const canManage = isEffectiveMaster() || hasPermission('item_manage_catalog') || hasPermission('canManageItemsCatalog');
-    const canGrant = isEffectiveMaster() || hasPermission('inventory_edit_others');
 
     grid.innerHTML = items
       .map((it) => {
@@ -996,12 +1039,16 @@
 
     const query = (state.shopSearchQuery || '').trim().toLowerCase();
     const typeFilter = state.shopTypeFilter || 'ALL';
+    const canBuySell = isEffectiveMaster() || hasPermission('shop_buy_sell');
     const hasValidBuyer = Boolean(state.selectedBuyerCharId && availableBuyers.some((c) => c.id === state.selectedBuyerCharId));
+    if (buyerSelect && availableBuyers.length > 0) {
+      buyerSelect.disabled = !canBuySell;
+    }
 
     const matchingStock = (activeNpc.stock || []).filter((st) => {
       const item = itemsById[st.itemId];
       if (!item) return false;
-      if (!isEffectiveMaster() && item.visivelParaJogadores === false) return false;
+      if (!isEffectiveMaster() && !canManageShop && item.visivelParaJogadores === false) return false;
       if (typeFilter !== 'ALL' && (item.tipo || 'OUTRO') !== typeFilter) return false;
       if (query) {
         const matchName = (item.nome || '').toLowerCase().includes(query);
@@ -1023,11 +1070,13 @@
             st.customPrice !== undefined && st.customPrice !== null && String(st.customPrice).trim() !== '';
           const effectivePrice = hasCustomPrice ? Math.max(0, Number(st.customPrice)) : Number(item.preco || 0);
           const maxBuyQty = st.infinite ? 999 : Math.max(1, Number(st.quantity || 1));
-          const buyDisabled = outOfStock || !hasValidBuyer;
+          const buyDisabled = outOfStock || !hasValidBuyer || !canBuySell;
 
           let buyBtnLabel = '';
           if (outOfStock) {
             buyBtnLabel = 'Esgotado';
+          } else if (!canBuySell) {
+            buyBtnLabel = '<iconify-icon icon="game-icons:padlock"></iconify-icon> <span>Compra Bloqueada</span>';
           } else if (!hasValidBuyer) {
             buyBtnLabel = '<iconify-icon icon="game-icons:padlock"></iconify-icon> <span>Sem ficha vinculada</span>';
           } else {
@@ -2266,26 +2315,40 @@
   }
 
   function refreshOpenModalsIfAny() {
-    if (state.activeResistanceCharId) {
-      const char = state.characters.find((c) => c.id === state.activeResistanceCharId);
-      if (char) renderResistancesPanelContent(char);
-      else {
+    const resModal = document.getElementById('modal-resistances');
+    if (state.activeResistanceCharId || (resModal && !resModal.classList.contains('hidden'))) {
+      const resCharId = state.activeResistanceCharId || document.getElementById('single-res-char-id')?.value;
+      const char = state.characters.find((c) => c.id === resCharId);
+      if (char) {
+        state.activeResistanceCharId = char.id;
+        renderResistancesPanelContent(char);
+      } else {
         closeModal('modal-single-resistance');
         closeModal('modal-resistances');
       }
     }
-    if (state.activeBuffsNerfsCharId) {
-      const char = state.characters.find((c) => c.id === state.activeBuffsNerfsCharId);
-      if (char) renderBuffsNerfsModalContent(char);
-      else closeModal('modal-buffs-nerfs');
+    const bnModal = document.getElementById('modal-buffs-nerfs');
+    if (state.activeBuffsNerfsCharId || (bnModal && !bnModal.classList.contains('hidden'))) {
+      const bnCharId = state.activeBuffsNerfsCharId || document.getElementById('buffs-nerfs-char-id')?.value;
+      const char = state.characters.find((c) => c.id === bnCharId);
+      if (char) {
+        state.activeBuffsNerfsCharId = char.id;
+        renderBuffsNerfsModalContent(char);
+      } else {
+        closeModal('modal-buffs-nerfs');
+      }
     }
-    if (state.activeSheetCharId) {
-      const char = state.characters.find((c) => c.id === state.activeSheetCharId);
+    const sheetModal = document.getElementById('modal-char-sheet');
+    if (state.activeSheetCharId || (sheetModal && !sheetModal.classList.contains('hidden'))) {
+      const sheetCharId = state.activeSheetCharId;
+      const char = state.characters.find((c) => c.id === sheetCharId);
       if (char) renderCharacterSheetModalContent(char);
       else closeModal('modal-char-sheet');
     }
-    if (state.activeInventoryCharId) {
-      const char = state.characters.find((c) => c.id === state.activeInventoryCharId);
+    const invModal = document.getElementById('modal-char-inventory');
+    if (state.activeInventoryCharId || (invModal && !invModal.classList.contains('hidden'))) {
+      const invCharId = state.activeInventoryCharId;
+      const char = state.characters.find((c) => c.id === invCharId);
       if (char) renderCharacterInventoryModalContent(char);
       else closeModal('modal-char-inventory');
     }

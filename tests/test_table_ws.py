@@ -401,10 +401,10 @@ def test_decoupled_mesa_compact_state_and_cards_rendering(tmp_path: Path) -> Non
         assert sync["table"]["sizes"]["char_default_1"] == {"w": 72, "h": 96}
         assert sync["table"]["sizes"]["char_default_2"] == {"w": 420, "h": 468}
 
-        # Static asset query string must be v1.13.7
+        # Static asset query string must be v1.13.8
         resp = client.get("/")
-        assert "js/01-core-state.js?v=1.13.7" in resp.text
-        assert "js/03-tabs-renderers.js?v=1.13.7" in resp.text
+        assert "js/01-core-state.js?v=1.13.8" in resp.text
+        assert "js/03-tabs-renderers.js?v=1.13.8" in resp.text
 
         # Verify 03-tabs-renderers.js restricts compact mode exclusively to Mesa:
         js_resp = client.get("/js/03-tabs-renderers.js")
@@ -569,9 +569,9 @@ def test_v1_13_5_navigation_presence_and_render_stability(tmp_path: Path) -> Non
 
     # 1. HTML and assets checks
     resp_html = client.get("/")
-    assert 'styles.css?v=1.13.7' in resp_html.text
-    assert 'js/02-websocket-combat.js?v=1.13.7' in resp_html.text
-    assert 'js/05b-mesa-board.js?v=1.13.7' in resp_html.text
+    assert 'styles.css?v=1.13.8' in resp_html.text
+    assert 'js/02-websocket-combat.js?v=1.13.8' in resp_html.text
+    assert 'js/05b-mesa-board.js?v=1.13.8' in resp_html.text
 
     # 2. CSS Subpixel stabilization & GPU layer rules
     resp_css = client.get("/styles.css")
@@ -650,6 +650,228 @@ def test_cross_tab_flicker_and_sidebar_stability():
     assert "requestAnimationFrame(stepRemoteCursorsInterpolations)" in resp_combat_js.text
     assert ".mesa-token-remote-dragging" in resp_css.text
     assert "transition: transform 0.08s" not in resp_css.text
+
+
+def test_realtime_buffs_and_debuffs_sync_without_reload(tmp_path: Path):
+    _setup_isolated_state(tmp_path)
+    client = TestClient(main.app, client=("127.0.0.1", 53045))
+
+    # 1. Verifica no código JS que a assinatura de renderização da aba Fichas inclui buffs/nerfs e atributos derivados
+    resp_tabs_js = client.get("/js/03-tabs-renderers.js")
+    assert "buildCharSignature" in resp_tabs_js.text
+    assert "bnSig" in resp_tabs_js.text
+    assert "resSig" in resp_tabs_js.text
+    assert "elemSig" in resp_tabs_js.text
+    assert "c.defense" in resp_tabs_js.text
+    assert "data-buffs-sig=" in resp_tabs_js.text
+    assert "modal-buffs-nerfs" in resp_tabs_js.text
+
+    # 2. Verifica que a remoção e alteração de buffs atualizam o modal e limpam o formulário
+    resp_buffs_js = client.get("/js/04-modals-character-buffs.js")
+    assert "removeBuffNerf" in resp_buffs_js.text
+    assert "resetBnForm" in resp_buffs_js.text
+    assert "renderBuffsNerfsModalContent" in resp_buffs_js.text
+
+    # 3. Testa ciclo WebSocket em tempo real para adição e sincronização de Buff com bônus de DEFESA
+    with client.websocket_connect("/ws") as ws:
+        init_data = _drain_until_type(ws, "state_sync")
+        characters = init_data.get("characters") or []
+        assert len(characters) > 0
+        char = characters[0]
+        char_id = char["id"]
+        base_def = char.get("defense", 0)
+
+        # Adiciona um Buff com +10 de Defesa
+        buff = {
+            "id": "bn_test_def_bonus",
+            "type": "BUFF",
+            "name": "Escudo Astral",
+            "description": "+10 Defesa",
+            "duration": 3,
+            "isPermanent": False,
+            "enabled": True,
+            "modifiers": [{"targetStat": "DEFESA", "modifierType": "FLAT", "value": 10}],
+            "source": "Teste Unitário",
+        }
+        char.setdefault("buffsNerfs", []).append(buff)
+
+        ws.send_json({
+            "type": "update_state",
+            "characters": characters,
+            "record_history": True,
+        })
+
+        sync_data = _drain_until_type(ws, "state_sync")
+        updated_chars = sync_data.get("characters") or []
+        updated_char = next((c for c in updated_chars if c["id"] == char_id), None)
+        assert updated_char is not None
+        assert len(updated_char.get("buffsNerfs", [])) >= 1
+        assert updated_char["defense"] == base_def + 10
+
+
+def test_v1_13_8_all_32_permissions_and_skill_tree_category(tmp_path: Path) -> None:
+    _setup_isolated_state(tmp_path)
+    client_master = TestClient(main.app, client=("127.0.0.1", 53060))
+    client_p1 = TestClient(main.app, client=("26.139.248.121", 53061))
+
+    all_32_keys = [
+        # Cat 1: Personagens & Fichas (7)
+        "char_manage_own",
+        "char_view_others",
+        "char_create",
+        "char_edit_others",
+        "char_delete",
+        "char_reorder",
+        "char_grant_xp",
+        # Cat 2: Combate, Turnos & Acúmulos (7)
+        "combat_advance_own_turn",
+        "combat_manage_battle",
+        "combat_edit_order",
+        "combat_advance_any_turn",
+        "combat_manage_charges",
+        "combat_apply_damage_others",
+        "combat_manage_accumulations_others",
+        # Cat 3: Itens, Inventário & Ouro (5)
+        "inventory_view_others",
+        "inventory_transfer_any",
+        "inventory_edit_others",
+        "item_manage_catalog",
+        "gold_manage",
+        # Cat 4: Loja, Mercadores & Escrow (3)
+        "shop_buy_sell",
+        "shop_manage_npcs",
+        "shop_approve_escrow",
+        # Cat 5: Bestiário & Invocação (4)
+        "bestiary_view_revealed",
+        "bestiary_view_hidden",
+        "bestiary_manage",
+        "bestiary_summon",
+        # Cat 6: Missões & Sistema (5)
+        "mission_accept",
+        "mission_manage",
+        "mission_approve",
+        "system_undo_redo",
+        "system_view_audit_log",
+        # Cat 7: Árvore de Habilidades (1)
+        "manageSkillTrees",
+    ]
+    assert len(all_32_keys) == 32
+
+    # 1. Verify presets in main.py have all 32 keys and expected counts
+    p_comum = main.default_permissions("JOGADOR_COMUM")
+    p_sub = main.default_permissions("SUB_MESTRE")
+    p_esp = main.default_permissions("ESPECTADOR")
+    p_mestre = main.master_full_permissions()
+
+    for k in all_32_keys:
+        assert k in p_comum, f"Missing {k} in JOGADOR_COMUM"
+        assert k in p_sub, f"Missing {k} in SUB_MESTRE"
+        assert k in p_esp, f"Missing {k} in ESPECTADOR"
+        assert p_mestre.get(k) is True, f"Master must have {k}=True"
+
+    assert sum(1 for k in all_32_keys if p_comum[k]) == 12
+    assert p_comum["manageSkillTrees"] is False
+    assert p_sub["manageSkillTrees"] is True
+    assert p_esp["manageSkillTrees"] is False
+
+    # 2. Verify JS & HTML definitions for 7th category and non-truncated cards
+    core_js = client_master.get("/js/01-core-state.js").text
+    assert "id: 'skill_trees'" in core_js
+    assert "title: 'Árvore de Habilidades'" in core_js
+    assert "icon: 'game-icons:tree-branch'" in core_js
+    assert "key: 'manageSkillTrees'" in core_js
+    assert "Gerenciar Árvores de Habilidades (Controle Total)" in core_js
+    assert "function canManageSkillTrees()" in core_js
+
+    modals_js = client_master.get("/js/05-modals-notes-inventory-bestiary.js").text
+    assert "break-words" in modals_js
+    assert "line-clamp-2" in modals_js
+
+    index_html = client_master.get("/").text
+    assert 'id="modal-member"' in index_html
+    assert "max-w-2xl" in index_html
+
+    # 3. Verify normalize_members_list respects all 32 individual boolean toggles
+    all_false_perms = {"preset": "JOGADOR_COMUM", **{k: False for k in all_32_keys}}
+    norm_false = main.normalize_members_list([{"id": "ip_26.1.1.1", "ip": "26.1.1.1", "permissions": all_false_perms}])
+    player_norm_f = next(m for m in norm_false if m["ip"] == "26.1.1.1")
+    for k in all_32_keys:
+        assert player_norm_f["permissions"][k] is False, f"{k} was not preserved as False"
+
+    all_true_perms = {"preset": "PERSONALIZADO", **{k: True for k in all_32_keys}}
+    norm_true = main.normalize_members_list([{"id": "ip_26.1.1.1", "ip": "26.1.1.1", "permissions": all_true_perms}])
+    player_norm_t = next(m for m in norm_true if m["ip"] == "26.1.1.1")
+    for k in all_32_keys:
+        assert player_norm_t["permissions"][k] is True, f"{k} was not preserved as True"
+
+    # 4. WebSocket end-to-end test: player blocked from skillTrees until manageSkillTrees is granted
+    with client_master.websocket_connect("/ws") as ws_m, client_p1.websocket_connect("/ws") as ws_p1:
+        _drain_until_type(ws_m, "state_sync")
+        _drain_until_type(ws_m, "state_sync")
+        _drain_until_type(ws_p1, "state_sync")
+
+        # Player 1 (default JOGADOR_COMUM, manageSkillTrees=False) tries to create a skill tree -> blocked!
+        forged_tree = {
+            "id": "tree_p1_test",
+            "name": "Piromancia",
+            "description": "Árvore criada por jogador",
+            "hiddenForPlayers": False,
+            "completionDescription": "+10 Ataque",
+            "completionEffects": [{"targetStat": "ATAQUE", "modifierType": "FLAT", "value": 10}],
+            "nodes": [],
+        }
+        ws_p1.send_json({"type": "update_state", "skillTrees": [forged_tree]})
+        sync_blocked = _drain_until_type(ws_m, "state_sync")
+        _drain_until_type(ws_p1, "state_sync")
+        assert len(sync_blocked.get("skillTrees") or []) == 0
+
+        # Master grants manageSkillTrees=True to Player 1's IP (26.139.248.121) and saves a custom preset
+        members = copy.deepcopy(sync_blocked["members"])
+        p1_mem = next(m for m in members if m.get("ip") == "26.139.248.121")
+        p1_mem["nickname"] = "Nikiri Izune"
+        p1_mem["permissions"]["manageSkillTrees"] = True
+        p1_mem["permissions"]["preset"] = "preset_arquiteto"
+        custom_presets = [
+            {
+                "id": "preset_arquiteto",
+                "name": "Arquiteto de Árvores",
+                "permissions": copy.deepcopy(p1_mem["permissions"]),
+            }
+        ]
+        ws_m.send_json({
+            "type": "update_state",
+            "members": members,
+            "customPermissionPresets": custom_presets,
+        })
+        _drain_until_type(ws_m, "state_sync")
+        sync_granted = _drain_until_type(ws_p1, "state_sync")
+        p1_synced = next(m for m in sync_granted["members"] if m.get("ip") == "26.139.248.121")
+        assert p1_synced["permissions"]["manageSkillTrees"] is True
+        assert p1_synced["permissions"]["skill_tree_manage"] is True
+        assert len(sync_granted.get("customPermissionPresets") or []) == 1
+
+        # Now Player 1 creates/edits a Skill Tree -> allowed and broadcast to everyone!
+        ws_p1.send_json({"type": "update_state", "skillTrees": [forged_tree]})
+        sync_created = _drain_until_type(ws_m, "state_sync")
+        _drain_until_type(ws_p1, "state_sync")
+        assert len(sync_created.get("skillTrees") or []) == 1
+        assert sync_created["skillTrees"][0]["name"] == "Piromancia"
+
+        # Master revokes manageSkillTrees=False -> Player 1 is immediately blocked from deleting the tree
+        members_revoked = copy.deepcopy(sync_created["members"])
+        p1_rev = next(m for m in members_revoked if m.get("ip") == "26.139.248.121")
+        p1_rev["permissions"]["manageSkillTrees"] = False
+        p1_rev["permissions"]["skill_tree_manage"] = False
+        ws_m.send_json({"type": "update_state", "members": members_revoked})
+        _drain_until_type(ws_m, "state_sync")
+        _drain_until_type(ws_p1, "state_sync")
+
+        ws_p1.send_json({"type": "update_state", "skillTrees": []})
+        sync_after_revoke = _drain_until_type(ws_m, "state_sync")
+        _drain_until_type(ws_p1, "state_sync")
+        assert len(sync_after_revoke.get("skillTrees") or []) == 1
+
+
 
 
 
