@@ -28,7 +28,7 @@
   <!-- Iconify Web Component (game-icons) -->
   <script src="https://code.iconify.design/iconify-icon/2.1.0/iconify-icon.min.js"></script>
   <!-- Estilos Customizados -->
-  <link rel="stylesheet" href="styles.css?v=1.13.8" />
+  <link rel="stylesheet" href="styles.css?v=1.14.0" />
 </head>
 <body class="min-h-screen flex select-none">
 
@@ -3446,93 +3446,87 @@
   </div>
 
   <!-- ========================================================================= -->
-  <!-- MODAL 20: ÁRVORE DE HABILIDADES QUASE TELA CHEIA (96vw x 92vh)            -->
+  <!-- MODAL 20: ÁRVORE DE HABILIDADES — LAYOUT RADIAL 4 QUADRANTES (96vw x 92vh) -->
   <!-- ========================================================================= -->
   <div id="modal-skill-tree" class="modal-backdrop hidden fixed inset-0 z-[72] flex items-center justify-center p-2 sm:p-4">
-    <div class="modal-panel w-[96vw] max-w-[96vw] h-[92vh] max-h-[92vh] rounded-2xl overflow-hidden flex flex-col skill-tree-modal-shell">
-      <!-- Topbar do Modal de Árvore de Habilidades -->
-      <div class="px-5 py-3.5 border-b flex flex-wrap items-center justify-between gap-3 app-modal-header shrink-0">
-        <div class="flex flex-wrap items-center gap-3 min-w-0">
-          <div class="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-500/40 flex items-center justify-center text-2xl gold-title shrink-0">
-            <iconify-icon icon="game-icons:family-tree"></iconify-icon>
-          </div>
-          <div class="min-w-0">
-            <div class="flex flex-wrap items-center gap-2">
-              <h3 id="skill-tree-modal-title" class="font-serif-fantasy text-base sm:text-lg font-black uppercase gold-title tracking-wider">
-                ÁRVORE DE HABILIDADES
-              </h3>
-              <select
-                id="skill-tree-modal-char-select"
-                class="px-2.5 py-1 rounded-lg text-xs font-bold app-input max-w-[240px]"
-                title="Selecionar Personagem"
-              ></select>
-            </div>
-            <p id="skill-tree-modal-subtitle" class="text-[11px] font-mono app-muted truncate mt-0.5">
-              Adquira talentos, passivas, ativas e supremas livremente em qualquer ordem.
-            </p>
+    <div class="modal-panel w-[96vw] max-w-[96vw] h-[92vh] max-h-[92vh] rounded-2xl overflow-hidden flex flex-col skill-tree-modal-shell sk-shell">
+      <!-- Cabeçalho: título, personagem, dropdown de árvores, busca e contadores -->
+      <div class="sk-header px-4 py-2.5 border-b flex flex-wrap items-center justify-between gap-2.5 app-modal-header shrink-0">
+        <div class="flex flex-wrap items-center gap-2.5 min-w-0">
+          <span class="sk-title-icon"><iconify-icon icon="game-icons:family-tree"></iconify-icon></span>
+          <h3 id="skill-tree-modal-title" class="font-serif-fantasy text-base sm:text-lg font-black uppercase gold-title tracking-wider">
+            ÁRVORE DE HABILIDADES
+          </h3>
+          <select
+            id="skill-tree-modal-char-select"
+            class="px-2.5 py-1.5 rounded-lg text-xs font-bold app-input max-w-[220px]"
+            title="Selecionar Personagem"
+          ></select>
+
+          <div class="sk-dd" id="st-tree-dd">
+            <button type="button" id="st-tree-dd-trigger" class="sk-dd-trigger" data-st-dd-toggle aria-haspopup="listbox" aria-expanded="false" title="Selecionar Árvore">
+              <iconify-icon icon="game-icons:tree-branch" class="sk-dd-ic"></iconify-icon>
+              <span id="st-tree-dd-label" class="sk-dd-label">—</span>
+              <svg class="sk-dd-chevron" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.17l3.71-3.94a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" /></svg>
+            </button>
+            <div id="skill-tree-modal-tabs" class="sk-dd-menu hidden" role="listbox"></div>
           </div>
         </div>
 
-        <!-- Pontos de Talento Disponíveis + Passivas Ativas (X/3) + Ações do Mestre + Fechar -->
-        <div class="flex flex-wrap items-center gap-2.5">
-          <div id="skill-tree-modal-passives-pill" class="px-3.5 py-1.5 rounded-xl bg-sky-950/50 border border-sky-500/40 flex items-center gap-2" title="Limite máximo de 3 Passivas de Árvores ativas simultaneamente por ficha">
-            <iconify-icon icon="game-icons:dragon-shield" class="text-sky-300 text-base"></iconify-icon>
-            <span class="text-xs font-bold text-sky-200 uppercase tracking-wider">Passivas Ativas:</span>
-            <span id="skill-tree-modal-passives-badge" class="font-mono font-black text-sm text-sky-300">0 / 3</span>
+        <div class="flex flex-wrap items-center gap-2">
+          <div id="skill-tree-modal-search-bar" class="relative w-[230px] max-w-full">
+            <iconify-icon icon="game-icons:magnifying-glass" class="absolute left-3 top-1/2 -translate-y-1/2 text-amber-400/70 text-sm pointer-events-none"></iconify-icon>
+            <input
+              id="st-modal-search-input"
+              type="text"
+              placeholder="Pesquisar habilidade ou atributo..."
+              autocomplete="off"
+              class="w-full pl-8 pr-7 py-1.5 text-xs font-semibold app-input"
+            />
+            <button
+              id="btn-st-modal-search-clear"
+              type="button"
+              title="Limpar pesquisa"
+              class="hidden absolute right-2 top-1/2 -translate-y-1/2 w-5 h-5 rounded flex items-center justify-center text-xs app-muted hover:text-amber-300"
+            >✕</button>
           </div>
 
-          <div class="px-3.5 py-1.5 rounded-xl bg-purple-950/50 border border-purple-500/40 flex items-center gap-2">
-            <iconify-icon icon="game-icons:sparkles" class="text-purple-300 text-base"></iconify-icon>
-            <span class="text-xs font-bold text-purple-200 uppercase tracking-wider">Pontos de Talento:</span>
-            <span id="skill-tree-modal-points-badge" class="font-mono font-black text-base text-purple-300">0</span>
+          <div id="skill-tree-modal-passives-pill" class="sk-pill" title="Limite máximo de 3 Passivas de Árvores ativas simultaneamente por ficha">
+            <iconify-icon icon="game-icons:dragon-shield"></iconify-icon>
+            <span class="sk-pill-label">Passivas Ativas:</span>
+            <span id="skill-tree-modal-passives-badge" class="sk-pill-value">0 / 3</span>
+          </div>
+
+          <div class="sk-pill" title="Pontos de Talento disponíveis para gastar">
+            <iconify-icon icon="game-icons:sparkles"></iconify-icon>
+            <span class="sk-pill-label">Pontos de Talento:</span>
+            <span id="skill-tree-modal-points-badge" class="sk-pill-value">0</span>
             <div id="skill-tree-modal-master-pts-btns" class="hidden flex items-center gap-1 ml-1">
-              <button type="button" id="btn-st-modal-sub-pt" class="w-6 h-6 rounded bg-black/40 hover:bg-black/70 border border-purple-500/40 text-purple-200 font-mono font-black text-xs" title="Remover 1 Ponto de Talento (Mestre)">-1</button>
-              <button type="button" id="btn-st-modal-add-pt" class="w-6 h-6 rounded bg-purple-600 hover:bg-purple-500 text-white font-mono font-black text-xs" title="Conceder +1 Ponto de Talento (Mestre)">+1</button>
+              <button type="button" id="btn-st-modal-sub-pt" class="sk-mini-btn" title="Remover 1 Ponto de Talento (Mestre)">-1</button>
+              <button type="button" id="btn-st-modal-add-pt" class="sk-mini-btn sk-mini-btn-gold" title="Conceder +1 Ponto de Talento (Mestre)">+1</button>
             </div>
           </div>
 
+          <button type="button" id="btn-st-modal-refund-tree" class="hidden sk-btn sk-btn-danger" title="Devolver todos os pontos investidos nesta árvore">
+            <iconify-icon icon="game-icons:cycle"></iconify-icon>
+            <span>Reembolsar Árvore</span>
+          </button>
+
           <div id="skill-tree-modal-master-toolbar" class="hidden flex flex-wrap items-center gap-1.5">
-            <button
-              type="button"
-              id="btn-st-modal-new-tree"
-              class="px-2.5 py-1.5 rounded-lg text-[11px] font-serif-fantasy font-bold uppercase btn-gold-outline flex items-center gap-1"
-            >
-              <iconify-icon icon="game-icons:plus"></iconify-icon>
-              <span>Nova Árvore</span>
+            <button type="button" id="btn-st-modal-new-tree" class="sk-btn" title="Criar nova árvore">
+              <iconify-icon icon="game-icons:plus"></iconify-icon><span>Nova Árvore</span>
             </button>
-            <button
-              type="button"
-              id="btn-st-modal-edit-tree"
-              class="px-2.5 py-1.5 rounded-lg text-[11px] font-serif-fantasy font-bold uppercase app-secondary-btn flex items-center gap-1"
-            >
-              <iconify-icon icon="game-icons:quill-ink"></iconify-icon>
-              <span>Editar Árvore</span>
+            <button type="button" id="btn-st-modal-edit-tree" class="sk-btn" title="Editar árvore atual e Efeito de Árvore Completa">
+              <iconify-icon icon="game-icons:quill-ink"></iconify-icon><span class="hidden xl:inline">Editar</span>
             </button>
-            <button
-              type="button"
-              id="btn-st-modal-clone-tree"
-              class="px-2.5 py-1.5 rounded-lg text-[11px] font-serif-fantasy font-bold uppercase btn-gold-outline flex items-center gap-1"
-              title="Duplicar / Clonar Árvore Inteira com todos os nós e efeitos"
-            >
-              <iconify-icon icon="game-icons:files"></iconify-icon>
-              <span class="hidden md:inline">Duplicar Árvore</span>
+            <button type="button" id="btn-st-modal-clone-tree" class="sk-btn" title="Duplicar / Clonar Árvore Inteira com todos os nós e efeitos">
+              <iconify-icon icon="game-icons:files"></iconify-icon><span class="hidden xl:inline">Duplicar</span>
             </button>
-            <button
-              type="button"
-              id="btn-st-modal-delete-tree"
-              class="px-2.5 py-1.5 rounded-lg text-[11px] font-serif-fantasy font-bold uppercase bg-rose-600/20 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/40 transition flex items-center gap-1"
-              title="Excluir Árvore Atual"
-            >
-              <iconify-icon icon="game-icons:trash-can"></iconify-icon>
-              <span class="hidden md:inline">Excluir Árvore</span>
+            <button type="button" id="btn-st-modal-delete-tree" class="sk-btn sk-btn-danger" title="Excluir Árvore Atual">
+              <iconify-icon icon="game-icons:trash-can"></iconify-icon><span class="hidden xl:inline">Excluir</span>
             </button>
-            <button
-              type="button"
-              id="btn-st-modal-add-node"
-              class="px-3 py-1.5 rounded-lg text-[11px] font-serif-fantasy font-black uppercase btn-gold flex items-center gap-1"
-            >
-              <iconify-icon icon="game-icons:sparkles"></iconify-icon>
-              <span>＋ Novo Nó</span>
+            <button type="button" id="btn-st-modal-add-node" class="sk-btn sk-btn-gold" title="Adicionar novo nó à árvore atual">
+              <iconify-icon icon="game-icons:plus"></iconify-icon><span>Novo Nó</span>
             </button>
           </div>
 
@@ -3540,45 +3534,11 @@
         </div>
       </div>
 
-      <!-- Barra de Abas de Seleção de Árvore -->
-      <div id="skill-tree-modal-tabs" class="px-5 py-2.5 border-b app-divider-border bg-black/35 flex items-center gap-2 overflow-x-auto shrink-0">
-        <!-- Abas das árvores renderizadas via JS -->
-      </div>
-
-      <!-- Barra de Pesquisa em Tempo Real e Pílulas de Filtro Rápido -->
-      <div id="skill-tree-modal-search-bar" class="px-5 py-2.5 border-b app-divider-border bg-black/25 flex flex-wrap items-center justify-between gap-2.5 shrink-0">
-        <div class="relative flex-1 min-w-[240px]">
-          <iconify-icon icon="game-icons:magnifying-glass" class="absolute left-3.5 top-1/2 -translate-y-1/2 text-amber-400/75 text-sm pointer-events-none"></iconify-icon>
-          <input
-            id="st-modal-search-input"
-            type="text"
-            placeholder="Pesquisar habilidade, efeito ou atributo..."
-            autocomplete="off"
-            class="w-full pl-9 pr-8 py-1.5 text-xs font-semibold app-input"
-          />
-          <button
-            id="btn-st-modal-search-clear"
-            type="button"
-            title="Limpar pesquisa"
-            class="hidden absolute right-2.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded flex items-center justify-center text-xs app-muted hover:text-amber-300"
-          >
-            ✕
-          </button>
-        </div>
-
-        <div id="st-modal-filter-pills" class="flex flex-wrap items-center gap-1.5">
-          <button type="button" data-st-filter="ALL" class="px-3 py-1 rounded-lg text-[11px] font-bold btn-gold">Todos</button>
-          <button type="button" data-st-filter="ACQUIRED" class="px-3 py-1 rounded-lg text-[11px] font-bold app-secondary-btn">Adquiridos</button>
-          <button type="button" data-st-filter="SUPREMA" class="px-3 py-1 rounded-lg text-[11px] font-bold app-secondary-btn">Supremas</button>
-          <button type="button" data-st-filter="ATIVA" class="px-3 py-1 rounded-lg text-[11px] font-bold app-secondary-btn">Ativas</button>
-          <button type="button" data-st-filter="PASSIVA" class="px-3 py-1 rounded-lg text-[11px] font-bold app-secondary-btn">Passivas</button>
-          <button type="button" data-st-filter="TALENTO" class="px-3 py-1 rounded-lg text-[11px] font-bold app-secondary-btn">Talentos</button>
-        </div>
-      </div>
-
-      <!-- Corpo Principal da Constelação (Scrollable) -->
-      <div id="skill-tree-modal-body" class="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 skill-tree-constellation-bg app-scroll">
-        <!-- Cabeçalho da Árvore Atual + Barra de Progresso 100% + Efeito de Árvore Completa + 4 Constelações -->
+      <!-- Palco radial: 4 quadrantes + núcleo central (renderizados via JS) -->
+      <div id="skill-tree-modal-wrap" class="sk-wrap flex-1 min-h-0 relative">
+        <div id="skill-tree-modal-body" class="sk-stage"></div>
+        <div id="st-inspector" class="sk-inspector hidden"></div>
+        <div id="st-tooltip" class="sk-tooltip hidden"></div>
       </div>
     </div>
   </div>
@@ -4065,12 +4025,12 @@
   </div>
 
     <!-- Módulos Sequenciais da Aplicação -->
-    <script src="js/01-core-state.js?v=1.13.8"></script>
-    <script src="js/02-websocket-combat.js?v=1.13.8"></script>
-    <script src="js/03-tabs-renderers.js?v=1.13.8"></script>
-    <script src="js/04-modals-character-buffs.js?v=1.13.8"></script>
-    <script src="js/05-modals-notes-inventory-bestiary.js?v=1.13.8"></script>
-    <script src="js/05b-mesa-board.js?v=1.13.8"></script>
-    <script src="js/06-events-init.js?v=1.13.8"></script>
+    <script src="js/01-core-state.js?v=1.14.0"></script>
+    <script src="js/02-websocket-combat.js?v=1.14.0"></script>
+    <script src="js/03-tabs-renderers.js?v=1.14.0"></script>
+    <script src="js/04-modals-character-buffs.js?v=1.14.0"></script>
+    <script src="js/05-modals-notes-inventory-bestiary.js?v=1.14.0"></script>
+    <script src="js/05b-mesa-board.js?v=1.14.0"></script>
+    <script src="js/06-events-init.js?v=1.14.0"></script>
 </body>
 </html>

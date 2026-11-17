@@ -3004,13 +3004,15 @@
       if (state.activeSkillTreeId) openSkillNodeFormModal(state.activeSkillTreeId, null, 'TALENTO');
     });
 
-    // Busca e filtros rápidos em tempo real no Modal da Árvore de Habilidades (#modal-skill-tree)
+    // Busca em tempo real no Modal da Árvore de Habilidades (#modal-skill-tree)
     document.getElementById('st-modal-search-input')?.addEventListener('input', (e) => {
       state.skillTreeSearchQuery = e.target.value || '';
+      skResetPages();
       renderSkillTreeConstellationModal();
     });
     document.getElementById('btn-st-modal-search-clear')?.addEventListener('click', () => {
       state.skillTreeSearchQuery = '';
+      skResetPages();
       const inp = document.getElementById('st-modal-search-input');
       if (inp) {
         inp.value = '';
@@ -3018,22 +3020,67 @@
       }
       renderSkillTreeConstellationModal();
     });
-    document.getElementById('st-modal-filter-pills')?.addEventListener('click', (e) => {
-      const pill = e.target.closest('[data-st-filter]');
-      if (!pill) return;
-      state.skillTreeCategoryFilter = pill.getAttribute('data-st-filter') || 'ALL';
+
+    // Interações do layout radial (dropdown, sub-abas, slots, painel de inspeção e ações)
+    const skillTreeModalEl = document.getElementById('modal-skill-tree');
+
+    const selectSkillSlot = (nodeId) => {
+      state.skillTreeSelectedNodeId = state.skillTreeSelectedNodeId === nodeId ? null : nodeId;
       renderSkillTreeConstellationModal();
-    });
+    };
 
-    document.getElementById('skill-tree-modal-tabs')?.addEventListener('click', (e) => {
-      const tabBtn = e.target.closest('[data-st-modal-select-tree]');
-      if (tabBtn) {
-        state.activeSkillTreeId = tabBtn.getAttribute('data-st-modal-select-tree');
-        renderSkillTreeConstellationModal();
+    skillTreeModalEl?.addEventListener('click', (e) => {
+      hideSkillTooltip();
+
+      if (e.target.closest('[data-st-dd-toggle]')) {
+        skSetDropdownOpen(!state.skillTreeDropdownOpen);
+        return;
       }
-    });
 
-    document.getElementById('skill-tree-modal-body')?.addEventListener('click', (e) => {
+      const treeItem = e.target.closest('[data-st-modal-select-tree]');
+      if (treeItem) {
+        state.activeSkillTreeId = treeItem.getAttribute('data-st-modal-select-tree');
+        state.skillTreeSelectedNodeId = null;
+        state.skillTreeDropdownOpen = false;
+        skResetPages();
+        renderSkillTreeConstellationModal();
+        return;
+      }
+
+      if (state.skillTreeDropdownOpen && !e.target.closest('.sk-dd')) {
+        skSetDropdownOpen(false);
+      }
+
+      const pageSet = e.target.closest('[data-st-page-set]');
+      if (pageSet) {
+        skGetPage('PASSIVA');
+        state.skillTreePages[pageSet.getAttribute('data-st-page-cat')] = Number(pageSet.getAttribute('data-st-page-set') || 0);
+        renderSkillTreeConstellationModal();
+        return;
+      }
+
+      const pageNav = e.target.closest('[data-st-page-nav]');
+      if (pageNav && !pageNav.disabled) {
+        const cat = pageNav.getAttribute('data-st-page-cat');
+        const delta = Number(pageNav.getAttribute('data-st-page-nav') || 0);
+        state.skillTreePages[cat] = Math.max(0, skGetPage(cat) + delta);
+        renderSkillTreeConstellationModal();
+        return;
+      }
+
+      if (e.target.closest('[data-st-inspector-close]')) {
+        state.skillTreeSelectedNodeId = null;
+        renderSkillTreeConstellationModal();
+        return;
+      }
+
+      if (e.target.closest('#btn-st-modal-refund-tree')) {
+        if (state.activeSkillTreeCharId && state.activeSkillTreeId) {
+          handleRefundWholeSkillTree(state.activeSkillTreeCharId, state.activeSkillTreeId);
+        }
+        return;
+      }
+
       const buyBtn = e.target.closest('[data-skill-node-buy]');
       if (buyBtn) {
         handleSkillNodePurchaseOrUpgrade(
@@ -3088,10 +3135,30 @@
           delNodeBtn.getAttribute('data-tree-id') || state.activeSkillTreeId,
           delNodeBtn.getAttribute('data-delete-skill-node')
         );
+        return;
+      }
+
+      const slot = e.target.closest('[data-st-slot]');
+      if (slot) {
+        selectSkillSlot(slot.getAttribute('data-st-slot'));
+        return;
+      }
+
+      if (state.skillTreeSelectedNodeId && e.target.closest('#skill-tree-modal-wrap') && !e.target.closest('#st-inspector')) {
+        state.skillTreeSelectedNodeId = null;
+        renderSkillTreeConstellationModal();
       }
     });
 
-    document.getElementById('skill-tree-modal-body')?.addEventListener('change', (e) => {
+    skillTreeModalEl?.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      const slot = e.target.closest?.('[data-st-slot]');
+      if (!slot) return;
+      e.preventDefault();
+      selectSkillSlot(slot.getAttribute('data-st-slot'));
+    });
+
+    skillTreeModalEl?.addEventListener('change', (e) => {
       const toggleInp = e.target.closest('[data-toggle-skill-node]');
       if (toggleInp) {
         const nodeId = toggleInp.getAttribute('data-toggle-skill-node');
@@ -3099,6 +3166,22 @@
         if (charId && nodeId) {
           handleSkillNodeToggleEnabled(charId, nodeId, toggleInp.checked);
         }
+      }
+    });
+
+    // Tooltip rápido ao passar o mouse sobre um slot
+    skillTreeModalEl?.addEventListener('mouseover', (e) => {
+      const slot = e.target.closest('[data-st-slot]');
+      if (slot) showSkillTooltip(slot);
+      else hideSkillTooltip();
+    });
+    skillTreeModalEl?.addEventListener('mouseleave', hideSkillTooltip);
+    skillTreeModalEl?.addEventListener('dragstart', hideSkillTooltip);
+
+    window.addEventListener('resize', () => {
+      if (skillTreeModalEl && !skillTreeModalEl.classList.contains('hidden')) {
+        layoutSkillTreeConnectors();
+        positionSkillInspector();
       }
     });
 

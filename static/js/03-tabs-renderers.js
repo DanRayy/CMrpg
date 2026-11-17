@@ -2310,7 +2310,11 @@
     }
     if (id === 'modal-char-sheet') state.activeSheetCharId = null;
     if (id === 'modal-char-inventory') state.activeInventoryCharId = null;
-    if (id === 'modal-skill-tree') state.activeSkillTreeModalCharId = null;
+    if (id === 'modal-skill-tree') {
+      state.activeSkillTreeModalCharId = null;
+      state.skillTreeSelectedNodeId = null;
+      state.skillTreeDropdownOpen = false;
+    }
     refreshAllRemoteCursorsVisibility();
   }
 

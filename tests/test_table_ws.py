@@ -401,10 +401,10 @@ def test_decoupled_mesa_compact_state_and_cards_rendering(tmp_path: Path) -> Non
         assert sync["table"]["sizes"]["char_default_1"] == {"w": 72, "h": 96}
         assert sync["table"]["sizes"]["char_default_2"] == {"w": 420, "h": 468}
 
-        # Static asset query string must be v1.13.8
+        # Static asset query string must be v1.14.0
         resp = client.get("/")
-        assert "js/01-core-state.js?v=1.13.8" in resp.text
-        assert "js/03-tabs-renderers.js?v=1.13.8" in resp.text
+        assert "js/01-core-state.js?v=1.14.0" in resp.text
+        assert "js/03-tabs-renderers.js?v=1.14.0" in resp.text
 
         # Verify 03-tabs-renderers.js restricts compact mode exclusively to Mesa:
         js_resp = client.get("/js/03-tabs-renderers.js")
@@ -569,9 +569,9 @@ def test_v1_13_5_navigation_presence_and_render_stability(tmp_path: Path) -> Non
 
     # 1. HTML and assets checks
     resp_html = client.get("/")
-    assert 'styles.css?v=1.13.8' in resp_html.text
-    assert 'js/02-websocket-combat.js?v=1.13.8' in resp_html.text
-    assert 'js/05b-mesa-board.js?v=1.13.8' in resp_html.text
+    assert 'styles.css?v=1.14.0' in resp_html.text
+    assert 'js/02-websocket-combat.js?v=1.14.0' in resp_html.text
+    assert 'js/05b-mesa-board.js?v=1.14.0' in resp_html.text
 
     # 2. CSS Subpixel stabilization & GPU layer rules
     resp_css = client.get("/styles.css")
@@ -870,6 +870,57 @@ def test_v1_13_8_all_32_permissions_and_skill_tree_category(tmp_path: Path) -> N
         sync_after_revoke = _drain_until_type(ws_m, "state_sync")
         _drain_until_type(ws_p1, "state_sync")
         assert len(sync_after_revoke.get("skillTrees") or []) == 1
+
+
+def test_v1_14_0_radial_skill_tree_modal_4_quadrants_and_core(tmp_path: Path) -> None:
+    _setup_isolated_state(tmp_path)
+    client = TestClient(main.app, client=("127.0.0.1", 53070))
+
+    # 1. Verify HTML structure for radial modal (#modal-skill-tree)
+    html = client.get("/").text
+    assert 'id="st-tree-dd-trigger"' in html
+    assert 'id="st-tree-dd-label"' in html
+    assert 'id="btn-st-modal-refund-tree"' in html
+    assert 'id="skill-tree-modal-wrap"' in html
+    assert 'id="st-inspector"' in html
+    assert 'id="st-tooltip"' in html
+
+    # 2. Verify CSS matte palette and radial 4-quadrant classes
+    css = client.get("/styles.css").text
+    for cls in [
+        ".sk-shell",
+        ".sk-dd-trigger",
+        ".sk-dd-menu",
+        ".sk-stage",
+        ".sk-quad-passiva",
+        ".sk-quad-talento",
+        ".sk-quad-ativa",
+        ".sk-quad-suprema",
+        ".sk-core-medallion",
+        ".sk-ring-progress",
+        ".sk-core-effect",
+        ".sk-inspector",
+        ".sk-tooltip",
+        "#131b24",
+        "#1f1a12",
+        "#1b1424",
+        "#241315",
+    ]:
+        assert cls in css, f"Missing {cls} in styles.css"
+
+    # 3. Verify JS radial rendering & inspection functions in 04-modals-character-buffs.js
+    js_04 = client.get("/js/04-modals-character-buffs.js").text
+    for fn in [
+        "SK_QUADRANTS",
+        "skRenderQuadrantHtml",
+        "skRenderCoreHtml",
+        "skRenderInspectorHtml",
+        "positionSkillInspector",
+        "layoutSkillTreeConnectors",
+        "handleRefundWholeSkillTree",
+    ]:
+        assert fn in js_04, f"Missing {fn} in 04-modals-character-buffs.js"
+
 
 
 
