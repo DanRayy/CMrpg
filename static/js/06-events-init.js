@@ -2111,9 +2111,11 @@
     });
 
     document.getElementById('btn-battle-add-all')?.addEventListener('click', () => {
-      const queuedSet = new Set(battleOrderWorkingQueue);
       (state.characters || []).forEach((c) => {
-        if (!queuedSet.has(c.id)) {
+        if (Number(c.hp || 0) <= 0 || c.isDead) return;
+        const maxTurns = c.isEnemy ? Math.max(1, Number(c.turnsPerRound || 1)) : 1;
+        const currentCount = battleOrderWorkingQueue.filter((x) => x === c.id).length;
+        for (let i = currentCount; i < maxTurns; i++) {
           battleOrderWorkingQueue.push(c.id);
         }
       });
@@ -2160,6 +2162,7 @@
       }
 
       const level = Math.max(1, parseInt(document.getElementById('enemy-level-input').value, 10) || 1);
+      const turnsPerRound = Math.max(1, parseInt(document.getElementById('enemy-turns-input')?.value, 10) || 1);
       const reveladoParaJogadores = document.getElementById('enemy-revealed-input').checked;
 
       const maxHp = Math.max(1, parseInt(document.getElementById('enemy-max-hp').value, 10) || 100);
@@ -2213,6 +2216,7 @@
               image: enemyImage,
               avatar: enemyAvatar,
               level,
+              turnsPerRound,
               reveladoParaJogadores,
               maxHp,
               maxArmor,
@@ -2227,7 +2231,7 @@
               elementalResistances,
               generalSkills,
             };
-            // Sincroniza reveladoParaJogadores, image, generalSkills e elementalResistances para instâncias ativas na mesa
+            // Sincroniza reveladoParaJogadores, image, generalSkills, turnsPerRound e elementalResistances para instâncias ativas na mesa
             (st.characters || []).forEach((c) => {
               if (c.bestiaryId === enemyId) {
                 c.image = enemyImage;
@@ -2235,6 +2239,7 @@
                 c.reveladoParaJogadores = reveladoParaJogadores;
                 c.generalSkills = generalSkills;
                 c.elementalResistances = { ...elementalResistances };
+                c.turnsPerRound = turnsPerRound;
                 recalculateCharacterDerived(c);
               }
             });
@@ -2246,6 +2251,7 @@
               image: enemyImage,
               avatar: enemyAvatar,
               level,
+              turnsPerRound,
               reveladoParaJogadores,
               maxHp,
               maxArmor,

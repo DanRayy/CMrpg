@@ -131,11 +131,24 @@
         </div>`
       : '';
 
+    let enemyCurrentSlotLabel = '';
+    if (isCurrentTurn && isEnemy && orderIds.length > 0) {
+      const actingIndex = battle.currentTurnIndex % orderIds.length;
+      const totalInQueue = orderIds.filter((x) => x === char.id).length;
+      let turnOccurrence = 0;
+      for (let i = 0; i <= actingIndex; i++) {
+        if (orderIds[i] === char.id) turnOccurrence++;
+      }
+      if (totalInQueue > 1) {
+        enemyCurrentSlotLabel = ` (${turnOccurrence}/${totalInQueue})`;
+      }
+    }
+
     const activeTurnBannerHtml = isCurrentTurn
       ? `<div class="p-2.5 rounded-lg bg-amber-500/20 border border-amber-400/60 flex items-center justify-between text-amber-300 font-serif-fantasy text-xs font-black uppercase tracking-wider shadow-md animate-pulse">
           <span class="flex items-center gap-2">
             <iconify-icon icon="game-icons:crossed-swords" class="text-base text-amber-400"></iconify-icon>
-            <span>TURNO ATUAL</span>
+            <span>TURNO ATUAL${enemyCurrentSlotLabel}</span>
           </span>
           <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-400/20 border border-amber-400/40 text-amber-200">AGINDO AGORA</span>
         </div>`
@@ -627,6 +640,13 @@
                 <span class="px-2 py-0.5 rounded text-[10px] font-mono font-extrabold bg-amber-500/15 gold-title border border-amber-500/30 shrink-0">
                   ${isMasked ? 'NV. ?' : `NV. ${char.level || 1}`}
                 </span>
+                ${
+                  isEnemy && !isMasked && char.turnsPerRound > 1
+                    ? `<span class="px-2 py-0.5 rounded text-[10px] font-mono font-extrabold bg-rose-500/20 text-rose-300 border border-rose-500/40 shrink-0 flex items-center gap-1" title="Quantidade de turnos por rodada em combate">
+                        <iconify-icon icon="game-icons:sands-of-time"></iconify-icon> ${char.turnsPerRound} Turnos/Rodada
+                      </span>`
+                    : ''
+                }
                 ${
                   isBattleActive
                     ? `<span class="px-2 py-0.5 rounded text-[10px] font-mono font-extrabold bg-blue-500/20 text-blue-300 border border-blue-500/40 shrink-0 flex items-center gap-1" title="Quantidade de turnos executados nesta batalha">
@@ -1459,9 +1479,18 @@
                     <h3 class="font-serif-fantasy text-base sm:text-lg font-black tracking-wide truncate gold-title" title="${escapeHtml(e.name)}">
                       ${escapeHtml(e.name)}
                     </h3>
-                    <span class="px-2 py-0.2 rounded text-[10px] font-mono font-extrabold bg-amber-500/15 gold-title border border-amber-500/30">
-                      NV. ${e.level || 1}
-                    </span>
+                    <div class="flex items-center gap-1.5 flex-wrap">
+                      <span class="px-2 py-0.2 rounded text-[10px] font-mono font-extrabold bg-amber-500/15 gold-title border border-amber-500/30">
+                        NV. ${e.level || 1}
+                      </span>
+                      ${
+                        e.turnsPerRound && Number(e.turnsPerRound) > 1
+                          ? `<span class="px-2 py-0.2 rounded text-[10px] font-mono font-extrabold bg-rose-500/20 text-rose-300 border border-rose-500/40" title="Quantidade de turnos por rodada em combate">
+                              ${e.turnsPerRound} Turnos/Rodada
+                            </span>`
+                          : ''
+                      }
+                    </div>
                   </div>
                 </div>
               </div>

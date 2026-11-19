@@ -28,7 +28,7 @@
   <!-- Iconify Web Component (game-icons) -->
   <script src="https://code.iconify.design/iconify-icon/2.1.0/iconify-icon.min.js"></script>
   <!-- Estilos Customizados -->
-  <link rel="stylesheet" href="styles.css?v=1.15.0" />
+  <link rel="stylesheet" href="styles.css?v=1.15.1" />
 </head>
 <body class="min-h-screen flex select-none">
 
@@ -2920,7 +2920,7 @@
         <input type="hidden" id="enemy-form-id" value="" />
 
         <!-- Identificação Básica & Liberação para Jogadores -->
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
           <div class="sm:col-span-2">
             <label for="enemy-name-input" class="block font-bold uppercase tracking-wider mb-1 app-label">Nome do Inimigo / Criatura</label>
             <input id="enemy-name-input" type="text" placeholder="Ex: Zhefitis" maxlength="40" required class="w-full px-3 py-2 text-sm font-bold app-input" />
@@ -2928,6 +2928,13 @@
           <div>
             <label for="enemy-level-input" class="block font-bold uppercase tracking-wider mb-1 app-label">Nível (NV)</label>
             <input id="enemy-level-input" type="number" min="1" step="1" value="1" required class="w-full px-3 py-2 font-mono font-bold app-input" />
+          </div>
+          <div>
+            <label for="enemy-turns-input" class="block font-bold uppercase tracking-wider mb-1 app-label flex items-center gap-1 text-amber-300" title="Quantidade de turnos que o inimigo possui em cada rodada de combate">
+              <iconify-icon icon="game-icons:sands-of-time"></iconify-icon>
+              <span>Turnos / Rodada</span>
+            </label>
+            <input id="enemy-turns-input" type="number" min="1" step="1" value="1" required class="w-full px-3 py-2 font-mono font-bold app-input text-amber-200" title="Quantidade de turnos que este inimigo realiza por rodada (Padrão: 1)" />
           </div>
         </div>
 
@@ -4249,12 +4256,12 @@
   </div>
 
     <!-- Módulos Sequenciais da Aplicação -->
-    <script src="js/01-core-state.js?v=1.15.0"></script>
-    <script src="js/02-websocket-combat.js?v=1.15.0"></script>
-    <script src="js/03-tabs-renderers.js?v=1.15.0"></script>
-    <script src="js/04-modals-character-buffs.js?v=1.15.0"></script>
-    <script src="js/05-modals-notes-inventory-bestiary.js?v=1.15.0"></script>
-    <script src="js/05b-mesa-board.js?v=1.15.0"></script>
-    <script src="js/06-events-init.js?v=1.15.0"></script>
+    <script src="js/01-core-state.js?v=1.15.1"></script>
+    <script src="js/02-websocket-combat.js?v=1.15.1"></script>
+    <script src="js/03-tabs-renderers.js?v=1.15.1"></script>
+    <script src="js/04-modals-character-buffs.js?v=1.15.1"></script>
+    <script src="js/05-modals-notes-inventory-bestiary.js?v=1.15.1"></script>
+    <script src="js/05b-mesa-board.js?v=1.15.1"></script>
+    <script src="js/06-events-init.js?v=1.15.1"></script>
 </body>
 </html>

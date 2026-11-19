@@ -840,6 +840,7 @@ def build_default_campaign_state() -> Dict[str, Any]:
                 "id": "bestiary_guardiao_cinzas",
                 "name": "Guardião de Cinzas",
                 "level": 3,
+                "turnsPerRound": 1,
                 "maxHp": 220,
                 "maxArmor": 40,
                 "maxMana": 80,
@@ -866,6 +867,7 @@ def build_default_campaign_state() -> Dict[str, Any]:
                 "id": "bestiary_lobo_cinzento",
                 "name": "Lobo Cinzento",
                 "level": 1,
+                "turnsPerRound": 1,
                 "maxHp": 90,
                 "maxArmor": 10,
                 "maxMana": 40,
@@ -1219,12 +1221,14 @@ def normalize_character(
     if char["isEnemy"]:
         char["baseMaxWeight"] = 999
         char["maxWeight"] = 999
+        char["turnsPerRound"] = max(1, int(char.get("turnsPerRound", 1)))
     else:
         raw_base_weight = float(char.get("baseMaxWeight", char.get("maxWeight", 27)))
         if raw_base_weight < 0:
             raw_base_weight = 27.0
         char["baseMaxWeight"] = int(raw_base_weight) if raw_base_weight.is_integer() else round(raw_base_weight, 2)
         char["maxWeight"] = char["baseMaxWeight"]
+        char.pop("turnsPerRound", None)
 
     rounding_mode = room_settings.get("roundingMode", "ROUND_DOWN")
     char["level"] = max(1, int(char.get("level", 1)))
@@ -1638,6 +1642,7 @@ class StateManager:
         ]
         for b in self.state.get("bestiary") or []:
             if isinstance(b, dict):
+                b["turnsPerRound"] = max(1, int(b.get("turnsPerRound", 1)))
                 raw_elem = b.get("elementalResistances") or {}
                 norm_elem: Dict[str, float] = {}
                 for ek in ELEMENTAL_RESISTANCE_TYPES:
@@ -2363,7 +2368,7 @@ async def lifespan(app_instance: FastAPI) -> AsyncIterator[None]:
 app = FastAPI(
     title="CMrpg Server",
     description="Sistema de Gestão de RPG Local via Radmin VPN.",
-    version="1.15.0",
+    version="1.15.1",
     lifespan=lifespan,
 )
 

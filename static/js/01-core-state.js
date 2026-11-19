@@ -926,6 +926,11 @@
     char.santidade = effSan;
     char.resistancePercent = effResPct;
     char.damageReductionPercent = effRedPct;
+    if (char.isEnemy) {
+      char.turnsPerRound = Math.max(1, parseInt(char.turnsPerRound, 10) || 1);
+    } else if ('turnsPerRound' in char) {
+      delete char.turnsPerRound;
+    }
 
     char.derived = {
       totalWeight: Number(totalWeight.toFixed(2)),

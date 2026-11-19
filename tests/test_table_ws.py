@@ -401,10 +401,10 @@ def test_decoupled_mesa_compact_state_and_cards_rendering(tmp_path: Path) -> Non
         assert sync["table"]["sizes"]["char_default_1"] == {"w": 72, "h": 96}
         assert sync["table"]["sizes"]["char_default_2"] == {"w": 420, "h": 468}
 
-        # Static asset query string must be v1.15.0
+        # Static asset query string must be v1.15.1
         resp = client.get("/")
-        assert "js/01-core-state.js?v=1.15.0" in resp.text
-        assert "js/03-tabs-renderers.js?v=1.15.0" in resp.text
+        assert "js/01-core-state.js?v=1.15.1" in resp.text
+        assert "js/03-tabs-renderers.js?v=1.15.1" in resp.text
 
         # Verify 03-tabs-renderers.js restricts compact mode exclusively to Mesa:
         js_resp = client.get("/js/03-tabs-renderers.js")
@@ -569,9 +569,9 @@ def test_v1_13_5_navigation_presence_and_render_stability(tmp_path: Path) -> Non
 
     # 1. HTML and assets checks
     resp_html = client.get("/")
-    assert 'styles.css?v=1.15.0' in resp_html.text
-    assert 'js/02-websocket-combat.js?v=1.15.0' in resp_html.text
-    assert 'js/05b-mesa-board.js?v=1.15.0' in resp_html.text
+    assert 'styles.css?v=1.15.1' in resp_html.text
+    assert 'js/02-websocket-combat.js?v=1.15.1' in resp_html.text
+    assert 'js/05b-mesa-board.js?v=1.15.1' in resp_html.text
 
     # 2. CSS Subpixel stabilization & GPU layer rules
     resp_css = client.get("/styles.css")
@@ -1100,6 +1100,152 @@ def test_v1_15_0_charges_classes_subclasses_and_races(tmp_path: Path) -> None:
         assert sc2["derived"]["effectiveElementalResistances"]["FISICO"] == 18
         assert sc2["santidade"] == 20
         assert sc2["skillTreeProgress"]["node_tree_passiva_1"]["enabled"] is False
+
+
+def test_enemy_multiple_turns_per_round(tmp_path: Path) -> None:
+    _setup_isolated_state(tmp_path)
+    client_master = TestClient(main.app, client=("127.0.0.1", 53040))
+    client_p1 = TestClient(main.app, client=("26.1.1.2", 53041))
+
+    # 1. HTML validation: Form enemy has turns-input, Form character does not
+    resp_html = client_master.get("/")
+    assert 'id="enemy-turns-input"' in resp_html.text
+    assert 'Turnos / Rodada' in resp_html.text
+    # Ensure modal-char-form does NOT have turnsPerRound or enemy-turns-input
+    assert 'id="form-character"' in resp_html.text
+    char_form_section = resp_html.text.split('id="form-character"')[1].split('</form>')[0]
+    assert 'enemy-turns-input' not in char_form_section
+    assert 'Turnos / Rodada' not in char_form_section
+
+    with client_master.websocket_connect("/ws") as ws_m, client_p1.websocket_connect("/ws") as ws_p1:
+        _drain_until_type(ws_m, "state_sync")
+        _drain_until_type(ws_m, "state_sync")
+        _drain_until_type(ws_p1, "state_sync")
+
+        # 2. Add an enemy with 2 turns per round to bestiary
+        new_boss = {
+            "id": "bestiary_boss_hydra",
+            "name": "Hidra Anfíbia",
+            "level": 5,
+            "turnsPerRound": 2,
+            "maxHp": 300,
+            "maxArmor": 50,
+            "maxMana": 100,
+            "regen": 15,
+            "defense": 10,
+            "attack": 22,
+            "arcana": 0,
+            "santidade": 0,
+            "reveladoParaJogadores": True,
+            "generalSkills": "Ataque Múltiplo de Cabeças",
+            "attributes": {"FORCA": 18, "DESTREZA": 12, "INTELIGENCIA": 8, "SABEDORIA": 10, "LABIA": 4},
+            "resistances": {
+                "congelamento": {"current": 0, "max": 100},
+                "choque": {"current": 0, "max": 100},
+                "sangramento": {"current": 0, "max": 100},
+                "chamas": {"current": 0, "max": 50},
+                "veneno": {"current": 0, "max": 150},
+                "atordoamento": {"current": 0, "max": 100},
+                "cegueira": {"current": 0, "max": 100},
+            },
+            "elementalResistances": {"FISICO": 10, "MAGICO": 0, "PYRO": -20, "CRYO": 10, "ELETRICO": 0, "PROFANO": 0, "SACRO": 0},
+        }
+
+        updated_bestiary = list(main.state_manager.state.get("bestiary", [])) + [new_boss]
+        ws_m.send_json({"type": "update_state", "bestiary": updated_bestiary})
+        sync = _drain_until_type(ws_m, "state_sync")
+        saved_boss = next(b for b in sync["bestiary"] if b["id"] == "bestiary_boss_hydra")
+        assert saved_boss["turnsPerRound"] == 2
+
+        # 3. Spawn enemy instance on table
+        boss_inst = {
+            "id": "char_enemy_hydra_1",
+            "name": "Hidra Anfíbia (1)",
+            "isEnemy": True,
+            "bestiaryId": "bestiary_boss_hydra",
+            "turnsPerRound": 2,
+            "level": 5,
+            "maxHp": 300,
+            "hp": 300,
+            "baseMaxHp": 300,
+            "maxArmor": 50,
+            "armor": 50,
+            "baseMaxArmor": 50,
+            "maxMana": 100,
+            "mana": 100,
+            "baseMaxMana": 100,
+            "defense": 10,
+            "attack": 22,
+            "regen": 15,
+            "reveladoParaJogadores": True,
+            "ownerMemberId": "host_master",
+            "ownerIp": "127.0.0.1",
+            "isDead": False,
+            "inventory": [],
+            "attributes": {"FORCA": 18, "DESTREZA": 12, "INTELIGENCIA": 8, "SABEDORIA": 10, "LABIA": 4},
+        }
+        chars = list(main.state_manager.state.get("characters", [])) + [boss_inst]
+        ws_m.send_json({"type": "update_state", "characters": chars})
+        sync = _drain_until_type(ws_m, "state_sync")
+        synced_enemy = next(c for c in sync["characters"] if c["id"] == "char_enemy_hydra_1")
+        assert synced_enemy["isEnemy"] is True
+        assert synced_enemy["turnsPerRound"] == 2
+
+        # Regular player character must NOT have turnsPerRound
+        player_char = next(c for c in sync["characters"] if c["id"] == "char_default_1")
+        assert player_char.get("isEnemy") is not True
+        assert "turnsPerRound" not in player_char
+
+        # 4. Combat with Multi-Turn Enemy:
+        # Queue: Hero ("char_default_1") -> Boss Turn 1 ("char_enemy_hydra_1") -> Boss Turn 2 ("char_enemy_hydra_1")
+        battle_state = copy.deepcopy(main.state_manager.state["battle"])
+        battle_state["isActive"] = True
+        battle_state["orderIds"] = ["char_default_1", "char_enemy_hydra_1", "char_enemy_hydra_1"]
+        battle_state["currentTurnIndex"] = 0
+        battle_state["charges"] = 1
+        ws_m.send_json({"type": "update_state", "battle": battle_state})
+        sync = _drain_until_type(ws_m, "state_sync")
+        assert sync["battle"]["isActive"] is True
+        assert sync["battle"]["charges"] == 1
+        assert sync["battle"]["currentTurnIndex"] == 0
+
+        # Advance to Boss Turn 1 (index 1) -> Enemy turn: charges remain 1 (no charge generated by enemy)
+        adv1 = copy.deepcopy(sync["battle"])
+        adv1["currentTurnIndex"] = 1
+        adv1["charges"] = 1
+        ws_m.send_json({"type": "update_state", "battle": adv1})
+        sync = _drain_until_type(ws_m, "state_sync")
+        assert sync["battle"]["currentTurnIndex"] == 1
+        assert sync["battle"]["charges"] == 1
+
+        # Advance to Boss Turn 2 (index 2) -> Enemy turn: charges remain 1
+        adv2 = copy.deepcopy(sync["battle"])
+        adv2["currentTurnIndex"] = 2
+        adv2["charges"] = 1
+        ws_m.send_json({"type": "update_state", "battle": adv2})
+        sync = _drain_until_type(ws_m, "state_sync")
+        assert sync["battle"]["currentTurnIndex"] == 2
+        assert sync["battle"]["charges"] == 1
+
+        # Advance to Hero (index 0, Round 2) -> Player turn generates +1 charge (Total: 2)
+        adv3 = copy.deepcopy(sync["battle"])
+        adv3["currentTurnIndex"] = 0
+        adv3["roundNumber"] = 2
+        adv3["charges"] = 2
+        ws_m.send_json({"type": "update_state", "battle": adv3})
+        sync = _drain_until_type(ws_m, "state_sync")
+        assert sync["battle"]["currentTurnIndex"] == 0
+        assert sync["battle"]["roundNumber"] == 2
+        assert sync["battle"]["charges"] == 2
+
+        # Reset battle
+        end_b = copy.deepcopy(sync["battle"])
+        end_b["isActive"] = False
+        end_b["charges"] = 0
+        ws_m.send_json({"type": "update_state", "battle": end_b})
+        sync = _drain_until_type(ws_m, "state_sync")
+        assert sync["battle"]["isActive"] is False
+
 
 
 

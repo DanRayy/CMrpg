@@ -1490,6 +1490,9 @@
 
     document.getElementById('enemy-name-input').value = enemy ? enemy.name : '';
     document.getElementById('enemy-level-input').value = enemy ? (enemy.level || 1) : 1;
+    if (document.getElementById('enemy-turns-input')) {
+      document.getElementById('enemy-turns-input').value = enemy ? Math.max(1, parseInt(enemy.turnsPerRound, 10) || 1) : 1;
+    }
     document.getElementById('enemy-revealed-input').checked = enemy ? Boolean(enemy.reveladoParaJogadores) : false;
     updateFormImagePreviewUI({
       inputId: 'enemy-image-url',
@@ -1733,6 +1736,7 @@
           name: newName,
           isEnemy: true,
           bestiaryId: bestiaryEnemy.id,
+          turnsPerRound: Math.max(1, Number(bestiaryEnemy.turnsPerRound || 1)),
           reveladoParaJogadores: Boolean(bestiaryEnemy.reveladoParaJogadores),
           level: Number(bestiaryEnemy.level || 1),
           avatar: bestiaryEnemy.avatar || 'monster-grasp',
@@ -1795,6 +1799,7 @@
           attack: newInst.attack,
           arcana: newInst.arcana,
           santidade: newInst.santidade,
+          turnsPerRound: newInst.turnsPerRound,
           maxWeight: 999,
           resistances: JSON.parse(JSON.stringify(newInst.resistances)),
           elementalResistances: JSON.parse(JSON.stringify(newInst.elementalResistances)),

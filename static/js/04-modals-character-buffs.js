@@ -2203,7 +2203,8 @@
       isEnemy ? ' (Ficha da Criatura)' : !canEdit ? ' (Somente Visualização)' : ''
     }`;
     if (isEnemy) {
-      document.getElementById('sheet-char-meta').innerHTML = `<iconify-icon icon="game-icons:monster-grasp" class="text-rose-400"></iconify-icon> Criatura Hostil • Modelo do Bestiário • <iconify-icon icon="game-icons:heart-bottle" class="icon-hp"></iconify-icon> ${char.hp}/${char.maxHp} HP • <iconify-icon icon="game-icons:breastplate" class="icon-armor"></iconify-icon> ${char.armor}/${char.maxArmor} ARM • <iconify-icon icon="game-icons:crystal-bars" class="icon-mana"></iconify-icon> ${char.mana}/${char.maxMana} MP`;
+      const turnsBadge = `<iconify-icon icon="game-icons:sands-of-time" class="text-amber-400"></iconify-icon> ${char.turnsPerRound || 1} Turno(s)/Rodada`;
+      document.getElementById('sheet-char-meta').innerHTML = `<iconify-icon icon="game-icons:monster-grasp" class="text-rose-400"></iconify-icon> Criatura Hostil • Modelo do Bestiário • ${turnsBadge} • <iconify-icon icon="game-icons:heart-bottle" class="icon-hp"></iconify-icon> ${char.hp}/${char.maxHp} HP • <iconify-icon icon="game-icons:breastplate" class="icon-armor"></iconify-icon> ${char.armor}/${char.maxArmor} ARM • <iconify-icon icon="game-icons:crystal-bars" class="icon-mana"></iconify-icon> ${char.mana}/${char.maxMana} MP`;
     } else {
       document.getElementById('sheet-char-meta').innerHTML = `XP: ${char.xp || 0} / ${
         char.xpNext || 80

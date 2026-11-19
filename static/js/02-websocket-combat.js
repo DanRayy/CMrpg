@@ -1573,16 +1573,24 @@
   function getTurnPermissionText() {
     const battle = getBattleState();
     if (!battle.isActive || battle.orderIds.length === 0) return '';
-    const actingId = battle.orderIds[battle.currentTurnIndex % battle.orderIds.length];
+    const actingIndex = battle.currentTurnIndex % battle.orderIds.length;
+    const actingId = battle.orderIds[actingIndex];
     const actingChar = (state.characters || []).find((c) => c.id === actingId);
     if (!actingChar) return 'Aguardando combatente...';
 
     const isMaster = isEffectiveMaster();
     const canAdvanceAny = hasPermission('combat_advance_any_turn');
+    const totalInQueue = battle.orderIds.filter((x) => x === actingChar.id).length;
+    let turnOccurrence = 0;
+    for (let i = 0; i <= actingIndex; i++) {
+      if (battle.orderIds[i] === actingChar.id) turnOccurrence++;
+    }
+    const turnSlotLabel = (actingChar.isEnemy && totalInQueue > 1) ? ` (Ação ${turnOccurrence}/${totalInQueue})` : '';
+
     if (actingChar.isEnemy) {
       return (isMaster || canAdvanceAny)
-        ? `Turno de ${actingChar.name} (Inimigo) — Você tem controle de avanço.`
-        : `Turno de ${actingChar.name} (Inimigo) — Aguardando o Mestre avançar.`;
+        ? `Turno de ${actingChar.name} (Inimigo${turnSlotLabel}) — Você tem controle de avanço.`
+        : `Turno de ${actingChar.name} (Inimigo${turnSlotLabel}) — Aguardando o Mestre avançar.`;
     }
 
     if (isCharacterOwner(actingChar)) {
@@ -1870,7 +1878,13 @@
 
       // 4. Início de Turno do combatente apto
       processStartOfTurn(foundActingChar, st, toasts);
-      toasts.push(`Rodada ${b.roundNumber} - Turno de ${foundActingChar.name}!`);
+      const totalInQueue = b.orderIds.filter((x) => x === foundActingChar.id).length;
+      let turnOccurrence = 0;
+      for (let i = 0; i <= b.currentTurnIndex; i++) {
+        if (b.orderIds[i] === foundActingChar.id) turnOccurrence++;
+      }
+      const turnSuffix = (foundActingChar.isEnemy && totalInQueue > 1) ? ` (Ação ${turnOccurrence}/${totalInQueue})` : '';
+      toasts.push(`Rodada ${b.roundNumber} - Turno de ${foundActingChar.name}${turnSuffix}!`);
 
       return true;
     });
@@ -1965,7 +1979,13 @@
     if (battle.isActive && battle.orderIds.length > 0) {
       battleOrderWorkingQueue = battle.orderIds.filter((id) => existingIds.has(id));
     } else {
-      battleOrderWorkingQueue = (state.characters || []).filter((c) => Number(c.hp || 0) > 0 && !c.isDead).map((c) => c.id);
+      battleOrderWorkingQueue = [];
+      (state.characters || []).filter((c) => Number(c.hp || 0) > 0 && !c.isDead).forEach((c) => {
+        const maxTurns = c.isEnemy ? Math.max(1, Number(c.turnsPerRound || 1)) : 1;
+        for (let i = 0; i < maxTurns; i++) {
+          battleOrderWorkingQueue.push(c.id);
+        }
+      });
     }
 
     const titleEl = document.getElementById('battle-order-modal-title');
@@ -1988,10 +2008,12 @@
     const queueCountEl = document.getElementById('battle-queue-count');
     if (!availableContainer || !queueContainer) return;
 
-    const queuedSet = new Set(battleOrderWorkingQueue);
-    const availableChars = (state.characters || []).filter(
-      (c) => !queuedSet.has(c.id) && Number(c.hp || 0) > 0 && !c.isDead
-    );
+    const countInQueue = (charId) => battleOrderWorkingQueue.filter((x) => x === charId).length;
+    const availableChars = (state.characters || []).filter((c) => {
+      if (Number(c.hp || 0) <= 0 || c.isDead) return false;
+      const maxTurns = c.isEnemy ? Math.max(1, Number(c.turnsPerRound || 1)) : 1;
+      return countInQueue(c.id) < maxTurns;
+    });
 
     if (availableCountEl) availableCountEl.textContent = String(availableChars.length);
     if (queueCountEl) queueCountEl.textContent = String(battleOrderWorkingQueue.length);
@@ -2007,6 +2029,11 @@
     } else {
       availableContainer.innerHTML = availableChars.map((c) => {
         const isEnemy = Boolean(c.isEnemy);
+        const maxTurns = isEnemy ? Math.max(1, Number(c.turnsPerRound || 1)) : 1;
+        const inQueue = countInQueue(c.id);
+        const remainingTurnsBadge = (isEnemy && maxTurns > 1)
+          ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40">Fila: ${inQueue}/${maxTurns}</span>`
+          : '';
         return `
           <div class="p-2.5 rounded-lg border app-divider-border bg-black/40 flex items-center justify-between gap-2.5 hover:border-amber-500/30 transition">
             <div class="flex items-center gap-2.5 min-w-0">
@@ -2016,9 +2043,12 @@
                 <iconify-icon icon="${isEnemy ? 'game-icons:monster-grasp' : 'game-icons:hooded-figure'}" class="text-lg"></iconify-icon>
               </span>
               <div class="min-w-0">
-                <div class="font-serif-fantasy font-black text-xs truncate app-title">${escapeHtml(c.name)}</div>
+                <div class="flex items-center gap-2 min-w-0">
+                  <div class="font-serif-fantasy font-black text-xs truncate app-title">${escapeHtml(c.name)}</div>
+                  ${remainingTurnsBadge}
+                </div>
                 <div class="flex items-center gap-1.5 text-[10px] font-mono app-muted">
-                  <span>${isEnemy ? 'Inimigo' : 'Jogador'}</span>
+                  <span>${isEnemy ? (maxTurns > 1 ? `Inimigo (${maxTurns} Turnos)` : 'Inimigo') : 'Jogador'}</span>
                   <span>•</span>
                   <span>NV. ${c.level || 1}</span>
                   <span>•</span>
@@ -2030,7 +2060,7 @@
               type="button"
               data-battle-add-id="${escapeHtml(c.id)}"
               class="px-2.5 py-1 text-xs font-serif-fantasy font-black btn-gold rounded flex items-center gap-1 shrink-0 hover:scale-105 transition"
-              title="Adicionar à fila de batalha"
+              title="${isEnemy && maxTurns > 1 ? `Adicionar turno ${inQueue + 1}/${maxTurns} à fila` : 'Adicionar à fila de batalha'}"
             >
               <span>+</span>
             </button>
@@ -2052,6 +2082,15 @@
         const c = (state.characters || []).find((char) => char.id === id);
         if (!c) return '';
         const isEnemy = Boolean(c.isEnemy);
+        const totalInQueue = battleOrderWorkingQueue.filter((x) => x === id).length;
+        let turnOccurrence = 0;
+        for (let i = 0; i <= index; i++) {
+          if (battleOrderWorkingQueue[i] === id) turnOccurrence++;
+        }
+        const enemySlotBadge = (isEnemy && totalInQueue > 1)
+          ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30 shrink-0">Turno ${turnOccurrence}/${totalInQueue}</span>`
+          : '';
+
         return `
           <div
             class="battle-queue-draggable-item p-2.5 rounded-lg border border-amber-500/25 bg-black/40 flex items-center justify-between gap-2.5 cursor-move hover:border-amber-400/60 transition"
@@ -2072,7 +2111,10 @@
                 <iconify-icon icon="${isEnemy ? 'game-icons:monster-grasp' : 'game-icons:hooded-figure'}" class="text-lg"></iconify-icon>
               </span>
               <div class="min-w-0 flex-1">
-                <div class="font-serif-fantasy font-black text-xs truncate app-title">${escapeHtml(c.name)}</div>
+                <div class="flex items-center gap-2 min-w-0">
+                  <div class="font-serif-fantasy font-black text-xs truncate app-title">${escapeHtml(c.name)}</div>
+                  ${enemySlotBadge}
+                </div>
                 <div class="text-[10px] font-mono app-muted truncate">${isEnemy ? 'Inimigo' : 'Jogador'} • NV. ${c.level || 1}</div>
               </div>
             </div>
@@ -2099,9 +2141,9 @@
               </button>
               <button
                 type="button"
-                data-battle-remove-id="${escapeHtml(c.id)}"
+                data-battle-remove-index="${index}"
                 class="w-7 h-7 rounded flex items-center justify-center app-icon-btn text-xs text-rose-400 hover:bg-rose-950/60"
-                title="Remover da fila"
+                title="Remover este turno da fila"
               >
                 ✕
               </button>
@@ -2123,7 +2165,7 @@
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
         const id = btn.getAttribute('data-battle-add-id');
-        if (id && !battleOrderWorkingQueue.includes(id)) {
+        if (id) {
           battleOrderWorkingQueue.push(id);
           renderBattleOrderModalContent();
         }
@@ -2156,26 +2198,28 @@
       });
     });
 
-    queueContainer.querySelectorAll('[data-battle-remove-id]').forEach((btn) => {
+    queueContainer.querySelectorAll('[data-battle-remove-index]').forEach((btn) => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
-        const id = btn.getAttribute('data-battle-remove-id');
-        battleOrderWorkingQueue = battleOrderWorkingQueue.filter((x) => x !== id);
-        renderBattleOrderModalContent();
+        const idx = Number(btn.getAttribute('data-battle-remove-index'));
+        if (idx >= 0 && idx < battleOrderWorkingQueue.length) {
+          battleOrderWorkingQueue.splice(idx, 1);
+          renderBattleOrderModalContent();
+        }
       });
     });
 
-    let draggedId = null;
+    let draggedIndex = null;
     queueContainer.querySelectorAll('.battle-queue-draggable-item').forEach((item) => {
       item.addEventListener('dragstart', (e) => {
-        draggedId = item.getAttribute('data-drag-order-id');
+        draggedIndex = Number(item.getAttribute('data-drag-order-index'));
         item.classList.add('battle-item-dragging');
         e.dataTransfer.effectAllowed = 'move';
-        e.dataTransfer.setData('text/plain', draggedId);
+        e.dataTransfer.setData('text/plain', String(draggedIndex));
       });
 
       item.addEventListener('dragend', () => {
-        draggedId = null;
+        draggedIndex = null;
         item.classList.remove('battle-item-dragging');
         queueContainer.querySelectorAll('.battle-queue-draggable-item').forEach((el) => {
           el.classList.remove('battle-drag-target-over');
@@ -2195,14 +2239,17 @@
       item.addEventListener('drop', (e) => {
         e.preventDefault();
         item.classList.remove('battle-drag-target-over');
-        const targetId = item.getAttribute('data-drag-order-id');
-        if (!draggedId || draggedId === targetId) return;
+        const targetIndex = Number(item.getAttribute('data-drag-order-index'));
+        if (draggedIndex === null || isNaN(draggedIndex) || isNaN(targetIndex) || draggedIndex === targetIndex) return;
 
-        const fromIdx = battleOrderWorkingQueue.indexOf(draggedId);
-        const toIdx = battleOrderWorkingQueue.indexOf(targetId);
-        if (fromIdx !== -1 && toIdx !== -1) {
-          battleOrderWorkingQueue.splice(fromIdx, 1);
-          battleOrderWorkingQueue.splice(toIdx, 0, draggedId);
+        if (
+          draggedIndex >= 0 &&
+          draggedIndex < battleOrderWorkingQueue.length &&
+          targetIndex >= 0 &&
+          targetIndex < battleOrderWorkingQueue.length
+        ) {
+          const [movedItem] = battleOrderWorkingQueue.splice(draggedIndex, 1);
+          battleOrderWorkingQueue.splice(targetIndex, 0, movedItem);
           renderBattleOrderModalContent();
         }
       });
@@ -2251,8 +2298,10 @@
         if (typeof enterMesaBattleClient === 'function') {
           enterMesaBattleClient(st);
         }
+        const firstTotalInQueue = st.battle.orderIds.filter((x) => x === firstId).length;
+        const firstTurnSuffix = (firstChar?.isEnemy && firstTotalInQueue > 1) ? ` (Ação 1/${firstTotalInQueue})` : '';
         const firstName = firstChar ? firstChar.name : '1º Combatente';
-        toasts.push(`Combate iniciado! Turno de ${firstName}!`);
+        toasts.push(`Combate iniciado! Turno de ${firstName}${firstTurnSuffix}!`);
       } else {
         st.battle.currentTurnIndex = Math.min(
           Math.max(0, Number(st.battle.currentTurnIndex || 0)),
@@ -2332,9 +2381,9 @@
     const queueListEl = document.getElementById('battle-queue-list');
     if (queueListEl) {
       const canReorderQueue = isEffectiveMaster() || hasPermission('combat_edit_order');
-      const queueSig = `${actingIndex}:${canReorderQueue}:` + battle.orderIds.map((id) => {
+      const queueSig = `${actingIndex}:${canReorderQueue}:` + battle.orderIds.map((id, idx) => {
         const c = (state.characters || []).find((char) => char.id === id);
-        return `${id}:${c?.hp}:${c?.isDead}:${battle.turnCounts?.[id] || 0}`;
+        return `${id}:${idx}:${c?.hp}:${c?.isDead}:${battle.turnCounts?.[id] || 0}`;
       }).join(';');
 
       if (queueListEl.dataset.renderedSig !== queueSig) {
@@ -2346,6 +2395,14 @@
         const isCurrent = index === actingIndex;
         const isEnemy = Boolean(c.isEnemy);
         const count = battle.turnCounts?.[id] || 0;
+        const totalInQueue = battle.orderIds.filter((x) => x === id).length;
+        let turnOccurrence = 0;
+        for (let i = 0; i <= index; i++) {
+          if (battle.orderIds[i] === id) turnOccurrence++;
+        }
+        const enemySlotBadge = (isEnemy && totalInQueue > 1)
+          ? `<span class="px-1.5 py-0.2 rounded text-[9px] font-mono font-black bg-rose-500/20 text-rose-300 border border-rose-500/40 shrink-0">Turno ${turnOccurrence}/${totalInQueue}</span>`
+          : '';
 
         return `
           <div
@@ -2386,18 +2443,19 @@
                   }">
                     ${escapeHtml(c.name)}
                   </span>
+                  ${enemySlotBadge}
                   ${
                     isDead
                       ? '<span class="px-1.5 py-0.2 rounded text-[8px] font-black bg-rose-950 text-rose-300 border border-rose-600/50 shrink-0">0 HP (MORTO)</span>'
                       : isCurrent
-                      ? '<span class="px-1 py-0.2 rounded text-[8px] font-black bg-amber-400 text-black shrink-0 animate-pulse">VEZ</span>'
+                      ? `<span class="px-1 py-0.2 rounded text-[8px] font-black bg-amber-400 text-black shrink-0 animate-pulse">VEZ${isEnemy && totalInQueue > 1 ? ` (${turnOccurrence}/${totalInQueue})` : ''}</span>`
                       : ''
                   }
                 </div>
                 <div class="flex items-center gap-1.5 text-[9px] font-mono app-muted truncate">
-                  <span>${isEnemy ? 'Inimigo' : 'Jogador'}</span>
+                  <span>${isEnemy ? (totalInQueue > 1 ? `Inimigo • Ação ${turnOccurrence}/${totalInQueue}` : 'Inimigo') : 'Jogador'}</span>
                   <span>•</span>
-                  <span>Turnos: ${count}</span>
+                  <span>Ações Feitas: ${count}</span>
                   ${isDead ? '<span class="text-rose-400 font-bold">• Derrotado</span>' : ''}
                 </div>
               </div>
