@@ -222,11 +222,14 @@ def compute_character_derived_stats(
     items_catalog: List[Dict[str, Any]],
     room_settings: Dict[str, Any],
     skill_trees: Optional[List[Dict[str, Any]]] = None,
+    classes_catalog: Optional[List[Dict[str, Any]]] = None,
+    races_catalog: Optional[List[Dict[str, Any]]] = None,
 ) -> Dict[str, Any]:
     """
     Calcula carga (peso seletivo de itens equipados) e todos os status efetivos
     do personagem combinando base + itens equipados + buffs ativos de consumíveis +
-    talentos e árvores de habilidades (incluindo bônus de 100% de conclusão).
+    raça/sub-raça + classe/subclasse (efeito imediato e nós) + árvores de habilidades
+    (incluindo bônus de 100% de conclusão e limite global de 3 passivas ativas).
     """
     precedence = room_settings.get("statModifierPrecedence", "FLAT_FIRST")
     rounding_mode = room_settings.get("roundingMode", "ROUND_DOWN")
@@ -235,6 +238,48 @@ def compute_character_derived_stats(
 
     flat_mods: Dict[str, float] = {k: 0.0 for k in VALID_EFFECT_TARGETS}
     pct_mods: Dict[str, float] = {k: 0.0 for k in VALID_EFFECT_TARGETS}
+
+    def _apply_eff_to_mods(eff_obj: Dict[str, Any], mult_factor: float = 1.0) -> None:
+        if not isinstance(eff_obj, dict):
+            return
+        t_stat = eff_obj.get("targetStat") or eff_obj.get("stat")
+        if t_stat == "RESISTENCIA_GERAL":
+            t_stat = "RES_GERAL"
+        elif t_stat == "ACUMULOS_GERAIS":
+            t_stat = "ACUMULO_GERAL"
+        if t_stat not in flat_mods:
+            return
+        try:
+            val = float(eff_obj.get("value", 0)) * mult_factor
+        except (ValueError, TypeError):
+            val = 0.0
+        m_type = str(eff_obj.get("modifierType") or eff_obj.get("mode") or "FLAT").upper()
+        if m_type in ("PERCENT", "PERCENTUAL", "%"):
+            pct_mods[t_stat] += val
+        else:
+            flat_mods[t_stat] += val
+
+    # 1. Modificadores de Raça Base e Sub-raça
+    if not char.get("isEnemy"):
+        race_id = str(char.get("raceId") or "").strip()
+        subrace_id = str(char.get("subraceId") or "").strip()
+        races_list = [r for r in (races_catalog or []) if isinstance(r, dict)]
+        base_race = next((r for r in races_list if r.get("id") == race_id and not r.get("isSubrace")), None)
+        sub_race = next(
+            (
+                r
+                for r in races_list
+                if r.get("id") == subrace_id
+                and bool(r.get("isSubrace"))
+                and (not base_race or r.get("parentRaceId") == base_race.get("id"))
+            ),
+            None,
+        )
+        for r_obj in (base_race, sub_race):
+            if not r_obj:
+                continue
+            for r_eff in (r_obj.get("effects") or r_obj.get("modifiers") or []):
+                _apply_eff_to_mods(r_eff, 1.0)
 
     total_weight = 0.0
     inventory = char.get("inventory") or []
@@ -361,17 +406,39 @@ def compute_character_derived_stats(
             else:
                 flat_mods[t_stat] += val
 
-    # Árvores de Habilidades (Nós adquiridos, Multi-Ranks e Efeito de Árvore Completa 100%)
+    # 2. Classes & Subclasses (Efeito de Classe/Subclasse imediato) + Árvores de Habilidades (100% + Nós unificados com teto 3/3 Passivas Ativas)
     char_progress = char.get("skillTreeProgress")
     if not isinstance(char_progress, dict):
         char_progress = {}
+        char["skillTreeProgress"] = char_progress
 
-    for tree in (skill_trees or []):
-        if not isinstance(tree, dict):
-            continue
-        nodes = tree.get("nodes") or []
+    equipped_classes: List[Dict[str, Any]] = []
+    if not char.get("isEnemy"):
+        cls_list = [c for c in (classes_catalog or []) if isinstance(c, dict)]
+        char_lvl = max(1, int(char.get("level", 1) or 1))
+        cid = str(char.get("classId") or "").strip()
+        scid = str(char.get("subclassId") or "").strip()
+        base_cls = next((c for c in cls_list if c.get("id") == cid and not c.get("isSubclass")), None)
+        sub_cls = next(
+            (c for c in cls_list if char_lvl >= 15 and c.get("id") == scid and bool(c.get("isSubclass"))),
+            None,
+        )
+        for eq_cls in (base_cls, sub_cls):
+            if not eq_cls:
+                continue
+            equipped_classes.append(eq_cls)
+            # Aplicação imediata do Efeito de Classe / Efeito de Subclasse ao escolher
+            for c_eff in (eq_cls.get("completionEffects") or eq_cls.get("classEffects") or []):
+                _apply_eff_to_mods(c_eff, 1.0)
+
+    active_passives_applied = 0
+    max_active_passives = 3
+
+    def _process_container_nodes(container: Dict[str, Any], is_class_entity: bool = False) -> None:
+        nonlocal active_passives_applied
+        nodes = container.get("nodes") or []
         if not isinstance(nodes, list) or len(nodes) == 0:
-            continue
+            return
 
         total_steps = 0
         acquired_steps = 0
@@ -421,47 +488,28 @@ def compute_character_derived_stats(
                 mult = 1.0
 
             if unlocked and enabled and mult > 0:
-                for eff in (node.get("effects") or node.get("modifiers") or []):
-                    if not isinstance(eff, dict):
+                if cat == "PASSIVA":
+                    if active_passives_applied >= max_active_passives:
+                        if isinstance(char_progress.get(node_id), dict):
+                            char_progress[node_id]["enabled"] = False
+                            char_progress[node_id]["active"] = False
                         continue
-                    t_stat = eff.get("targetStat") or eff.get("stat")
-                    if t_stat == "RESISTENCIA_GERAL":
-                        t_stat = "RES_GERAL"
-                    elif t_stat == "ACUMULOS_GERAIS":
-                        t_stat = "ACUMULO_GERAL"
-                    if t_stat not in flat_mods:
-                        continue
-                    try:
-                        val = float(eff.get("value", 0)) * mult
-                    except (ValueError, TypeError):
-                        val = 0.0
-                    m_type = str(eff.get("modifierType") or eff.get("mode") or "FLAT").upper()
-                    if m_type in ("PERCENT", "PERCENTUAL", "%"):
-                        pct_mods[t_stat] += val
-                    else:
-                        flat_mods[t_stat] += val
+                    active_passives_applied += 1
 
-        # Regra de Ativação de 100% da Árvore
-        if total_steps > 0 and acquired_steps >= total_steps:
-            for c_eff in (tree.get("completionEffects") or []):
-                if not isinstance(c_eff, dict):
-                    continue
-                t_stat = c_eff.get("targetStat") or c_eff.get("stat")
-                if t_stat == "RESISTENCIA_GERAL":
-                    t_stat = "RES_GERAL"
-                elif t_stat == "ACUMULOS_GERAIS":
-                    t_stat = "ACUMULO_GERAL"
-                if t_stat not in flat_mods:
-                    continue
-                try:
-                    val = float(c_eff.get("value", 0))
-                except (ValueError, TypeError):
-                    val = 0.0
-                m_type = str(c_eff.get("modifierType") or c_eff.get("mode") or "FLAT").upper()
-                if m_type in ("PERCENT", "PERCENTUAL", "%"):
-                    pct_mods[t_stat] += val
-                else:
-                    flat_mods[t_stat] += val
+                for eff in (node.get("effects") or node.get("modifiers") or []):
+                    _apply_eff_to_mods(eff, mult)
+
+        # Regra de Ativação de 100% (exclusiva para Árvores comuns; Classes já aplicam o efeito imediatamente)
+        if not is_class_entity and total_steps > 0 and acquired_steps >= total_steps:
+            for c_eff in (container.get("completionEffects") or []):
+                _apply_eff_to_mods(c_eff, 1.0)
+
+    for eq_cls in equipped_classes:
+        _process_container_nodes(eq_cls, is_class_entity=True)
+
+    for tree in (skill_trees or []):
+        if isinstance(tree, dict):
+            _process_container_nodes(tree, is_class_entity=False)
 
     base_attrs = char.get("attributes") or {}
     effective_attrs: Dict[str, Dict[str, Any]] = {}

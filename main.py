@@ -972,6 +972,8 @@ def build_default_campaign_state() -> Dict[str, Any]:
         ],
         "customPermissionPresets": [],
         "skillTrees": build_default_skill_trees(),
+        "classes": build_default_classes(),
+        "races": build_default_races(),
         "table": build_default_table_state(),
         "undo_stack": [],
         "redo_stack": [],
@@ -983,11 +985,198 @@ def build_default_skill_trees() -> List[Dict[str, Any]]:
     return []
 
 
+def build_default_classes() -> List[Dict[str, Any]]:
+    """Retorna lista vazia por padrão para Classes e Subclasses configuradas pelo Mestre."""
+    return []
+
+
+def build_default_races() -> List[Dict[str, Any]]:
+    """Retorna as 5 Raças Base canônicas pré-cadastradas (Dragão, Humano, Elfo, Orc e Xituiara)."""
+    return [
+        {
+            "id": "race_dragao",
+            "name": "Dragão",
+            "isSubrace": False,
+            "parentRaceId": None,
+            "bonusSkillPoints": 0,
+            "description": "Pode voar e possui afinidade com poder diacrônico.",
+            "effects": [
+                {"targetStat": "FORCA", "modifierType": "FLAT", "value": 1},
+                {"targetStat": "MANA", "modifierType": "FLAT", "value": 5},
+                {"targetStat": "RES_FISICO", "modifierType": "FLAT", "value": 8},
+            ],
+        },
+        {
+            "id": "race_humano",
+            "name": "Humano",
+            "isSubrace": False,
+            "parentRaceId": None,
+            "bonusSkillPoints": 8,
+            "description": "Versatilidade humana: recebe +8 Pontos de Talento iniciais na criação da ficha.",
+            "effects": [],
+        },
+        {
+            "id": "race_elfo",
+            "name": "Elfo",
+            "isSubrace": False,
+            "parentRaceId": None,
+            "bonusSkillPoints": 0,
+            "description": "Afinidade ancestral com o fluxo arcano e regeneração espiritual.",
+            "effects": [
+                {"targetStat": "MANA", "modifierType": "FLAT", "value": 10},
+                {"targetStat": "REGEN_MANA", "modifierType": "FLAT", "value": 3},
+            ],
+        },
+        {
+            "id": "race_orc",
+            "name": "Orc",
+            "isSubrace": False,
+            "parentRaceId": None,
+            "bonusSkillPoints": 0,
+            "description": "Armas recebem +5% de multiplicadores.",
+            "effects": [
+                {"targetStat": "FORCA", "modifierType": "FLAT", "value": 2},
+                {"targetStat": "CAPACIDADE_PESO", "modifierType": "FLAT", "value": 5},
+            ],
+        },
+        {
+            "id": "race_xituiara",
+            "name": "Xituiara",
+            "isSubrace": False,
+            "parentRaceId": None,
+            "bonusSkillPoints": 0,
+            "description": "Regenera 1% + 2 do HP no final do turno. Ao atacar desarmado (mãos nuas, soco), causa 10 + 45% x2 do ataque e aplica 10 de sangramento por acerto.",
+            "effects": [],
+        },
+    ]
+
+
+def normalize_progression_containers(
+    raw_containers: Any,
+    is_class_entity: bool = False,
+) -> List[Dict[str, Any]]:
+    if not isinstance(raw_containers, list):
+        return []
+    normalized: List[Dict[str, Any]] = []
+    for item in raw_containers:
+        if not isinstance(item, dict):
+            continue
+        if not is_class_entity and item.get("id") == "tree_geomancia":
+            continue
+        c = copy.deepcopy(item)
+        prefix = "class" if is_class_entity else "tree"
+        c["id"] = str(c.get("id") or f"{prefix}_{uuid.uuid4().hex[:8]}")
+        c["name"] = str(c.get("name") or ("Classe Sem Nome" if is_class_entity else "Árvore Sem Nome")).strip()
+        c["description"] = str(c.get("description") or "").strip()
+        c["hiddenForPlayers"] = bool(c.get("hiddenForPlayers", False))
+        c["isClassEntity"] = bool(is_class_entity)
+        c["isSubclass"] = bool(c.get("isSubclass", False)) if is_class_entity else False
+        c["completionDescription"] = str(
+            c.get("completionDescription") or c.get("classEffectDescription") or ""
+        ).strip()
+        raw_comp_effs = c.get("completionEffects") if isinstance(c.get("completionEffects"), list) else (
+            c.get("classEffects") if isinstance(c.get("classEffects"), list) else []
+        )
+        comp_effs: List[Dict[str, Any]] = []
+        for ef in raw_comp_effs:
+            if not isinstance(ef, dict) or not ef.get("targetStat"):
+                continue
+            try:
+                val = float(ef.get("value", 0))
+            except (ValueError, TypeError):
+                val = 0.0
+            if val == 0:
+                continue
+            comp_effs.append(
+                {
+                    "targetStat": str(ef["targetStat"]).strip(),
+                    "modifierType": "PERCENT"
+                    if str(ef.get("modifierType") or "FLAT").upper() in ("PERCENT", "PERCENTUAL", "%")
+                    else "FLAT",
+                    "value": int(val) if val.is_integer() else round(val, 2),
+                }
+            )
+        c["completionEffects"] = comp_effs
+
+        raw_nodes = c.get("nodes") if isinstance(c.get("nodes"), list) else []
+        norm_nodes: List[Dict[str, Any]] = []
+        for idx, n in enumerate(raw_nodes):
+            if not isinstance(n, dict):
+                continue
+            nd = copy.deepcopy(n)
+            nd["id"] = str(nd.get("id") or f"node_{uuid.uuid4().hex[:8]}")
+            cat = str(nd.get("category") or "TALENTO").upper()
+            if cat not in ("TALENTO", "PASSIVA", "ATIVA", "SUPREMA"):
+                cat = "TALENTO"
+            nd["category"] = cat
+            nd["name"] = str(nd.get("name") or "Habilidade Sem Nome").strip()
+            nd["subtype"] = str(nd.get("subtype") or "").strip()
+            nd["description"] = str(nd.get("description") or "").strip()
+            nd["manaCost"] = str(nd.get("manaCost") or "").strip()
+            nd["paCost"] = str(nd.get("paCost") or "").strip()
+            nd["uses"] = str(nd.get("uses") or "").strip()
+            nd["cooldown"] = str(nd.get("cooldown") or "").strip()
+            nd["charges"] = str(nd.get("charges") or "").strip() if cat == "SUPREMA" else ""
+            nd["order"] = int(nd.get("order", idx))
+            norm_nodes.append(nd)
+        c["nodes"] = norm_nodes
+        normalized.append(c)
+    return normalized
+
+
+def normalize_races(raw_races: Any) -> List[Dict[str, Any]]:
+    if not isinstance(raw_races, list):
+        return build_default_races()
+    normalized: List[Dict[str, Any]] = []
+    for item in raw_races:
+        if not isinstance(item, dict):
+            continue
+        r = copy.deepcopy(item)
+        r["id"] = str(r.get("id") or f"race_{uuid.uuid4().hex[:8]}")
+        r["name"] = str(r.get("name") or "Raça Sem Nome").strip()
+        is_sub = bool(r.get("isSubrace", False) or r.get("parentRaceId"))
+        r["isSubrace"] = is_sub
+        r["parentRaceId"] = str(r.get("parentRaceId")).strip() if (is_sub and r.get("parentRaceId")) else None
+        try:
+            bonus_pts = max(0, int(r.get("bonusSkillPoints", 0) or 0))
+        except (ValueError, TypeError):
+            bonus_pts = 0
+        r["bonusSkillPoints"] = bonus_pts
+        r["description"] = str(r.get("description") or "").strip()
+        raw_effs = r.get("effects") if isinstance(r.get("effects"), list) else (
+            r.get("modifiers") if isinstance(r.get("modifiers"), list) else []
+        )
+        effs: List[Dict[str, Any]] = []
+        for ef in raw_effs:
+            if not isinstance(ef, dict) or not ef.get("targetStat"):
+                continue
+            try:
+                val = float(ef.get("value", 0))
+            except (ValueError, TypeError):
+                val = 0.0
+            if val == 0:
+                continue
+            effs.append(
+                {
+                    "targetStat": str(ef["targetStat"]).strip(),
+                    "modifierType": "PERCENT"
+                    if str(ef.get("modifierType") or "FLAT").upper() in ("PERCENT", "PERCENTUAL", "%")
+                    else "FLAT",
+                    "value": int(val) if val.is_integer() else round(val, 2),
+                }
+            )
+        r["effects"] = effs
+        normalized.append(r)
+    return normalized
+
+
 def normalize_character(
     raw: Dict[str, Any],
     items_catalog: List[Dict[str, Any]],
     room_settings: Dict[str, Any],
     skill_trees: Optional[List[Dict[str, Any]]] = None,
+    classes_catalog: Optional[List[Dict[str, Any]]] = None,
+    races_catalog: Optional[List[Dict[str, Any]]] = None,
 ) -> Dict[str, Any]:
     """Garante que o personagem possui todos os atributos, recursos vitais, 7 resistências, inventário e status derivados."""
     char = copy.deepcopy(raw or {})
@@ -1131,7 +1320,44 @@ def normalize_character(
     if not isinstance(char.get("skillTreeProgress"), dict):
         char["skillTreeProgress"] = {}
 
-    derived = compute_character_derived_stats(char, items_catalog, room_settings, skill_trees)
+    char["raceId"] = str(char.get("raceId") or "").strip() or None
+    char["subraceId"] = str(char.get("subraceId") or "").strip() or None
+    char["classId"] = str(char.get("classId") or "").strip() or None
+    char["subclassId"] = str(char.get("subclassId") or "").strip() or None
+
+    if not char["isEnemy"]:
+        races_list = [r for r in (races_catalog or []) if isinstance(r, dict)]
+        base_race = next((r for r in races_list if r.get("id") == char["raceId"] and not r.get("isSubrace")), None)
+        sub_race = next(
+            (
+                r
+                for r in races_list
+                if r.get("id") == char["subraceId"]
+                and bool(r.get("isSubrace"))
+                and (not base_race or r.get("parentRaceId") == base_race.get("id"))
+            ),
+            None,
+        )
+        if not sub_race:
+            char["subraceId"] = None
+        desired_race_bonus = int(base_race.get("bonusSkillPoints", 0) or 0) if base_race else 0
+        if sub_race:
+            desired_race_bonus += int(sub_race.get("bonusSkillPoints", 0) or 0)
+        prev_applied_bonus = int(char.get("appliedRaceBonusPoints", 0) or 0)
+        if prev_applied_bonus != desired_race_bonus:
+            char["skillPoints"] = max(0, int(char.get("skillPoints", 0)) + (desired_race_bonus - prev_applied_bonus))
+        char["appliedRaceBonusPoints"] = desired_race_bonus
+    else:
+        char["appliedRaceBonusPoints"] = 0
+
+    derived = compute_character_derived_stats(
+        char,
+        items_catalog,
+        room_settings,
+        skill_trees,
+        classes_catalog=classes_catalog,
+        races_catalog=races_catalog,
+    )
     char["derived"] = derived
     char["maxHp"] = derived["effectiveMaxHp"]
     char["maxArmor"] = derived["effectiveMaxArmor"]
@@ -1372,11 +1598,13 @@ class StateManager:
                 "bestiary": self.state.get("bestiary", []),
                 "customPermissionPresets": self.state.get("customPermissionPresets", []),
                 "skillTrees": self.state.get("skillTrees", []),
+                "classes": self.state.get("classes", []),
+                "races": self.state.get("races", []),
             }
         )
 
     def _restore_core(self, snap: Dict[str, Any]) -> None:
-        for key in ("room", "members", "characters", "itemsCatalog", "npcs", "escrowSales", "battle", "quests", "bestiary", "customPermissionPresets", "skillTrees"):
+        for key in ("room", "members", "characters", "itemsCatalog", "npcs", "escrowSales", "battle", "quests", "bestiary", "customPermissionPresets", "skillTrees", "classes", "races"):
             if key in snap:
                 self.state[key] = copy.deepcopy(snap[key])
         self._recalculate_all()
@@ -1384,12 +1612,13 @@ class StateManager:
     def _recalculate_all(self) -> None:
         room = self.state.get("room") or {}
         catalog = self.state.get("itemsCatalog") or []
-        skill_trees = self.state.get("skillTrees")
-        if not isinstance(skill_trees, list):
-            skill_trees = []
-        else:
-            skill_trees = [t for t in skill_trees if isinstance(t, dict) and t.get("id") != "tree_geomancia"]
+        skill_trees = normalize_progression_containers(self.state.get("skillTrees"), is_class_entity=False)
         self.state["skillTrees"] = skill_trees
+        classes_catalog = normalize_progression_containers(self.state.get("classes"), is_class_entity=True)
+        self.state["classes"] = classes_catalog
+        raw_races = self.state.get("races")
+        races_catalog = normalize_races(raw_races if isinstance(raw_races, list) else build_default_races())
+        self.state["races"] = races_catalog
         for it in catalog:
             if not isinstance(it, dict):
                 continue
@@ -1404,7 +1633,9 @@ class StateManager:
                 it["descricao"] = "Consumível: regenera +20% de Mana ao usar."
                 it["effects"] = [{"targetStat": "REGEN_MANA", "modifierType": "PERCENT", "value": 20, "durationTurns": None}]
         chars = self.state.get("characters") or []
-        self.state["characters"] = [normalize_character(c, catalog, room, skill_trees) for c in chars]
+        self.state["characters"] = [
+            normalize_character(c, catalog, room, skill_trees, classes_catalog, races_catalog) for c in chars
+        ]
         for b in self.state.get("bestiary") or []:
             if isinstance(b, dict):
                 raw_elem = b.get("elementalResistances") or {}
@@ -1549,6 +1780,10 @@ class StateManager:
                 loaded[k] = copy.deepcopy(v)
         if not isinstance(loaded.get("skillTrees"), list):
             loaded["skillTrees"] = copy.deepcopy(default_state["skillTrees"])
+        if not isinstance(loaded.get("classes"), list):
+            loaded["classes"] = copy.deepcopy(default_state["classes"])
+        if not isinstance(loaded.get("races"), list) or len(loaded.get("races") or []) == 0:
+            loaded["races"] = copy.deepcopy(default_state["races"])
         loaded["auditLog"] = [
             entry
             for entry in (loaded.get("auditLog") or [])
@@ -1697,6 +1932,8 @@ class StateManager:
             "bestiary": self.state.get("bestiary", []),
             "customPermissionPresets": self.state.get("customPermissionPresets", []),
             "skillTrees": self.state.get("skillTrees", []),
+            "classes": self.state.get("classes", []),
+            "races": self.state.get("races", []),
             "table": get_public_table_payload(self.state.get("table") or {}),
             "auditLog": self.state["auditLog"],
             "network": {
@@ -1988,7 +2225,7 @@ class StateManager:
                     self.undo_stack = self.undo_stack[-HISTORY_LIMIT:]
                 self.redo_stack.clear()
 
-            for key in ("room", "members", "characters", "itemsCatalog", "npcs", "escrowSales", "battle", "quests", "bestiary", "customPermissionPresets", "skillTrees"):
+            for key in ("room", "members", "characters", "itemsCatalog", "npcs", "escrowSales", "battle", "quests", "bestiary", "customPermissionPresets", "skillTrees", "classes", "races"):
                 if key in data and data[key] is not None:
                     self.state[key] = data[key]
 
@@ -2126,7 +2363,7 @@ async def lifespan(app_instance: FastAPI) -> AsyncIterator[None]:
 app = FastAPI(
     title="CMrpg Server",
     description="Sistema de Gestão de RPG Local via Radmin VPN.",
-    version="1.13.7",
+    version="1.15.0",
     lifespan=lifespan,
 )
 
@@ -2572,6 +2809,10 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
 
                     if not can_manage_trees and "skillTrees" in data:
                         data["skillTrees"] = copy.deepcopy(state_manager.state.get("skillTrees") or [])
+                    if not can_manage_trees and "classes" in data:
+                        data["classes"] = copy.deepcopy(state_manager.state.get("classes") or [])
+                    if not can_manage_trees and "races" in data:
+                        data["races"] = copy.deepcopy(state_manager.state.get("races") or [])
 
                     if not can_manage_catalog and "itemsCatalog" in data:
                         data["itemsCatalog"] = copy.deepcopy(state_manager.state.get("itemsCatalog") or [])

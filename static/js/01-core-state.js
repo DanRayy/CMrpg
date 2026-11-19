@@ -308,19 +308,24 @@
     auditLog: [],
     customPermissionPresets: [],
     skillTrees: [],
+    classes: [],
+    races: [],
     table: null,
 
-    // Skill Trees UI state
+    // Skill Trees, Classes & Races UI state
     activeSkillTreeId: null,
     activeSkillTreeModalCharId: null,
     activeSkillTreeModalTreeId: null,
     editingSkillTreeId: null,
+    editingSkillTreeIsClass: false,
+    editingRaceId: null,
     editingSkillNodeTreeId: null,
     editingSkillNodeId: null,
     skillTreeSearchQuery: '',
     skillTreeCategoryFilter: 'ALL',
     hostSkillTreeSearchQuery: '',
     hostSkillTreeCategoryFilter: 'ALL',
+    hostProgressionSubTab: 'TREES', // 'TREES' | 'CLASSES' | 'RACES'
     notificationsEnabled: true,
 
     // UI Filters & Selections
@@ -648,18 +653,58 @@
       }
     }
 
-    // Árvores de Habilidades: Nós adquiridos, Multi-Ranks, Limite de 3 Passivas Ativas e Efeito de Árvore Completa (100%)
+    // 1. Raça Base e Sub-raça (Modificadores Flat / % e Bônus Inicial de Pontos de Talento)
+    if (!char.isEnemy) {
+      syncCharacterRaceBonusSkillPoints(char);
+      const { race: baseRace, subrace: subRace } = getCharacterRaceAndSubrace(char);
+      for (const rObj of [baseRace, subRace]) {
+        if (!rObj) continue;
+        for (const rEff of rObj.effects || rObj.modifiers || []) {
+          let stat = rEff.targetStat || rEff.stat;
+          if (stat === 'RESISTENCIA_GERAL') stat = 'RES_GERAL';
+          else if (stat === 'ACUMULOS_GERAIS') stat = 'ACUMULO_GERAL';
+          if (!(stat in flatMods)) continue;
+          const val = Number(rEff.value || 0);
+          const mode = String(rEff.modifierType || rEff.mode || 'FLAT').toUpperCase();
+          if (mode === 'PERCENT' || mode === 'PERCENTUAL' || mode === '%') {
+            pctMods[stat] += val;
+          } else {
+            flatMods[stat] += val;
+          }
+        }
+      }
+    }
+
+    // 2. Classes & Subclasses (Efeito imediato na ficha) + Árvores de Habilidades (Nós, Multi-Ranks, Limite Unificado 3/3 Passivas Ativas e 100%)
     if (!char.skillTreeProgress || typeof char.skillTreeProgress !== 'object') {
       char.skillTreeProgress = {};
     }
+    const equippedClasses = !char.isEnemy ? getCharacterEquippedClasses(char) : [];
+    for (const eqCls of equippedClasses) {
+      for (const cEff of eqCls.completionEffects || eqCls.classEffects || []) {
+        let stat = cEff.targetStat || cEff.stat;
+        if (stat === 'RESISTENCIA_GERAL') stat = 'RES_GERAL';
+        else if (stat === 'ACUMULOS_GERAIS') stat = 'ACUMULO_GERAL';
+        if (!(stat in flatMods)) continue;
+        const val = Number(cEff.value || 0);
+        const mode = String(cEff.modifierType || cEff.mode || 'FLAT').toUpperCase();
+        if (mode === 'PERCENT' || mode === 'PERCENTUAL' || mode === '%') {
+          pctMods[stat] += val;
+        } else {
+          flatMods[stat] += val;
+        }
+      }
+    }
+
     const completedTreeIds = [];
     let activePassivesApplied = 0;
-    for (const tree of state.skillTrees || []) {
-      if (!tree || !Array.isArray(tree.nodes) || tree.nodes.length === 0) continue;
+
+    const processContainerNodes = (container, isClsEntity = false) => {
+      if (!container || !Array.isArray(container.nodes) || container.nodes.length === 0) return;
       let totalSteps = 0;
       let acquiredSteps = 0;
 
-      for (const node of tree.nodes) {
+      for (const node of container.nodes) {
         if (!node || !node.id) continue;
         const nState = getCharacterSkillNodeState(char, node);
         totalSteps += nState.totalSteps;
@@ -671,6 +716,7 @@
             if (activePassivesApplied >= MAX_ACTIVE_TREE_PASSIVES) {
               if (char.skillTreeProgress[node.id]) {
                 char.skillTreeProgress[node.id].enabled = false;
+                char.skillTreeProgress[node.id].active = false;
               }
               continue;
             }
@@ -696,9 +742,9 @@
         }
       }
 
-      if (totalSteps > 0 && acquiredSteps >= totalSteps) {
-        completedTreeIds.push(tree.id);
-        for (const cEff of tree.completionEffects || []) {
+      if (!isClsEntity && totalSteps > 0 && acquiredSteps >= totalSteps) {
+        completedTreeIds.push(container.id);
+        for (const cEff of container.completionEffects || []) {
           let stat = cEff.targetStat || cEff.stat;
           if (stat === 'RESISTENCIA_GERAL') stat = 'RES_GERAL';
           else if (stat === 'ACUMULOS_GERAIS') stat = 'ACUMULO_GERAL';
@@ -712,6 +758,13 @@
           }
         }
       }
+    };
+
+    for (const eqCls of equippedClasses) {
+      processContainerNodes(eqCls, true);
+    }
+    for (const tree of state.skillTrees || []) {
+      processContainerNodes(tree, false);
     }
 
     const effectiveAttributes = {};
@@ -1903,10 +1956,165 @@
     };
   }
 
+  function buildDefaultRacesTemplate() {
+    return [
+      {
+        id: 'race_dragao',
+        name: 'Dragão',
+        isSubrace: false,
+        parentRaceId: null,
+        bonusSkillPoints: 0,
+        description: 'Pode voar e possui afinidade com poder diacrônico.',
+        effects: [
+          { targetStat: 'FORCA', modifierType: 'FLAT', value: 1 },
+          { targetStat: 'MANA', modifierType: 'FLAT', value: 5 },
+          { targetStat: 'RES_FISICO', modifierType: 'FLAT', value: 8 },
+        ],
+      },
+      {
+        id: 'race_humano',
+        name: 'Humano',
+        isSubrace: false,
+        parentRaceId: null,
+        bonusSkillPoints: 8,
+        description: 'Versatilidade humana: recebe +8 Pontos de Talento iniciais na criação da ficha.',
+        effects: [],
+      },
+      {
+        id: 'race_elfo',
+        name: 'Elfo',
+        isSubrace: false,
+        parentRaceId: null,
+        bonusSkillPoints: 0,
+        description: 'Afinidade ancestral com o fluxo arcano e regeneração espiritual.',
+        effects: [
+          { targetStat: 'MANA', modifierType: 'FLAT', value: 10 },
+          { targetStat: 'REGEN_MANA', modifierType: 'FLAT', value: 3 },
+        ],
+      },
+      {
+        id: 'race_orc',
+        name: 'Orc',
+        isSubrace: false,
+        parentRaceId: null,
+        bonusSkillPoints: 0,
+        description: 'Armas recebem +5% de multiplicadores.',
+        effects: [
+          { targetStat: 'FORCA', modifierType: 'FLAT', value: 2 },
+          { targetStat: 'CAPACIDADE_PESO', modifierType: 'FLAT', value: 5 },
+        ],
+      },
+      {
+        id: 'race_xituiara',
+        name: 'Xituiara',
+        isSubrace: false,
+        parentRaceId: null,
+        bonusSkillPoints: 0,
+        description:
+          'Regenera 1% + 2 do HP no final do turno. Ao atacar desarmado (mãos nuas, soco), causa 10 + 45% x2 do ataque e aplica 10 de sangramento por acerto.',
+        effects: [],
+      },
+    ];
+  }
+
   function getVisibleSkillTrees() {
     const trees = Array.isArray(state.skillTrees) ? state.skillTrees : [];
     if (canManageSkillTrees()) return trees;
     return trees.filter((t) => t && !t.hiddenForPlayers && !t.ocultarParaJogadores);
+  }
+
+  function getVisibleClasses() {
+    const clsList = Array.isArray(state.classes) ? state.classes : [];
+    if (canManageSkillTrees()) return clsList;
+    return clsList.filter((c) => c && !c.hiddenForPlayers && !c.ocultarParaJogadores);
+  }
+
+  function findProgressionContainerById(id, st = state) {
+    if (!id) return null;
+    const fromTrees = (st?.skillTrees || []).find((t) => t && t.id === id);
+    if (fromTrees) return fromTrees;
+    const fromClasses = (st?.classes || []).find((c) => c && c.id === id);
+    if (fromClasses) return fromClasses;
+    return null;
+  }
+
+  function isClassContainer(container, st = state) {
+    if (!container) return false;
+    if (container.isClassEntity) return true;
+    return (st?.classes || []).some((c) => c && c.id === container.id);
+  }
+
+  function getCharacterRaceAndSubrace(char, st = state) {
+    if (!char || char.isEnemy) return { race: null, subrace: null };
+    const races = Array.isArray(st?.races) ? st.races : [];
+    const race = char.raceId ? races.find((r) => r && r.id === char.raceId && !r.isSubrace) || null : null;
+    const subrace =
+      char.subraceId && race
+        ? races.find((r) => r && r.id === char.subraceId && r.isSubrace && r.parentRaceId === race.id) || null
+        : null;
+    return { race, subrace };
+  }
+
+  function syncCharacterRaceBonusSkillPoints(char, st = state) {
+    if (!char || char.isEnemy) return;
+    const { race, subrace } = getCharacterRaceAndSubrace(char, st);
+    const desiredBonus =
+      Math.max(0, Math.round(Number(race?.bonusSkillPoints || 0))) +
+      Math.max(0, Math.round(Number(subrace?.bonusSkillPoints || 0)));
+    const prevApplied = Math.max(0, Math.round(Number(char.appliedRaceBonusPoints || 0)));
+    if (prevApplied !== desiredBonus) {
+      const delta = desiredBonus - prevApplied;
+      char.skillPoints = Math.max(0, Math.round(Number(char.skillPoints || 0)) + delta);
+      char.appliedRaceBonusPoints = desiredBonus;
+    } else if (char.appliedRaceBonusPoints === undefined) {
+      char.appliedRaceBonusPoints = desiredBonus;
+    }
+  }
+
+  function getCharacterEquippedClasses(char, st = state) {
+    if (!char || char.isEnemy) return [];
+    const clsList = Array.isArray(st?.classes) ? st.classes : [];
+    const result = [];
+    if (char.classId) {
+      const baseCls = clsList.find((c) => c && c.id === char.classId && !c.isSubclass);
+      if (baseCls) result.push(baseCls);
+    }
+    const charLvl = Math.max(1, Number(char.level || 1));
+    if (charLvl >= 15 && char.subclassId) {
+      const subCls = clsList.find((c) => c && c.id === char.subclassId && Boolean(c.isSubclass));
+      if (subCls) result.push(subCls);
+    }
+    return result;
+  }
+
+  function refundAndResetContainerNodes(char, containerObj) {
+    if (!char || !containerObj || !Array.isArray(containerObj.nodes)) {
+      return { refundedPoints: 0, resetNodesCount: 0 };
+    }
+    if (!char.skillTreeProgress || typeof char.skillTreeProgress !== 'object') {
+      char.skillTreeProgress = {};
+    }
+    let refundedPoints = 0;
+    let resetNodesCount = 0;
+    for (const node of containerObj.nodes) {
+      if (!node || !node.id) continue;
+      const ns = getCharacterSkillNodeState(char, node);
+      if (ns.unlocked) {
+        resetNodesCount += 1;
+        if (ns.isTalent) {
+          refundedPoints += ns.rank * ns.costPerRank;
+        } else {
+          refundedPoints += ns.unlockCost + ns.upgrades * ns.upgradeCost;
+        }
+      }
+      if (char.skillTreeProgress[node.id]) {
+        delete char.skillTreeProgress[node.id];
+      }
+    }
+    if (refundedPoints > 0) {
+      char.skillPoints = Math.max(0, Math.round(Number(char.skillPoints || 0)) + refundedPoints);
+    }
+    return { refundedPoints, resetNodesCount };
   }
 
   function getCharacterSkillNodeState(char, node) {
@@ -1990,7 +2198,11 @@
   function countCharacterActiveTreePassives(char) {
     if (!char) return 0;
     let count = 0;
-    for (const tree of state.skillTrees || []) {
+    const containers = [...getCharacterEquippedClasses(char), ...(state.skillTrees || [])];
+    const seenIds = new Set();
+    for (const tree of containers) {
+      if (!tree || !tree.id || seenIds.has(tree.id)) continue;
+      seenIds.add(tree.id);
       for (const node of tree?.nodes || []) {
         if (!node || !node.id) continue;
         if (String(node.category || 'TALENTO').toUpperCase() !== 'PASSIVA') continue;
@@ -2124,8 +2336,11 @@
     const targetCat = String(category || '').toUpperCase();
     const results = [];
     if (!char) return results;
-    for (const tree of state.skillTrees || []) {
-      if (!tree || !Array.isArray(tree.nodes)) continue;
+    const containers = [...getCharacterEquippedClasses(char), ...(state.skillTrees || [])];
+    const seenIds = new Set();
+    for (const tree of containers) {
+      if (!tree || !tree.id || seenIds.has(tree.id) || !Array.isArray(tree.nodes)) continue;
+      seenIds.add(tree.id);
       if (!canManageSkillTrees() && (tree.hiddenForPlayers || tree.ocultarParaJogadores)) continue;
       for (const node of tree.nodes) {
         if (!node || String(node.category || '').toUpperCase() !== targetCat) continue;
@@ -2138,7 +2353,7 @@
     return results;
   }
 
-  // Função auxiliar isolada para metadados de combate de habilidades (Mana, PA, Usos, Recarga)
+  // Função auxiliar isolada para metadados de combate de habilidades (Mana, PA, Usos, Recarga, Cargas em Supremas)
   function renderSkillCombatTags(node) {
     if (!node) return '';
     const badges = [];
@@ -2146,6 +2361,7 @@
     const pa = String(node.paCost ?? '').trim();
     const uses = String(node.uses ?? '').trim();
     const cooldown = String(node.cooldown ?? '').trim();
+    const charges = String(node.charges ?? '').trim();
 
     if (mana !== '' && mana !== '0') {
       badges.push(
@@ -2165,6 +2381,11 @@
     if (cooldown !== '' && cooldown !== '0') {
       badges.push(
         `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-mono font-extrabold bg-purple-500/15 text-purple-300 border border-purple-500/40" title="Recarga / Cooldown"><iconify-icon icon="game-icons:sands-of-time"></iconify-icon> Recarga: ${escapeHtml(cooldown)}</span>`
+      );
+    }
+    if (charges !== '' && charges !== '0') {
+      badges.push(
+        `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-mono font-extrabold bg-rose-500/15 text-rose-300 border border-rose-500/40" title="Cargas (Habilidade Suprema)"><iconify-icon icon="game-icons:battery-75"></iconify-icon> Cargas: ${escapeHtml(charges)}</span>`
       );
     }
 
@@ -2190,6 +2411,8 @@
           auditLog: state.auditLog,
           customPermissionPresets: state.customPermissionPresets,
           skillTrees: state.skillTrees,
+          classes: state.classes,
+          races: state.races,
           table: state.table,
         })
       );
@@ -2348,6 +2571,12 @@
     } else {
       state.skillTrees = state.skillTrees.filter((t) => t && t.id !== 'tree_geomancia');
     }
+    if (!Array.isArray(state.classes)) {
+      state.classes = [];
+    }
+    if (!Array.isArray(state.races) || state.races.length === 0) {
+      state.races = buildDefaultRacesTemplate();
+    }
     state.characters.forEach(recalculateCharacterDerived);
   }
 
@@ -2392,6 +2621,12 @@
             state.skillTrees = [];
           } else {
             state.skillTrees = state.skillTrees.filter((t) => t && t.id !== 'tree_geomancia');
+          }
+          if (!Array.isArray(state.classes)) {
+            state.classes = [];
+          }
+          if (!Array.isArray(state.races) || state.races.length === 0) {
+            state.races = buildDefaultRacesTemplate();
           }
           sanitizeLegacyMembersClient();
           state.characters.forEach(recalculateCharacterDerived);
@@ -2459,12 +2694,14 @@
       quests: state.quests,
       customPermissionPresets: state.customPermissionPresets,
       skillTrees: state.skillTrees,
+      classes: state.classes,
+      races: state.races,
       table: state.table,
     });
   }
 
   function restoreCoreState(snap) {
-    for (const k of ['room', 'members', 'characters', 'itemsCatalog', 'npcs', 'escrowSales', 'bestiary', 'battle', 'quests', 'customPermissionPresets', 'skillTrees', 'table']) {
+    for (const k of ['room', 'members', 'characters', 'itemsCatalog', 'npcs', 'escrowSales', 'bestiary', 'battle', 'quests', 'customPermissionPresets', 'skillTrees', 'classes', 'races', 'table']) {
       if (snap[k] !== undefined) state[k] = deepClone(snap[k]);
     }
     state.characters.forEach(recalculateCharacterDerived);
@@ -2543,6 +2780,8 @@
           quests: state.quests,
           customPermissionPresets: state.customPermissionPresets,
           skillTrees: state.skillTrees,
+          classes: state.classes,
+          races: state.races,
           auditEntry,
           record_history: true,
           toasts,

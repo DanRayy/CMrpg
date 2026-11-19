@@ -28,7 +28,7 @@
   <!-- Iconify Web Component (game-icons) -->
   <script src="https://code.iconify.design/iconify-icon/2.1.0/iconify-icon.min.js"></script>
   <!-- Estilos Customizados -->
-  <link rel="stylesheet" href="styles.css?v=1.14.0" />
+  <link rel="stylesheet" href="styles.css?v=1.15.0" />
 </head>
 <body class="min-h-screen flex select-none">
 
@@ -960,15 +960,44 @@
       </section>
 
       <!-- ===================================================================== -->
-      <!-- ABA EXCLUSIVA DO HOST: ÁRVORE DE HABILIDADES (EDITOR E GESTÃO)        -->
+      <!-- ABA EXCLUSIVA DO HOST: ÁRVORE DE HABILIDADES, CLASSES & RAÇAS         -->
       <!-- ===================================================================== -->
       <section id="tab-skill-trees" class="tab-section hidden space-y-5">
         <div class="flex flex-wrap items-center justify-between gap-3">
-          <div>
+          <div class="flex flex-wrap items-center gap-3">
             <h2 class="font-serif-fantasy text-lg font-extrabold gold-title uppercase tracking-wider flex items-center gap-2">
               <iconify-icon icon="game-icons:family-tree"></iconify-icon>
               <span>ÁRVORE DE HABILIDADES</span>
             </h2>
+            <div id="host-progression-subtabs" class="inline-flex items-center gap-1.5 p-1 rounded-xl bg-black/40 border app-divider-border">
+              <button
+                type="button"
+                data-host-prog-subtab="TREES"
+                class="px-3 py-1.5 rounded-lg text-xs font-serif-fantasy font-bold uppercase tracking-wider btn-gold flex items-center gap-1.5"
+              >
+                <iconify-icon icon="game-icons:family-tree"></iconify-icon>
+                <span>Árvores</span>
+                <span id="host-subtab-count-trees" class="px-1.5 py-0.2 rounded text-[10px] font-mono bg-black/35">0</span>
+              </button>
+              <button
+                type="button"
+                data-host-prog-subtab="CLASSES"
+                class="px-3 py-1.5 rounded-lg text-xs font-serif-fantasy font-bold uppercase tracking-wider app-secondary-btn flex items-center gap-1.5"
+              >
+                <iconify-icon icon="game-icons:crested-helmet"></iconify-icon>
+                <span>Classes &amp; Subclasses</span>
+                <span id="host-subtab-count-classes" class="px-1.5 py-0.2 rounded text-[10px] font-mono bg-black/35">0</span>
+              </button>
+              <button
+                type="button"
+                data-host-prog-subtab="RACES"
+                class="px-3 py-1.5 rounded-lg text-xs font-serif-fantasy font-bold uppercase tracking-wider app-secondary-btn flex items-center gap-1.5"
+              >
+                <iconify-icon icon="game-icons:dna1"></iconify-icon>
+                <span>Raças &amp; Sub-raças</span>
+                <span id="host-subtab-count-races" class="px-1.5 py-0.2 rounded text-[10px] font-mono bg-black/35">5</span>
+              </button>
+            </div>
           </div>
           <div class="flex flex-wrap items-center gap-2">
             <button
@@ -978,6 +1007,22 @@
             >
               <iconify-icon icon="game-icons:sparkles"></iconify-icon>
               <span>＋ Nova Árvore</span>
+            </button>
+            <button
+              type="button"
+              id="btn-create-class"
+              class="hidden btn-gold px-4 py-2 text-xs font-serif-fantasy uppercase tracking-wider flex items-center gap-1.5"
+            >
+              <iconify-icon icon="game-icons:crested-helmet"></iconify-icon>
+              <span>＋ Nova Classe / Subclasse</span>
+            </button>
+            <button
+              type="button"
+              id="btn-create-race"
+              class="hidden btn-gold px-4 py-2 text-xs font-serif-fantasy uppercase tracking-wider flex items-center gap-1.5"
+            >
+              <iconify-icon icon="game-icons:dna1"></iconify-icon>
+              <span>＋ Nova Raça / Sub-raça</span>
             </button>
           </div>
         </div>
@@ -1335,6 +1380,61 @@
             <label for="char-max-weight" class="block font-bold uppercase tracking-wider mb-1 gold-title"><iconify-icon icon="game-icons:weight"></iconify-icon> <span>Limite de Peso (kg)</span></label>
             <input id="char-max-weight" type="number" min="0" step="0.5" value="27" required class="w-full px-3 py-2 font-mono font-bold app-input" />
           </div>
+        </div>
+
+        <!-- Origem & Vocação: Raça, Sub-raça, Classe Base e Subclasse (Nível 15+) -->
+        <div class="p-3.5 rounded-xl bg-black/25 border app-divider-border space-y-3">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <h4 class="font-serif-fantasy font-extrabold uppercase tracking-wider gold-title flex items-center gap-1.5">
+              <iconify-icon icon="game-icons:crested-helmet"></iconify-icon>
+              <span>Origem &amp; Vocação (Raça, Sub-raça, Classe &amp; Subclasse)</span>
+            </h4>
+            <span id="char-form-level-badge" class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-500/15 gold-title border border-amber-500/30">
+              Nível 1
+            </span>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label for="char-race-select" class="block font-bold uppercase tracking-wider mb-1 app-label">
+                <iconify-icon icon="game-icons:dna1" class="text-amber-300"></iconify-icon> <span>Raça Base</span>
+              </label>
+              <select id="char-race-select" class="w-full px-3 py-2 font-bold app-input text-xs">
+                <option value="">Sem Raça Selecionada</option>
+              </select>
+            </div>
+            <div id="char-subrace-field-wrap">
+              <label for="char-subrace-select" class="block font-bold uppercase tracking-wider mb-1 app-label">
+                <iconify-icon icon="game-icons:family-tree" class="text-amber-300"></iconify-icon> <span>Sub-raça (Opcional)</span>
+              </label>
+              <select id="char-subrace-select" class="w-full px-3 py-2 font-bold app-input text-xs" disabled>
+                <option value="">Nenhuma Sub-raça disponível</option>
+              </select>
+            </div>
+            <div>
+              <label for="char-class-select" class="block font-bold uppercase tracking-wider mb-1 app-label">
+                <iconify-icon icon="game-icons:crested-helmet" class="text-amber-300"></iconify-icon> <span>Classe Base (Nível 1+)</span>
+              </label>
+              <select id="char-class-select" class="w-full px-3 py-2 font-bold app-input text-xs">
+                <option value="">Sem Classe Base</option>
+              </select>
+            </div>
+            <div>
+              <div class="flex items-center justify-between gap-1 mb-1">
+                <label for="char-subclass-select" class="block font-bold uppercase tracking-wider app-label">
+                  <iconify-icon icon="game-icons:crowned-heart" class="text-amber-300"></iconify-icon> <span>Subclasse (Nível 15+)</span>
+                </label>
+                <span id="char-subclass-lock-hint" class="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-black/50 text-amber-300/80 border border-amber-500/30">
+                  🔒 Desbloqueia no Nível 15
+                </span>
+              </div>
+              <select id="char-subclass-select" class="w-full px-3 py-2 font-bold app-input text-xs" disabled>
+                <option value="">Desbloqueia no Nível 15</option>
+              </select>
+            </div>
+          </div>
+
+          <div id="char-origin-vocation-preview" class="hidden p-2.5 rounded-lg bg-black/40 border app-divider-border space-y-1.5 text-[11px]"></div>
         </div>
 
         <!-- Recursos Vitais Base & Combate -->
@@ -3560,10 +3660,11 @@
 
       <form id="form-skill-tree" class="p-5 overflow-y-auto space-y-4 text-xs flex-1 app-scroll">
         <input type="hidden" id="st-form-id" value="" />
+        <input type="hidden" id="st-form-is-class-mode" value="false" />
 
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 items-start">
           <div class="sm:col-span-2">
-            <label for="st-form-name" class="block font-bold uppercase mb-1 gold-title">Nome da Árvore</label>
+            <label id="st-form-name-label" for="st-form-name" class="block font-bold uppercase mb-1 gold-title">Nome da Árvore</label>
             <input
               id="st-form-name"
               type="text"
@@ -3572,33 +3673,37 @@
               class="w-full px-3 py-2 font-bold app-input"
             />
           </div>
-          <div class="pt-0 sm:pt-5">
+          <div class="pt-0 sm:pt-5 space-y-2">
             <label class="flex items-center gap-2 cursor-pointer p-2.5 rounded-xl bg-black/30 border app-divider-border hover:border-amber-500/40 transition">
               <input type="checkbox" id="st-form-hidden" class="w-4 h-4 rounded accent-amber-500 cursor-pointer" />
-              <span class="font-bold text-[11px] app-label">Ocultar Árvore para Jogadores</span>
+              <span id="st-form-hidden-label" class="font-bold text-[11px] app-label">Ocultar Árvore para Jogadores</span>
+            </label>
+            <label id="st-form-subclass-wrap" class="hidden flex items-center gap-2 cursor-pointer p-2.5 rounded-xl bg-black/30 border app-divider-border hover:border-amber-500/40 transition">
+              <input type="checkbox" id="st-form-is-subclass" class="w-4 h-4 rounded accent-amber-500 cursor-pointer" />
+              <span class="font-bold text-[11px] text-amber-300">É uma Subclasse? (Nível 15+)</span>
             </label>
           </div>
         </div>
 
         <div>
-          <label for="st-form-desc" class="block font-bold uppercase mb-1 app-label">Descrição / Tema da Árvore</label>
+          <label id="st-form-desc-label" for="st-form-desc" class="block font-bold uppercase mb-1 app-label">Descrição / Tema da Árvore</label>
           <textarea
             id="st-form-desc"
             rows="2"
-            placeholder="Descreva a temática, estilo de combate ou lore desta árvore de habilidades..."
+            placeholder="Descreva a temática, estilo de combate ou lore..."
             class="w-full px-3 py-2 app-input"
           ></textarea>
         </div>
 
-        <!-- Seção: EFEITO DE ÁRVORE COMPLETA (100%) -->
+        <!-- Seção: EFEITO DE ÁRVORE COMPLETA (100%) / EFEITO DE CLASSE -->
         <div class="p-4 rounded-xl bg-gradient-to-br from-amber-950/35 via-black/45 to-amber-900/20 border border-amber-500/45 space-y-3">
           <div class="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-amber-500/25">
             <div>
               <h4 class="font-serif-fantasy font-black text-xs sm:text-sm uppercase gold-title flex items-center gap-1.5">
                 <iconify-icon icon="game-icons:laurel-crown"></iconify-icon>
-                <span>EFEITO DE ÁRVORE COMPLETA (100%)</span>
+                <span id="st-form-core-title">EFEITO DE ÁRVORE COMPLETA (100%)</span>
               </h4>
-              <p class="text-[10px] app-muted mt-0.5">
+              <p id="st-form-core-subtitle" class="text-[10px] app-muted mt-0.5">
                 Ativado automaticamente em dourado quando o personagem adquirir 100% de todos os nós e todas as melhorias desta árvore.
               </p>
             </div>
@@ -3608,12 +3713,12 @@
               class="px-3 py-1.5 rounded-lg text-[11px] font-bold btn-gold-outline flex items-center gap-1"
             >
               <iconify-icon icon="game-icons:plus"></iconify-icon>
-              <span>＋ Efeito se Completa</span>
+              <span id="st-form-core-btn-label">＋ Efeito se Completa</span>
             </button>
           </div>
 
           <div>
-            <label for="st-form-completion-desc" class="block font-bold uppercase mb-1 app-label text-[11px]">
+            <label id="st-form-core-desc-label" for="st-form-completion-desc" class="block font-bold uppercase mb-1 app-label text-[11px]">
               Descrição Textual do Bônus de 100% (Opcional)
             </label>
             <input
@@ -3625,11 +3730,11 @@
           </div>
 
           <div class="space-y-1.5">
-            <label class="block font-serif-fantasy font-bold uppercase text-[10px] gold-title tracking-wider">
+            <label id="st-form-core-mods-label" class="block font-serif-fantasy font-bold uppercase text-[10px] gold-title tracking-wider">
               EFEITOS SE COMPLETA (FLAT / %)
             </label>
             <div id="st-completion-effects-list" class="space-y-2">
-              <!-- Linhas de modificadores de árvore 100% -->
+              <!-- Linhas de modificadores de árvore 100% / Efeito de Classe -->
             </div>
           </div>
         </div>
@@ -3641,7 +3746,7 @@
             class="hidden px-3.5 py-2 rounded-lg font-extrabold uppercase bg-rose-600/20 hover:bg-rose-600 text-rose-400 hover:text-white border border-rose-500/40 transition flex items-center gap-1.5"
           >
             <iconify-icon icon="game-icons:trash-can"></iconify-icon>
-            <span>Excluir Árvore</span>
+            <span id="btn-delete-skill-tree-label">Excluir Árvore</span>
           </button>
           <div class="flex items-center gap-2 ml-auto">
             <button type="button" data-close-modal="modal-skill-tree-form" class="px-4 py-2 rounded-lg font-bold uppercase app-secondary-btn">
@@ -3649,7 +3754,7 @@
             </button>
             <button type="submit" class="btn-gold px-5 py-2 font-serif-fantasy uppercase tracking-wider">
               <iconify-icon icon="game-icons:save"></iconify-icon>
-              <span>Salvar Árvore</span>
+              <span id="btn-save-skill-tree-label">Salvar Árvore</span>
             </button>
           </div>
         </div>
@@ -3825,7 +3930,7 @@
             </h4>
             <span class="text-[10px] app-muted">Deixe em branco os campos que não se aplicam</span>
           </div>
-          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+          <div class="grid gap-2.5" style="grid-template-columns: repeat(auto-fit, minmax(115px, 1fr));">
             <div>
               <label for="sn-form-mana-cost" class="block font-bold mb-1 text-indigo-300 text-[11px]">Custo de Mana</label>
               <input id="sn-form-mana-cost" type="text" placeholder="Ex: 35" class="w-full px-2.5 py-1.5 font-mono font-bold app-input" />
@@ -3841,6 +3946,10 @@
             <div>
               <label for="sn-form-cooldown" class="block font-bold mb-1 text-purple-300 text-[11px]">Recarga / Cooldown</label>
               <input id="sn-form-cooldown" type="text" placeholder="Ex: 2 turnos" class="w-full px-2.5 py-1.5 font-mono font-bold app-input" />
+            </div>
+            <div id="sn-charges-field-wrap" class="hidden">
+              <label for="sn-form-charges" class="block font-bold mb-1 text-rose-300 text-[11px]">Cargas</label>
+              <input id="sn-form-charges" type="text" placeholder="Ex: 2 cargas" class="w-full px-2.5 py-1.5 font-mono font-bold app-input" />
             </div>
           </div>
         </div>
@@ -3887,6 +3996,121 @@
             <button type="submit" class="btn-gold px-5 py-2 font-serif-fantasy uppercase tracking-wider">
               <iconify-icon icon="game-icons:save"></iconify-icon>
               <span>Salvar Nó</span>
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- MODAL 23: CRIAR / EDITAR RAÇA BASE OU SUB-RAÇA                            -->
+  <!-- ========================================================================= -->
+  <div id="modal-race-form" class="modal-backdrop hidden fixed inset-0 z-[84] flex items-center justify-center p-3 sm:p-4">
+    <div class="modal-panel w-full max-w-2xl rounded-2xl overflow-hidden flex flex-col max-h-[92vh]">
+      <div class="px-5 py-4 border-b flex items-center justify-between app-modal-header shrink-0">
+        <div class="flex items-center gap-2.5">
+          <iconify-icon icon="game-icons:dna1" class="text-xl gold-title"></iconify-icon>
+          <h3 id="race-form-modal-title" class="font-serif-fantasy text-base font-black uppercase gold-title">
+            Nova Raça / Sub-raça
+          </h3>
+        </div>
+        <button type="button" data-close-modal="modal-race-form" class="w-8 h-8 rounded-lg flex items-center justify-center app-icon-btn">✕</button>
+      </div>
+
+      <form id="form-race" class="p-5 overflow-y-auto space-y-4 text-xs flex-1 app-scroll">
+        <input type="hidden" id="race-form-id" value="" />
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div>
+            <label for="race-form-name" class="block font-bold uppercase mb-1 gold-title">Nome da Raça / Sub-raça</label>
+            <input
+              id="race-form-name"
+              type="text"
+              required
+              placeholder="Ex: Dragão, Elfo Solar..."
+              class="w-full px-3 py-2 font-bold app-input"
+            />
+          </div>
+          <div>
+            <label for="race-form-type" class="block font-bold uppercase mb-1 app-label">Tipo</label>
+            <select id="race-form-type" class="w-full px-3 py-2 font-bold app-input text-xs">
+              <option value="BASE">Raça Base</option>
+              <option value="SUBRACE">Sub-raça (Vinculada a Raça Base)</option>
+            </select>
+          </div>
+          <div>
+            <label for="race-form-bonus-pts" class="block font-bold uppercase mb-1 text-purple-300">
+              Bônus Inicial (Pts de Talento)
+            </label>
+            <input
+              id="race-form-bonus-pts"
+              type="number"
+              min="0"
+              step="1"
+              value="0"
+              class="w-full px-3 py-2 font-mono font-black app-input"
+            />
+          </div>
+        </div>
+
+        <div id="race-form-parent-wrap" class="hidden">
+          <label for="race-form-parent-id" class="block font-bold uppercase mb-1 gold-title">Raça Base Vinculada (Pai)</label>
+          <select id="race-form-parent-id" class="w-full px-3 py-2 font-bold app-input text-xs">
+            <option value="">Selecione a Raça Base...</option>
+          </select>
+        </div>
+
+        <div>
+          <label for="race-form-desc" class="block font-bold uppercase mb-1 app-label">Descrição / Traços Narrativos</label>
+          <textarea
+            id="race-form-desc"
+            rows="3"
+            placeholder="Ex: Pode voar e possui afinidade com poder diacrônico..."
+            class="w-full px-3 py-2 app-input leading-relaxed"
+          ></textarea>
+        </div>
+
+        <!-- Modificadores Matemáticos da Raça (Flat / %) -->
+        <div class="p-3.5 rounded-xl bg-black/30 border app-divider-border space-y-2.5">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h4 class="font-serif-fantasy font-extrabold uppercase gold-title flex items-center gap-1.5">
+                <iconify-icon icon="game-icons:lightning-branches"></iconify-icon>
+                <span>MODIFICADORES MATEMÁTICOS DA RAÇA (FLAT / %)</span>
+              </h4>
+              <p class="text-[10px] app-muted">
+                Aplicados automaticamente na ficha de todos os personagens desta raça/sub-raça.
+              </p>
+            </div>
+            <button
+              type="button"
+              id="btn-add-race-effect"
+              class="px-2.5 py-1 rounded-lg text-[11px] font-bold btn-gold-outline flex items-center gap-1"
+            >
+              <iconify-icon icon="game-icons:plus"></iconify-icon>
+              <span>＋ Adicionar Modificador</span>
+            </button>
+          </div>
+          <div id="race-effects-list" class="space-y-2"></div>
+        </div>
+
+        <div class="pt-3 border-t app-divider-border flex items-center justify-between gap-2">
+          <button
+            type="button"
+            id="btn-delete-race"
+            class="hidden px-3.5 py-2 rounded-lg font-extrabold uppercase bg-rose-600/20 hover:bg-rose-600 text-rose-400 hover:text-white border border-rose-500/40 transition flex items-center gap-1.5"
+          >
+            <iconify-icon icon="game-icons:trash-can"></iconify-icon>
+            <span>Excluir Raça</span>
+          </button>
+          <div class="flex items-center gap-2 ml-auto">
+            <button type="button" data-close-modal="modal-race-form" class="px-4 py-2 rounded-lg font-bold uppercase app-secondary-btn">
+              Cancelar
+            </button>
+            <button type="submit" class="btn-gold px-5 py-2 font-serif-fantasy uppercase tracking-wider">
+              <iconify-icon icon="game-icons:save"></iconify-icon>
+              <span>Salvar Raça</span>
             </button>
           </div>
         </div>
@@ -4025,12 +4249,12 @@
   </div>
 
     <!-- Módulos Sequenciais da Aplicação -->
-    <script src="js/01-core-state.js?v=1.14.0"></script>
-    <script src="js/02-websocket-combat.js?v=1.14.0"></script>
-    <script src="js/03-tabs-renderers.js?v=1.14.0"></script>
-    <script src="js/04-modals-character-buffs.js?v=1.14.0"></script>
-    <script src="js/05-modals-notes-inventory-bestiary.js?v=1.14.0"></script>
-    <script src="js/05b-mesa-board.js?v=1.14.0"></script>
-    <script src="js/06-events-init.js?v=1.14.0"></script>
+    <script src="js/01-core-state.js?v=1.15.0"></script>
+    <script src="js/02-websocket-combat.js?v=1.15.0"></script>
+    <script src="js/03-tabs-renderers.js?v=1.15.0"></script>
+    <script src="js/04-modals-character-buffs.js?v=1.15.0"></script>
+    <script src="js/05-modals-notes-inventory-bestiary.js?v=1.15.0"></script>
+    <script src="js/05b-mesa-board.js?v=1.15.0"></script>
+    <script src="js/06-events-init.js?v=1.15.0"></script>
 </body>
 </html>

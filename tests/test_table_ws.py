@@ -401,10 +401,10 @@ def test_decoupled_mesa_compact_state_and_cards_rendering(tmp_path: Path) -> Non
         assert sync["table"]["sizes"]["char_default_1"] == {"w": 72, "h": 96}
         assert sync["table"]["sizes"]["char_default_2"] == {"w": 420, "h": 468}
 
-        # Static asset query string must be v1.14.0
+        # Static asset query string must be v1.15.0
         resp = client.get("/")
-        assert "js/01-core-state.js?v=1.14.0" in resp.text
-        assert "js/03-tabs-renderers.js?v=1.14.0" in resp.text
+        assert "js/01-core-state.js?v=1.15.0" in resp.text
+        assert "js/03-tabs-renderers.js?v=1.15.0" in resp.text
 
         # Verify 03-tabs-renderers.js restricts compact mode exclusively to Mesa:
         js_resp = client.get("/js/03-tabs-renderers.js")
@@ -569,9 +569,9 @@ def test_v1_13_5_navigation_presence_and_render_stability(tmp_path: Path) -> Non
 
     # 1. HTML and assets checks
     resp_html = client.get("/")
-    assert 'styles.css?v=1.14.0' in resp_html.text
-    assert 'js/02-websocket-combat.js?v=1.14.0' in resp_html.text
-    assert 'js/05b-mesa-board.js?v=1.14.0' in resp_html.text
+    assert 'styles.css?v=1.15.0' in resp_html.text
+    assert 'js/02-websocket-combat.js?v=1.15.0' in resp_html.text
+    assert 'js/05b-mesa-board.js?v=1.15.0' in resp_html.text
 
     # 2. CSS Subpixel stabilization & GPU layer rules
     resp_css = client.get("/styles.css")
@@ -920,6 +920,187 @@ def test_v1_14_0_radial_skill_tree_modal_4_quadrants_and_core(tmp_path: Path) ->
         "handleRefundWholeSkillTree",
     ]:
         assert fn in js_04, f"Missing {fn} in 04-modals-character-buffs.js"
+
+
+def test_v1_15_0_charges_classes_subclasses_and_races(tmp_path: Path) -> None:
+    _setup_isolated_state(tmp_path)
+    client = TestClient(main.app, client=("127.0.0.1", 53090))
+
+    # 1. Verify HTML & JS fields for Cargas on Supremas, Classes/Subclasses, and Races/Sub-races
+    html = client.get("/").text
+    for elem_id in [
+        'id="sn-charges-field-wrap"',
+        'id="sn-form-charges"',
+        'id="char-race-select"',
+        'id="char-subrace-select"',
+        'id="char-class-select"',
+        'id="char-subclass-select"',
+        'id="char-subclass-lock-hint"',
+        'id="st-form-is-subclass"',
+        'id="modal-race-form"',
+        'id="host-progression-subtabs"',
+    ]:
+        assert elem_id in html, f"Missing {elem_id} in index.html"
+
+    # 2. Verify the 5 default seeded races in state_sync and their modifiers / bonusSkillPoints
+    with client.websocket_connect("/ws") as ws:
+        init_sync = _drain_until_type(ws, "state_sync")
+        races = init_sync.get("races") or []
+        race_ids = {r["id"] for r in races}
+        assert {"race_dragao", "race_humano", "race_elfo", "race_orc", "race_xituiara"}.issubset(race_ids)
+
+        # Create a Base Class, two Subclasses (Level 15+), a Skill Tree with SUPREMA charges, and a Sub-race
+        classes_payload = [
+            {
+                "id": "class_guerreiro",
+                "name": "Guerreiro",
+                "description": "Combatente de linha de frente.",
+                "isSubclass": False,
+                "completionDescription": "+20 Vida Máxima e +5 Ataque imediatos.",
+                "completionEffects": [
+                    {"targetStat": "VIDA", "modifierType": "FLAT", "value": 20},
+                    {"targetStat": "ATAQUE", "modifierType": "FLAT", "value": 5},
+                ],
+                "nodes": [
+                    {
+                        "id": "node_cls_passiva_1",
+                        "category": "PASSIVA",
+                        "name": "Postura de Ferro",
+                        "unlockCost": 2,
+                        "effects": [{"targetStat": "DEFESA", "modifierType": "FLAT", "value": 4}],
+                    },
+                    {
+                        "id": "node_cls_suprema_1",
+                        "category": "SUPREMA",
+                        "name": "Fúria Titânica",
+                        "unlockCost": 4,
+                        "charges": "2 cargas",
+                        "effects": [],
+                    },
+                ],
+            },
+            {
+                "id": "subclass_paladino",
+                "name": "Paladino",
+                "description": "Subclasse sagrada (Nível 15+).",
+                "isSubclass": True,
+                "completionDescription": "+15 Santidade imediata.",
+                "completionEffects": [
+                    {"targetStat": "SANTIDADE", "modifierType": "FLAT", "value": 15},
+                ],
+                "nodes": [
+                    {
+                        "id": "node_sub_passiva_1",
+                        "category": "PASSIVA",
+                        "name": "Aura Sagrada",
+                        "unlockCost": 3,
+                        "effects": [{"targetStat": "ARMADURA", "modifierType": "FLAT", "value": 30}],
+                    },
+                    {
+                        "id": "node_sub_passiva_2",
+                        "category": "PASSIVA",
+                        "name": "Bastião Divino",
+                        "unlockCost": 3,
+                        "effects": [{"targetStat": "DEFESA", "modifierType": "FLAT", "value": 6}],
+                    },
+                ],
+            },
+        ]
+
+        trees_payload = [
+            {
+                "id": "tree_teste_passivas",
+                "name": "Mestre de Armas",
+                "completionEffects": [
+                    {"targetStat": "ATAQUE", "modifierType": "FLAT", "value": 50},
+                ],
+                "nodes": [
+                    {
+                        "id": "node_tree_passiva_1",
+                        "category": "PASSIVA",
+                        "name": "Lâmina Afiada",
+                        "unlockCost": 2,
+                        "effects": [{"targetStat": "ATAQUE", "modifierType": "FLAT", "value": 3}],
+                    },
+                    {
+                        "id": "node_tree_passiva_2",
+                        "category": "PASSIVA",
+                        "name": "Contra-Ataque",
+                        "unlockCost": 2,
+                        "effects": [{"targetStat": "ATAQUE", "modifierType": "FLAT", "value": 3}],
+                    },
+                ],
+            }
+        ]
+
+        # Test Humano (+8 bonusSkillPoints) + Base Class immediate effect (without 100% of nodes) + Level < 15 Subclass lock
+        chars = copy.deepcopy(init_sync["characters"])
+        c1 = chars[0]
+        c1["level"] = 10
+        c1["skillPoints"] = 0
+        c1["appliedRaceBonusPoints"] = 0
+        c1["raceId"] = "race_humano"
+        c1["classId"] = "class_guerreiro"
+        c1["subclassId"] = "subclass_paladino"  # Level 10 (< 15), so Subclass effect must NOT apply yet!
+        c1["baseMaxHp"] = 100
+        c1["baseAttack"] = 10
+        c1["baseSantidade"] = 0
+
+        # Test Dragão (+1 FORCA, +5 MANA, +8% RES_FISICO) on c2 at Level 15 (Subclass unlocked!)
+        c2 = chars[1]
+        c2["level"] = 15
+        c2["raceId"] = "race_dragao"
+        c2["classId"] = "class_guerreiro"
+        c2["subclassId"] = "subclass_paladino"
+        c2["baseMaxMana"] = 100
+        c2["baseSantidade"] = 5
+        c2["attributes"]["FORCA"] = 10
+        c2["elementalResistances"]["FISICO"] = 10
+        # Enable 4 passives across Class + Subclass + Skill Tree -> unified 3/3 limit must cap active passives at 3!
+        c2["skillTreeProgress"] = {
+            "node_cls_passiva_1": {"unlocked": True, "upgrades": 0, "enabled": True},
+            "node_sub_passiva_1": {"unlocked": True, "upgrades": 0, "enabled": True},
+            "node_sub_passiva_2": {"unlocked": True, "upgrades": 0, "enabled": True},
+            "node_tree_passiva_1": {"unlocked": True, "upgrades": 0, "enabled": True},
+        }
+
+        ws.send_json(
+            {
+                "type": "update_state",
+                "classes": classes_payload,
+                "skillTrees": trees_payload,
+                "characters": chars,
+            }
+        )
+        sync = _drain_until_type(ws, "state_sync")
+
+        # Verify charges preserved on SUPREMA node
+        synced_cls = next(c for c in sync["classes"] if c["id"] == "class_guerreiro")
+        sup_node = next(n for n in synced_cls["nodes"] if n["id"] == "node_cls_suprema_1")
+        assert sup_node["charges"] == "2 cargas"
+
+        # Verify c1 (Humano, Level 10, Guerreiro):
+        # - Granted +8 skillPoints from Humano
+        # - Base Class Guerreiro effect (+20 HP, +5 Attack) applied immediately even with 0% nodes unlocked
+        # - Subclass Paladino (+15 Santidade) NOT applied because level 10 < 15
+        sc1 = next(c for c in sync["characters"] if c["id"] == c1["id"])
+        assert sc1["skillPoints"] == 8
+        assert sc1["appliedRaceBonusPoints"] == 8
+        assert sc1["maxHp"] == 120
+        assert sc1["attack"] == 15
+        assert sc1["santidade"] == 0
+
+        # Verify c2 (Dragão, Level 15, Guerreiro + Paladino):
+        # - Dragão: FORCA 10 -> 11, MANA 100 -> 105, RES_FISICO 10 -> 18
+        # - Subclass Paladino (+15 Santidade) active at Level 15: Santidade 5 -> 20
+        # - Unified 3/3 active passives limit enforced across Class + Subclass + Skill Tree
+        sc2 = next(c for c in sync["characters"] if c["id"] == c2["id"])
+        assert sc2["derived"]["effectiveAttributes"]["FORCA"]["effective"] == 11
+        assert sc2["maxMana"] == 105
+        assert sc2["derived"]["effectiveElementalResistances"]["FISICO"] == 18
+        assert sc2["santidade"] == 20
+        assert sc2["skillTreeProgress"]["node_tree_passiva_1"]["enabled"] is False
+
 
 
 

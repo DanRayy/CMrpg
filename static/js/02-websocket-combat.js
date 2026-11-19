@@ -819,8 +819,16 @@
             }
             if (Array.isArray(data.itemsCatalog)) state.itemsCatalog = data.itemsCatalog;
             if (Array.isArray(data.skillTrees)) {
-        state.skillTrees = data.skillTrees.filter((t) => t && t.id !== 'tree_geomancia');
-      }
+              state.skillTrees = data.skillTrees.filter((t) => t && t.id !== 'tree_geomancia');
+            }
+            if (Array.isArray(data.classes)) {
+              state.classes = data.classes;
+            }
+            if (Array.isArray(data.races) && data.races.length > 0) {
+              state.races = data.races;
+            } else if (!Array.isArray(state.races) || state.races.length === 0) {
+              state.races = buildDefaultRacesTemplate();
+            }
             if (Array.isArray(data.characters)) {
               state.characters = data.characters;
               state.characters.forEach(recalculateCharacterDerived);

@@ -964,6 +964,14 @@
         return;
       }
 
+      const openClsTreeBtn = e.target.closest('[data-open-char-class-tree]');
+      if (openClsTreeBtn) {
+        const clsId = openClsTreeBtn.getAttribute('data-open-char-class-tree');
+        const cId = openClsTreeBtn.getAttribute('data-char-id') || charId;
+        openSkillTreeModal(cId, clsId);
+        return;
+      }
+
       const ptAdjBtn = e.target.closest('[data-sheet-skill-pt-adj]');
       if (ptAdjBtn && isEffectiveMaster()) {
         const delta = Number(ptAdjBtn.getAttribute('data-sheet-skill-pt-adj') || 0);
@@ -1017,7 +1025,30 @@
         if (charId && nodeId) {
           handleSkillNodeToggleEnabled(charId, nodeId, toggleInp.checked);
         }
+        return;
       }
+
+      const changeClsSel = e.target.closest('[data-sheet-change-class]');
+      if (changeClsSel) {
+        const charId = changeClsSel.getAttribute('data-sheet-change-class') || state.activeSheetCharId;
+        if (charId) handleSheetChangeCharacterVocation(charId, 'CLASS', changeClsSel.value);
+        return;
+      }
+
+      const changeSubSel = e.target.closest('[data-sheet-change-subclass]');
+      if (changeSubSel) {
+        const charId = changeSubSel.getAttribute('data-sheet-change-subclass') || state.activeSheetCharId;
+        if (charId) handleSheetChangeCharacterVocation(charId, 'SUBCLASS', changeSubSel.value);
+      }
+    });
+
+    // Eventos dos seletores de Raça, Sub-raça, Classe e Subclasse no Modal de Personagem (#modal-char-form)
+    document.getElementById('char-race-select')?.addEventListener('change', (e) => {
+      syncCharacterFormSubraceOptions(e.target.value || '', '');
+      updateCharacterFormOriginPreview();
+    });
+    ['char-subrace-select', 'char-class-select', 'char-subclass-select'].forEach((id) => {
+      document.getElementById(id)?.addEventListener('change', updateCharacterFormOriginPreview);
     });
 
     // Eventos do Modal Dedicado de Inventário 3x(Infinito) (#modal-char-inventory)
@@ -2847,35 +2878,59 @@
     });
 
     // -------------------------------------------------------------------------
-    // Eventos do Sistema de Árvore de Habilidades (Host Tab, Modal 96vw x 92vh, Forms e Drag & Drop)
+    // Eventos do Sistema de Árvore de Habilidades, Classes/Subclasses e Raças/Sub-raças
     // -------------------------------------------------------------------------
     const confirmAndDeleteSkillTree = (treeId) => {
-      const tree = (state.skillTrees || []).find((t) => t.id === treeId);
+      const tree = findProgressionContainerById(treeId);
       if (!tree) return;
+      const isCls = isClassContainer(tree);
+      const label = isCls ? (tree.isSubclass ? 'Subclasse' : 'Classe') : 'Árvore';
       openConfirmModal({
         icon: '<iconify-icon icon="game-icons:trash-can"></iconify-icon>',
-        title: `EXCLUIR ÁRVORE "${tree.name.toUpperCase()}"?`,
-        message: `Tem certeza que deseja excluir permanentemente a árvore "${tree.name}" e todos os seus ${(tree.nodes || []).length} nós?`,
-        confirmText: '<iconify-icon icon="game-icons:trash-can"></iconify-icon> <span>Excluir Árvore</span>',
+        title: `EXCLUIR ${label.toUpperCase()} "${tree.name.toUpperCase()}"?`,
+        message: `Tem certeza que deseja excluir permanentemente a ${label.toLowerCase()} "${tree.name}" e todos os seus ${(tree.nodes || []).length} nós?`,
+        confirmText: `<iconify-icon icon="game-icons:trash-can"></iconify-icon> <span>Excluir ${label}</span>`,
         onConfirm: () => deleteSkillTree(treeId),
       });
     };
 
     const confirmAndDeleteSkillNode = (treeId, nodeId) => {
-      const tree = (state.skillTrees || []).find((t) => t.id === treeId);
+      const tree = findProgressionContainerById(treeId);
       const node = (tree?.nodes || []).find((n) => n.id === nodeId);
       if (!tree || !node) return;
       openConfirmModal({
         icon: '<iconify-icon icon="game-icons:trash-can"></iconify-icon>',
         title: `EXCLUIR NÓ "${node.name.toUpperCase()}"?`,
-        message: `Tem certeza que deseja remover a habilidade/talento "${node.name}" da árvore "${tree.name}"?`,
+        message: `Tem certeza que deseja remover a habilidade/talento "${node.name}" de "${tree.name}"?`,
         confirmText: '<iconify-icon icon="game-icons:trash-can"></iconify-icon> <span>Excluir Nó</span>',
         onConfirm: () => deleteSkillNode(treeId, nodeId),
       });
     };
 
-    // Botão Principal na Aba Exclusiva do Host (#tab-skill-trees)
-    document.getElementById('btn-create-skill-tree')?.addEventListener('click', () => openSkillTreeFormModal(null));
+    const confirmAndDeleteRace = (raceId) => {
+      const races = Array.isArray(state.races) ? state.races : [];
+      const target = races.find((r) => r && r.id === raceId);
+      if (!target) return;
+      openConfirmModal({
+        icon: '<iconify-icon icon="game-icons:trash-can"></iconify-icon>',
+        title: `EXCLUIR ${target.isSubrace ? 'SUB-RAÇA' : 'RAÇA'} "${target.name.toUpperCase()}"?`,
+        message: `Tem certeza que deseja excluir permanentemente "${target.name}"?`,
+        confirmText: '<iconify-icon icon="game-icons:trash-can"></iconify-icon> <span>Excluir</span>',
+        onConfirm: () => deleteRace(raceId),
+      });
+    };
+
+    // Sub-abas e Botões Principais na Aba Exclusiva do Host (#tab-skill-trees)
+    document.getElementById('host-progression-subtabs')?.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-host-prog-subtab]');
+      if (!btn) return;
+      state.hostProgressionSubTab = btn.getAttribute('data-host-prog-subtab') || 'TREES';
+      renderSkillTreesTab();
+    });
+
+    document.getElementById('btn-create-skill-tree')?.addEventListener('click', () => openSkillTreeFormModal(null, false));
+    document.getElementById('btn-create-class')?.addEventListener('click', () => openSkillTreeFormModal(null, true));
+    document.getElementById('btn-create-race')?.addEventListener('click', () => openRaceFormModal(null, null));
 
     // Busca e filtros em tempo real na aba de criação do Host (#tab-skill-trees)
     document.getElementById('host-skill-tree-search-input')?.addEventListener('input', (e) => {
@@ -2900,7 +2955,36 @@
 
     document.getElementById('skill-trees-host-container')?.addEventListener('click', (e) => {
       if (e.target.closest('[data-host-create-tree]')) {
-        openSkillTreeFormModal(null);
+        openSkillTreeFormModal(null, false);
+        return;
+      }
+
+      if (e.target.closest('[data-host-create-class]')) {
+        openSkillTreeFormModal(null, true);
+        return;
+      }
+
+      const openRadialBtn = e.target.closest('[data-host-open-radial]');
+      if (openRadialBtn) {
+        openSkillTreeModal(null, openRadialBtn.getAttribute('data-host-open-radial'));
+        return;
+      }
+
+      const addSubraceBtn = e.target.closest('[data-host-add-subrace]');
+      if (addSubraceBtn) {
+        openRaceFormModal(null, addSubraceBtn.getAttribute('data-host-add-subrace'));
+        return;
+      }
+
+      const editRaceBtn = e.target.closest('[data-host-edit-race]');
+      if (editRaceBtn) {
+        openRaceFormModal(editRaceBtn.getAttribute('data-host-edit-race'), null);
+        return;
+      }
+
+      const delRaceBtn = e.target.closest('[data-host-delete-race]');
+      if (delRaceBtn) {
+        confirmAndDeleteRace(delRaceBtn.getAttribute('data-host-delete-race'));
         return;
       }
 
@@ -3280,6 +3364,17 @@
       const treeId = document.getElementById('sn-form-tree-id')?.value.trim();
       const nodeId = document.getElementById('sn-form-node-id')?.value.trim();
       if (treeId && nodeId) confirmAndDeleteSkillNode(treeId, nodeId);
+    });
+
+    // Modal 23 (#modal-race-form): Raças Base e Sub-raças
+    document.getElementById('race-form-type')?.addEventListener('change', () => syncRaceFormTypeUI(null));
+    document.getElementById('btn-add-race-effect')?.addEventListener('click', () => {
+      document.getElementById('race-effects-list')?.appendChild(createRaceEffectRowElement());
+    });
+    document.getElementById('form-race')?.addEventListener('submit', handleRaceFormSubmit);
+    document.getElementById('btn-delete-race')?.addEventListener('click', () => {
+      const raceId = document.getElementById('race-form-id')?.value.trim();
+      if (raceId) confirmAndDeleteRace(raceId);
     });
 
     // Fechar modais e confirmação

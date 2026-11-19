@@ -180,6 +180,15 @@
         `;
       }
     } else {
+      const { race: cardRace, subrace: cardSubrace } = getCharacterRaceAndSubrace(char);
+      const cardBaseCls = char.classId ? (state.classes || []).find((c) => c && c.id === char.classId && !c.isSubclass) : null;
+      const cardSubCls =
+        Number(char.level || 1) >= 15 && char.subclassId
+          ? (state.classes || []).find((c) => c && c.id === char.subclassId && Boolean(c.isSubclass))
+          : null;
+      const raceBadgeText = cardRace ? `${cardRace.name}${cardSubrace ? ` (${cardSubrace.name})` : ''}` : '';
+      const clsBadgeText = cardBaseCls ? `${cardBaseCls.name}${cardSubCls ? ` • ${cardSubCls.name}` : ''}` : cardSubCls ? cardSubCls.name : '';
+
       metaBarHtml = `
         <div class="flex flex-wrap items-center gap-2 mt-1">
           <div class="stat-bar-track h-1.5 w-20 rounded-full">
@@ -187,6 +196,16 @@
           </div>
           <span class="text-[10px] font-mono app-muted">XP ${char.xp || 0}/${char.xpNext || 80}</span>
           <span class="text-[10px] font-mono app-muted" title="Membro/IP vinculado a este personagem">• <iconify-icon icon="game-icons:hooded-figure"></iconify-icon> ${escapeHtml(ownerLabel)}</span>
+          ${
+            raceBadgeText
+              ? `<span class="px-1.5 py-0.2 rounded text-[10px] font-mono font-bold bg-amber-500/15 gold-title border border-amber-500/30" title="Raça / Sub-raça"><iconify-icon icon="game-icons:dna1"></iconify-icon> ${escapeHtml(raceBadgeText)}</span>`
+              : ''
+          }
+          ${
+            clsBadgeText
+              ? `<span class="px-1.5 py-0.2 rounded text-[10px] font-mono font-bold bg-sky-500/15 text-sky-300 border border-sky-500/30" title="Classe / Subclasse"><iconify-icon icon="game-icons:crested-helmet"></iconify-icon> ${escapeHtml(clsBadgeText)}</span>`
+              : ''
+          }
           ${
             char.skillPoints > 0
               ? `<span class="text-[10px] font-mono font-bold text-purple-400">• +${char.skillPoints} Hab</span>`
@@ -1873,11 +1892,177 @@
   }
 
   // ---------------------------------------------------------------------------
-  // ABA EXCLUSIVA DO HOST: ÁRVORE DE HABILIDADES (GESTÃO DE ÁRVORES E NÓS)
+  // ABA EXCLUSIVA DO HOST: ÁRVORE DE HABILIDADES, CLASSES & RAÇAS
   // ---------------------------------------------------------------------------
+  function renderHostRacesManagementHtml(searchQ) {
+    const races = Array.isArray(state.races) && state.races.length > 0 ? state.races : buildDefaultRacesTemplate();
+    const baseRaces = races.filter((r) => r && !r.isSubrace);
+    const subRaces = races.filter((r) => r && Boolean(r.isSubrace));
+
+    const qNorm = normalizeSkillSearchTerm(searchQ || '');
+    const formatModsBadges = (effects) =>
+      (effects || [])
+        .map(
+          (ef) =>
+            `<span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-950/50 text-emerald-300 border border-emerald-500/35"><iconify-icon icon="game-icons:lightning-branches"></iconify-icon> ${ef.value >= 0 ? '+' : ''}${ef.value}${ef.modifierType === 'PERCENT' ? '%' : ''} ${escapeHtml(formatEffectTargetLabel(ef.targetStat))}</span>`
+        )
+        .join('');
+
+    const cardsHtml = baseRaces
+      .map((baseRace) => {
+        const children = subRaces.filter((sr) => sr.parentRaceId === baseRace.id);
+        if (qNorm) {
+          const hay = normalizeSkillSearchTerm(
+            `${baseRace.name} ${baseRace.description} ${children.map((c) => `${c.name} ${c.description}`).join(' ')}`
+          );
+          if (!hay.includes(qNorm)) return '';
+        }
+
+        const baseModsHtml = formatModsBadges(baseRace.effects || baseRace.modifiers);
+        const bonusPts = Math.max(0, Number(baseRace.bonusSkillPoints || 0));
+
+        const subracesListHtml =
+          children.length > 0
+            ? `<div class="pt-3 mt-3 border-t app-divider-border space-y-2">
+                <div class="text-[10px] font-serif-fantasy font-extrabold uppercase gold-title tracking-wider flex items-center gap-1.5">
+                  <iconify-icon icon="game-icons:family-tree"></iconify-icon>
+                  <span>Sub-raças de ${escapeHtml(baseRace.name)} (${children.length})</span>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                  ${children
+                    .map((sr) => {
+                      const srMods = formatModsBadges(sr.effects || sr.modifiers);
+                      const srBonus = Math.max(0, Number(sr.bonusSkillPoints || 0));
+                      return `
+                        <div class="p-3 rounded-xl bg-black/40 border app-divider-border flex flex-col justify-between gap-2">
+                          <div class="space-y-1.5">
+                            <div class="flex items-center justify-between gap-2">
+                              <div class="flex items-center gap-1.5 flex-wrap">
+                                <span class="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-amber-500/15 gold-title border border-amber-500/30">SUB-RAÇA</span>
+                                <strong class="font-serif-fantasy font-black text-xs app-title">${escapeHtml(sr.name)}</strong>
+                                ${
+                                  srBonus > 0
+                                    ? `<span class="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-purple-500/20 text-purple-200 border border-purple-500/40">+${srBonus} Pts Talento</span>`
+                                    : ''
+                                }
+                              </div>
+                              <div class="flex items-center gap-1 shrink-0">
+                                <button type="button" data-host-edit-race="${escapeHtml(sr.id)}" class="w-7 h-7 rounded-lg app-icon-btn flex items-center justify-center text-xs" title="Editar Sub-raça">
+                                  <iconify-icon icon="game-icons:quill-ink"></iconify-icon>
+                                </button>
+                                <button type="button" data-host-delete-race="${escapeHtml(sr.id)}" class="w-7 h-7 rounded-lg app-icon-btn text-rose-400 hover:text-rose-300 flex items-center justify-center text-xs" title="Excluir Sub-raça">
+                                  <iconify-icon icon="game-icons:trash-can"></iconify-icon>
+                                </button>
+                              </div>
+                            </div>
+                            ${sr.description ? `<p class="text-[11px] app-label leading-relaxed">${escapeHtml(sr.description)}</p>` : ''}
+                            ${srMods ? `<div class="flex flex-wrap gap-1.5 pt-0.5">${srMods}</div>` : ''}
+                          </div>
+                        </div>
+                      `;
+                    })
+                    .join('')}
+                </div>
+              </div>`
+            : '';
+
+        return `
+          <div class="fantasy-card p-4 space-y-3">
+            <div class="flex flex-wrap items-start justify-between gap-3">
+              <div class="space-y-1.5 max-w-3xl">
+                <div class="flex flex-wrap items-center gap-2">
+                  <span class="px-2 py-0.5 rounded text-[10px] font-mono font-black bg-amber-500/15 gold-title border border-amber-500/35">RAÇA BASE</span>
+                  <h3 class="font-serif-fantasy text-base font-black uppercase gold-title">${escapeHtml(baseRace.name)}</h3>
+                  ${
+                    bonusPts > 0
+                      ? `<span class="px-2 py-0.5 rounded text-[10px] font-mono font-extrabold bg-purple-500/20 text-purple-200 border border-purple-500/45"><iconify-icon icon="game-icons:sparkles"></iconify-icon> +${bonusPts} Pontos de Talento na Criação</span>`
+                      : ''
+                  }
+                </div>
+                <p class="text-xs app-label leading-relaxed">${escapeHtml(baseRace.description || 'Sem descrição narrativa informada.')}</p>
+                ${
+                  baseModsHtml
+                    ? `<div class="flex flex-wrap items-center gap-1.5 pt-1">${baseModsHtml}</div>`
+                    : !bonusPts
+                    ? `<div class="text-[10px] font-mono app-muted italic">Traços puramente narrativos (sem modificadores numéricos automáticos).</div>`
+                    : ''
+                }
+              </div>
+
+              <div class="flex flex-wrap items-center gap-1.5 shrink-0">
+                <button
+                  type="button"
+                  data-host-add-subrace="${escapeHtml(baseRace.id)}"
+                  class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold btn-gold-outline flex items-center gap-1"
+                  title="Criar uma Sub-raça vinculada a ${escapeHtml(baseRace.name)}"
+                >
+                  <iconify-icon icon="game-icons:plus"></iconify-icon>
+                  <span>＋ Sub-raça</span>
+                </button>
+                <button
+                  type="button"
+                  data-host-edit-race="${escapeHtml(baseRace.id)}"
+                  class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold btn-gold-outline flex items-center gap-1"
+                >
+                  <iconify-icon icon="game-icons:quill-ink"></iconify-icon>
+                  <span>Editar</span>
+                </button>
+                <button
+                  type="button"
+                  data-host-delete-race="${escapeHtml(baseRace.id)}"
+                  class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-rose-600/20 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/40 transition flex items-center gap-1"
+                >
+                  <iconify-icon icon="game-icons:trash-can"></iconify-icon>
+                  <span>Excluir</span>
+                </button>
+              </div>
+            </div>
+            ${subracesListHtml}
+          </div>
+        `;
+      })
+      .filter(Boolean)
+      .join('');
+
+    return `
+      <div class="space-y-3">
+        ${
+          cardsHtml ||
+          `<div class="fantasy-card p-8 text-center text-xs app-muted">Nenhuma Raça ou Sub-raça encontrada.</div>`
+        }
+      </div>
+    `;
+  }
+
   function renderSkillTreesTab() {
     const container = document.getElementById('skill-trees-host-container');
     if (!container) return;
+
+    const treesList = Array.isArray(state.skillTrees) ? state.skillTrees : [];
+    const classesList = Array.isArray(state.classes) ? state.classes : [];
+    const racesList = Array.isArray(state.races) && state.races.length > 0 ? state.races : buildDefaultRacesTemplate();
+
+    const subTab = String(state.hostProgressionSubTab || 'TREES').toUpperCase();
+    const isClassesMode = subTab === 'CLASSES';
+    const isRacesMode = subTab === 'RACES';
+
+    const countTreesEl = document.getElementById('host-subtab-count-trees');
+    const countClassesEl = document.getElementById('host-subtab-count-classes');
+    const countRacesEl = document.getElementById('host-subtab-count-races');
+    if (countTreesEl) countTreesEl.textContent = String(treesList.length);
+    if (countClassesEl) countClassesEl.textContent = String(classesList.length);
+    if (countRacesEl) countRacesEl.textContent = String(racesList.length);
+
+    document.querySelectorAll('#host-progression-subtabs [data-host-prog-subtab]').forEach((btn) => {
+      const active = btn.getAttribute('data-host-prog-subtab') === subTab;
+      btn.className = active
+        ? 'px-3 py-1.5 rounded-lg text-xs font-serif-fantasy font-bold uppercase tracking-wider btn-gold flex items-center gap-1.5'
+        : 'px-3 py-1.5 rounded-lg text-xs font-serif-fantasy font-bold uppercase tracking-wider app-secondary-btn flex items-center gap-1.5';
+    });
+
+    document.getElementById('btn-create-skill-tree')?.classList.toggle('hidden', subTab !== 'TREES');
+    document.getElementById('btn-create-class')?.classList.toggle('hidden', !isClassesMode);
+    document.getElementById('btn-create-race')?.classList.toggle('hidden', !isRacesMode);
 
     const searchQ = (state.hostSkillTreeSearchQuery || '').trim();
     const catFilter = String(state.hostSkillTreeCategoryFilter || 'ALL').toUpperCase();
@@ -1887,6 +2072,7 @@
       searchInputEl.value = state.hostSkillTreeSearchQuery || '';
     }
     document.getElementById('btn-host-skill-tree-search-clear')?.classList.toggle('hidden', !searchQ);
+    document.getElementById('host-skill-tree-filter-pills')?.classList.toggle('hidden', isRacesMode);
     document.querySelectorAll('#host-skill-tree-filter-pills [data-host-st-filter]').forEach((btn) => {
       const isAct = btn.getAttribute('data-host-st-filter') === catFilter;
       btn.className = isAct
@@ -1894,24 +2080,36 @@
         : 'px-3 py-1.5 rounded-lg text-xs font-bold app-secondary-btn';
     });
 
-    const trees = Array.isArray(state.skillTrees) ? state.skillTrees : [];
-    const searchBarEl = document.getElementById('host-skill-tree-search-bar');
-    if (searchBarEl) searchBarEl.classList.toggle('hidden', trees.length === 0);
+    if (isRacesMode) {
+      document.getElementById('host-skill-tree-search-bar')?.classList.remove('hidden');
+      container.innerHTML = renderHostRacesManagementHtml(searchQ);
+      return;
+    }
 
-    if (trees.length === 0) {
+    const items = isClassesMode ? classesList : treesList;
+    const searchBarEl = document.getElementById('host-skill-tree-search-bar');
+    if (searchBarEl) searchBarEl.classList.toggle('hidden', items.length === 0);
+
+    if (items.length === 0) {
       container.innerHTML = `
         <div class="fantasy-card p-10 text-center space-y-3 border border-dashed app-divider-border">
           <div class="text-4xl gold-title flex justify-center">
-            <iconify-icon icon="game-icons:family-tree"></iconify-icon>
+            <iconify-icon icon="${isClassesMode ? 'game-icons:crested-helmet' : 'game-icons:family-tree'}"></iconify-icon>
           </div>
-          <h3 class="font-serif-fantasy text-base font-black uppercase gold-title">Nenhuma Árvore de Habilidades Cadastrada</h3>
+          <h3 class="font-serif-fantasy text-base font-black uppercase gold-title">
+            ${isClassesMode ? 'Nenhuma Classe ou Subclasse Cadastrada' : 'Nenhuma Árvore de Habilidades Cadastrada'}
+          </h3>
           <p class="text-xs app-muted max-w-lg mx-auto">
-            Clique no botão abaixo ou em "＋ Nova Árvore" no topo para criar uma árvore de habilidades personalizada.
+            ${
+              isClassesMode
+                ? 'Crie Classes Base (Nível 1+) e Subclasses (Nível 15+) com Efeito de Classe imediato e nós nos 4 quadrantes.'
+                : 'Clique no botão abaixo ou em "＋ Nova Árvore" no topo para criar uma árvore de habilidades personalizada.'
+            }
           </p>
           <div class="flex flex-wrap items-center justify-center gap-2.5 pt-2">
-            <button type="button" data-host-create-tree="true" class="btn-gold px-5 py-2 rounded-lg text-xs font-serif-fantasy font-black uppercase flex items-center gap-1.5">
-              <iconify-icon icon="game-icons:sparkles"></iconify-icon>
-              <span>＋ Criar Primeira Árvore</span>
+            <button type="button" ${isClassesMode ? 'data-host-create-class="true"' : 'data-host-create-tree="true"'} class="btn-gold px-5 py-2 rounded-lg text-xs font-serif-fantasy font-black uppercase flex items-center gap-1.5">
+              <iconify-icon icon="${isClassesMode ? 'game-icons:crested-helmet' : 'game-icons:sparkles'}"></iconify-icon>
+              <span>${isClassesMode ? '＋ Criar Primeira Classe / Subclasse' : '＋ Criar Primeira Árvore'}</span>
             </button>
           </div>
         </div>
@@ -1919,10 +2117,10 @@
       return;
     }
 
-    if (!state.activeSkillTreeId || !trees.some((t) => t.id === state.activeSkillTreeId)) {
-      state.activeSkillTreeId = trees[0].id;
+    if (!state.activeSkillTreeId || !items.some((t) => t.id === state.activeSkillTreeId)) {
+      state.activeSkillTreeId = items[0].id;
     }
-    const activeTree = trees.find((t) => t.id === state.activeSkillTreeId) || trees[0];
+    const activeTree = items.find((t) => t.id === state.activeSkillTreeId) || items[0];
     const allNodes = Array.isArray(activeTree.nodes)
       ? [...activeTree.nodes].sort((a, b) => Number(a.order ?? 0) - Number(b.order ?? 0))
       : [];
@@ -1969,11 +2167,19 @@
         ? categoriesMeta.filter((c) => c.key === catFilter)
         : categoriesMeta;
 
+    const entityLabel = isClassesMode ? (activeTree.isSubclass ? 'Subclasse' : 'Classe') : 'Árvore';
+    const coreEffectTitle = isClassesMode
+      ? activeTree.isSubclass
+        ? 'EFEITO DE SUBCLASSE (ATIVO AO ESCOLHER • NV. 15+)'
+        : 'EFEITO DE CLASSE (ATIVO IMEDIATAMENTE NA FICHA)'
+      : 'EFEITO DE ÁRVORE COMPLETA (100%)';
+    const coreEffectBadge = isClassesMode ? 'EFEITO IMEDIATO' : 'BÔNUS 100%';
+
     container.innerHTML = `
-      <!-- Barra de Abas das Árvores Cadastradas -->
+      <!-- Barra de Abas das Árvores / Classes Cadastradas -->
       <div class="fantasy-card p-3 flex flex-wrap items-center justify-between gap-2">
         <div class="flex flex-wrap items-center gap-2">
-          ${trees
+          ${items
             .map((t) => {
               const isSelected = t.id === activeTree.id;
               const nCount = Array.isArray(t.nodes) ? t.nodes.length : 0;
@@ -1987,8 +2193,17 @@
                     isSelected ? 'btn-gold' : 'app-secondary-btn hover:border-amber-500/40'
                   }"
                 >
-                  <iconify-icon icon="game-icons:family-tree"></iconify-icon>
+                  <iconify-icon icon="${isClassesMode ? (t.isSubclass ? 'game-icons:crowned-heart' : 'game-icons:crested-helmet') : 'game-icons:family-tree'}"></iconify-icon>
                   <span>${escapeHtml(t.name)}</span>
+                  ${
+                    isClassesMode
+                      ? `<span class="px-1.5 py-0.5 rounded text-[9px] font-mono ${
+                          t.isSubclass
+                            ? 'bg-purple-900/75 text-purple-200 border border-purple-400/40'
+                            : 'bg-sky-900/75 text-sky-200 border border-sky-400/40'
+                        }">${t.isSubclass ? 'SUBCLASSE NV.15+' : 'CLASSE BASE'}</span>`
+                      : ''
+                  }
                   <span class="px-1.5 py-0.5 rounded text-[10px] font-mono ${
                     isSelected ? 'bg-black/25 text-black font-black' : 'bg-black/40 gold-title'
                   }">${nCount} nós</span>
@@ -2015,29 +2230,38 @@
         <div class="flex flex-wrap items-center gap-2">
           <button
             type="button"
+            data-host-open-radial="${escapeHtml(activeTree.id)}"
+            class="px-3 py-1.5 rounded-lg text-xs font-bold btn-gold-outline flex items-center gap-1.5"
+            title="Visualizar ${entityLabel} no Modal Radial de 4 Quadrantes"
+          >
+            <iconify-icon icon="game-icons:compass"></iconify-icon>
+            <span>Abrir 4 Quadrantes</span>
+          </button>
+          <button
+            type="button"
             data-host-edit-tree="${escapeHtml(activeTree.id)}"
             class="px-3 py-1.5 rounded-lg text-xs font-bold btn-gold-outline flex items-center gap-1.5"
           >
             <iconify-icon icon="game-icons:quill-ink"></iconify-icon>
-            <span>Editar Árvore / Bônus 100%</span>
+            <span>Editar ${entityLabel}</span>
           </button>
           <button
             type="button"
             data-host-clone-tree="${escapeHtml(activeTree.id)}"
             class="px-3 py-1.5 rounded-lg text-xs font-bold btn-gold-outline flex items-center gap-1.5"
-            title="Clonar / Duplicar esta Árvore inteira com novos IDs independentes"
+            title="Clonar / Duplicar esta ${entityLabel} inteira com novos IDs independentes"
           >
             <iconify-icon icon="game-icons:files"></iconify-icon>
-            <span>Duplicar Árvore</span>
+            <span>Duplicar ${entityLabel}</span>
           </button>
           <button
             type="button"
             data-host-delete-tree="${escapeHtml(activeTree.id)}"
             class="px-3 py-1.5 rounded-lg text-xs font-bold bg-rose-600/20 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/40 transition flex items-center gap-1.5"
-            title="Excluir esta Árvore de Habilidades"
+            title="Excluir esta ${entityLabel}"
           >
             <iconify-icon icon="game-icons:trash-can"></iconify-icon>
-            <span>Excluir Árvore</span>
+            <span>Excluir ${entityLabel}</span>
           </button>
           <button
             type="button"
@@ -2050,15 +2274,22 @@
         </div>
       </div>
 
-      <!-- Card Principal da Árvore Selecionada + Efeito 100% -->
+      <!-- Card Principal da Árvore/Classe Selecionada + Efeito Central -->
       <div class="fantasy-card p-5 space-y-4">
         <div class="flex flex-wrap items-start justify-between gap-4 pb-3 border-b app-divider-border">
           <div class="space-y-1 max-w-3xl">
             <div class="flex flex-wrap items-center gap-2">
               <h3 class="font-serif-fantasy text-xl font-black uppercase gold-title flex items-center gap-2">
-                <iconify-icon icon="game-icons:family-tree"></iconify-icon>
+                <iconify-icon icon="${isClassesMode ? (activeTree.isSubclass ? 'game-icons:crowned-heart' : 'game-icons:crested-helmet') : 'game-icons:family-tree'}"></iconify-icon>
                 <span>${escapeHtml(activeTree.name)}</span>
               </h3>
+              ${
+                isClassesMode
+                  ? activeTree.isSubclass
+                    ? `<span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-purple-500/20 text-purple-200 border border-purple-500/40">SUBCLASSE (REQUER NÍVEL 15+)</span>`
+                    : `<span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-sky-500/20 text-sky-200 border border-sky-500/40">CLASSE BASE (NÍVEL 1+)</span>`
+                  : ''
+              }
               ${
                 activeTree.hiddenForPlayers || activeTree.ocultarParaJogadores
                   ? `<span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40"><iconify-icon icon="game-icons:eyeball"></iconify-icon> Oculta para Jogadores</span>`
@@ -2070,14 +2301,14 @@
             </p>
           </div>
 
-          <!-- Resumo do Efeito de Árvore Completa (100%) -->
+          <!-- Resumo do Efeito Central (100% ou Efeito de Classe) -->
           <div class="p-3.5 rounded-xl bg-gradient-to-r from-amber-950/40 via-black/50 to-amber-900/30 border border-amber-500/45 min-w-[270px] max-w-md">
             <div class="flex items-center justify-between gap-2 mb-1">
               <span class="font-serif-fantasy font-black text-[11px] uppercase gold-title flex items-center gap-1.5">
                 <iconify-icon icon="game-icons:laurel-crown"></iconify-icon>
-                <span>EFEITO DE ÁRVORE COMPLETA (100%)</span>
+                <span>${coreEffectTitle}</span>
               </span>
-              <span class="px-1.5 py-0.5 rounded text-[9px] font-mono font-black bg-amber-500/20 text-amber-300 border border-amber-400/40">BÔNUS 100%</span>
+              <span class="px-1.5 py-0.5 rounded text-[9px] font-mono font-black bg-amber-500/20 text-amber-300 border border-amber-400/40">${coreEffectBadge}</span>
             </div>
             ${
               activeTree.completionDescription
@@ -2090,7 +2321,7 @@
                     <iconify-icon icon="game-icons:sparkles"></iconify-icon>
                     <span>${escapeHtml(completionEffectsSummary)}</span>
                   </div>`
-                : `<div class="text-[11px] font-mono app-muted italic">Nenhum modificador matemático configurado para 100%.</div>`
+                : `<div class="text-[11px] font-mono app-muted italic">Nenhum modificador matemático configurado.</div>`
             }
           </div>
         </div>
@@ -2143,7 +2374,7 @@
             })
             .join('') ||
             `<div class="p-8 rounded-2xl bg-black/30 border border-dashed app-divider-border text-center text-xs app-muted">
-              Nenhuma habilidade ou talento encontrado para a pesquisa <strong>"${escapeHtml(searchQ)}"</strong> nesta árvore.
+              Nenhuma habilidade ou talento encontrado para a pesquisa <strong>"${escapeHtml(searchQ)}"</strong>.
             </div>`}
         </div>
       </div>
