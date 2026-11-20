@@ -991,6 +991,18 @@
       }
     }
 
+    // Atualizar badge de propostas de compra pendentes
+    const pendingProps = (state.purchaseProposals || []).filter((p) => p && p.status === 'PENDENTE');
+    const propBadge = document.getElementById('badge-pending-proposals');
+    if (propBadge) {
+      if (pendingProps.length > 0) {
+        propBadge.textContent = String(pendingProps.length);
+        propBadge.classList.remove('hidden');
+      } else {
+        propBadge.classList.add('hidden');
+      }
+    }
+
     // Escrow approvals box (visível para todos os jogadores e para o Mestre)
     const escrowBox = document.getElementById('escrow-approvals-box');
     const escrowList = document.getElementById('escrow-sales-list');
@@ -1213,6 +1225,20 @@
                   class="btn-gold flex-1 py-2 px-3 text-xs font-serif-fantasy uppercase tracking-wider disabled:opacity-40 flex items-center justify-center gap-1.5"
                 >
                   ${buyBtnLabel}
+                </button>
+                <button
+                  type="button"
+                  data-propose-buy="${escapeHtml(item.id)}"
+                  data-npc-id="${escapeHtml(activeNpc.id)}"
+                  data-unit-price="${effectivePrice}"
+                  data-item-name="${escapeHtml(item.nome)}"
+                  data-npc-name="${escapeHtml(activeNpc.name)}"
+                  ${buyDisabled ? 'disabled' : ''}
+                  class="app-secondary-btn py-2 px-2.5 text-xs font-serif-fantasy uppercase tracking-wider disabled:opacity-40 flex items-center justify-center gap-1 hover:border-amber-500/60"
+                  title="Fazer proposta personalizada de compra para o Mestre"
+                >
+                  <iconify-icon icon="game-icons:trade" class="text-amber-400"></iconify-icon>
+                  <span>Proposta</span>
                 </button>
               </div>
             </div>

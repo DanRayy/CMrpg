@@ -2,6 +2,24 @@
   // Registro de Todos os Eventos de UI
   // ===========================================================================
   function bindEvents() {
+    // Efeito Sonoro de Hover (Throttle ~60ms em elementos clicáveis)
+    let lastHoverEl = null;
+    document.addEventListener(
+      'mouseenter',
+      (e) => {
+        const el = e.target;
+        if (!el || !el.closest) return;
+        const match = el.closest(
+          'button, a, [role="button"], .tab-btn, .char-card, .shop-item-card, [data-st-node-id], .sidebar-nav-item, input[type="button"], input[type="submit"]'
+        );
+        if (match && match !== lastHoverEl) {
+          lastHoverEl = match;
+          AudioManager.play('hover');
+        }
+      },
+      true
+    );
+
     // Navegação Sidebar
     document.querySelectorAll('[data-nav-tab]').forEach((btn) => {
       btn.addEventListener('click', () => switchTab(btn.getAttribute('data-nav-tab')));
@@ -844,7 +862,13 @@
           const c = st.characters.find((x) => x.id === charId);
           const inv = c?.inventory?.find((i) => i.id === invId);
           if (!inv) return false;
-          inv.isEquipped = !inv.isEquipped;
+          const willEquip = !inv.isEquipped;
+          inv.isEquipped = willEquip;
+          if (willEquip) {
+            AudioManager.play('equip');
+          } else {
+            AudioManager.play('unequip');
+          }
           return true;
         });
         return true;
@@ -1803,6 +1827,14 @@
         return;
       }
 
+      const proposeBtn = e.target.closest('[data-propose-buy]');
+      if (proposeBtn) {
+        const itemId = proposeBtn.getAttribute('data-propose-buy');
+        const npcId = proposeBtn.getAttribute('data-npc-id');
+        openCreateProposalModal(itemId, npcId);
+        return;
+      }
+
       const buyBtn = e.target.closest('[data-buy-item]');
       if (!buyBtn) return;
       if (!isEffectiveMaster() && !hasPermission('shop_buy_sell') && !hasPermission('canBuyFromShop')) {
@@ -1896,6 +1928,7 @@
               }
 
               addItemsToCharacterInventory(bChar, item, buyQty);
+              AudioManager.play('buy');
 
               toasts.push(`${bChar.name} comprou ${buyQty}x ${item.nome} por ${totalBuyPrice} ${state.room.currencyName}!`);
               return true;
@@ -1952,6 +1985,47 @@
           summary: approved ? 'Venda aprovada e ouro creditado.' : 'Venda recusada pelo Mestre.',
         }
       );
+    });
+
+    // -------------------------------------------------------------------------
+    // Solicitações de Compras na Loja (Barganhas)
+    // -------------------------------------------------------------------------
+    document.getElementById('btn-open-purchase-proposals')?.addEventListener('click', () => {
+      openPurchaseProposalsModal('ALL');
+    });
+
+    document.getElementById('proposals-filter-chips')?.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-prop-filter]');
+      if (btn) {
+        renderPurchaseProposalsList(btn.getAttribute('data-prop-filter'));
+      }
+    });
+
+    document.getElementById('purchase-proposals-list')?.addEventListener('click', (e) => {
+      const accBtn = e.target.closest('[data-accept-proposal]');
+      if (accBtn) {
+        handleAcceptPurchaseProposal(accBtn.getAttribute('data-accept-proposal'));
+        return;
+      }
+      const rejBtn = e.target.closest('[data-reject-proposal]');
+      if (rejBtn) {
+        handleRejectPurchaseProposal(rejBtn.getAttribute('data-reject-proposal'));
+        return;
+      }
+    });
+
+    document.getElementById('form-create-proposal')?.addEventListener('submit', handleCreateProposalSubmit);
+
+    // -------------------------------------------------------------------------
+    // Herança Opcional de Subclasse (Nível 15+)
+    // -------------------------------------------------------------------------
+    document.getElementById('form-subclass-inheritance')?.addEventListener('submit', handleSubclassInheritanceSubmit);
+    document.addEventListener('click', (e) => {
+      const inhBtn = e.target.closest('[data-open-subclass-inheritance]');
+      if (inhBtn) {
+        const charId = inhBtn.getAttribute('data-open-subclass-inheritance');
+        openSubclassInheritanceModal(charId);
+      }
     });
 
     // -------------------------------------------------------------------------

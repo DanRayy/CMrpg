@@ -401,10 +401,10 @@ def test_decoupled_mesa_compact_state_and_cards_rendering(tmp_path: Path) -> Non
         assert sync["table"]["sizes"]["char_default_1"] == {"w": 72, "h": 96}
         assert sync["table"]["sizes"]["char_default_2"] == {"w": 420, "h": 468}
 
-        # Static asset query string must be v1.15.1
+        # Static asset query string must be v1.16.0
         resp = client.get("/")
-        assert "js/01-core-state.js?v=1.15.1" in resp.text
-        assert "js/03-tabs-renderers.js?v=1.15.1" in resp.text
+        assert "js/01-core-state.js?v=1.16.0" in resp.text
+        assert "js/03-tabs-renderers.js?v=1.16.0" in resp.text
 
         # Verify 03-tabs-renderers.js restricts compact mode exclusively to Mesa:
         js_resp = client.get("/js/03-tabs-renderers.js")
@@ -569,9 +569,9 @@ def test_v1_13_5_navigation_presence_and_render_stability(tmp_path: Path) -> Non
 
     # 1. HTML and assets checks
     resp_html = client.get("/")
-    assert 'styles.css?v=1.15.1' in resp_html.text
-    assert 'js/02-websocket-combat.js?v=1.15.1' in resp_html.text
-    assert 'js/05b-mesa-board.js?v=1.15.1' in resp_html.text
+    assert 'styles.css?v=1.16.0' in resp_html.text
+    assert 'js/02-websocket-combat.js?v=1.16.0' in resp_html.text
+    assert 'js/05b-mesa-board.js?v=1.16.0' in resp_html.text
 
     # 2. CSS Subpixel stabilization & GPU layer rules
     resp_css = client.get("/styles.css")
@@ -1245,6 +1245,210 @@ def test_enemy_multiple_turns_per_round(tmp_path: Path) -> None:
         ws_m.send_json({"type": "update_state", "battle": end_b})
         sync = _drain_until_type(ws_m, "state_sync")
         assert sync["battle"]["isActive"] is False
+
+
+def test_audio_files_presence() -> None:
+    sound_dir = Path("static") / "sounds"
+    assert sound_dir.is_dir()
+    expected_files = ["buy_item.mp3", "equip_item.mp3", "move_item_to_player.mp3", "ui_hover_sound.mp3"]
+    for fname in expected_files:
+        fpath = sound_dir / fname
+        assert fpath.is_file(), f"Arquivo de áudio {fname} não encontrado em {sound_dir}"
+        assert fpath.stat().st_size > 1000, f"Arquivo de áudio {fname} está vazio ou corrompido"
+
+
+def test_subclass_inheritance_mechanics() -> None:
+    from rules_engine import compute_character_derived_stats
+
+    # Setup base classes: Guerreiro (base) with 2 completionEffects and Mago (other base) with 2 completionEffects and 1 passive node
+    cls_guerreiro = {
+        "id": "cls_guerreiro",
+        "name": "Guerreiro",
+        "isClassEntity": True,
+        "isSubclass": False,
+        "completionEffects": [
+            {"targetStat": "FORCA", "modifierType": "FLAT", "value": 4},
+            {"targetStat": "DEFESA", "modifierType": "FLAT", "value": 10},
+        ],
+        "nodes": [],
+    }
+    cls_mago = {
+        "id": "cls_mago",
+        "name": "Mago",
+        "isClassEntity": True,
+        "isSubclass": False,
+        "completionEffects": [
+            {"targetStat": "INTELIGENCIA", "modifierType": "FLAT", "value": 6},
+            {"targetStat": "MANA", "modifierType": "PERCENT", "value": 25},
+        ],
+        "nodes": [
+            {
+                "id": "node_mago_arcana",
+                "name": "Fluxo Etéreo",
+                "category": "PASSIVA",
+                "unlockCost": 2,
+                "effects": [{"targetStat": "ARCANA", "modifierType": "FLAT", "value": 8}],
+            }
+        ],
+    }
+    cls_gladiador_sub = {
+        "id": "cls_gladiador_sub",
+        "name": "Gladiador",
+        "isClassEntity": True,
+        "isSubclass": True,
+        "completionEffects": [
+            {"targetStat": "ATAQUE", "modifierType": "FLAT", "value": 5},
+        ],
+        "nodes": [],
+    }
+
+    classes_catalog = [cls_guerreiro, cls_mago, cls_gladiador_sub]
+
+    # Level 15 character with Guerreiro base and Gladiador subclass
+    char = {
+        "id": "char_dan",
+        "name": "Dan",
+        "level": 15,
+        "classId": "cls_guerreiro",
+        "subclassId": "cls_gladiador_sub",
+        "attributes": {"FORCA": 10, "DESTREZA": 10, "INTELIGENCIA": 10, "SABEDORIA": 10, "LABIA": 10},
+        "inventory": [],
+        "skillPoints": 5,
+        "skillTreeProgress": {},
+    }
+
+    # 1. Base test: normal stats without inheritance
+    d1 = compute_character_derived_stats(char, [], {}, classes_catalog=classes_catalog)
+    eff_for = d1["effectiveAttributes"]["FORCA"]["effective"]
+    eff_int = d1["effectiveAttributes"]["INTELIGENCIA"]["effective"]
+    assert eff_for == 14  # 10 base + 4 Guerreiro
+    assert eff_int == 10  # 10 base, sem bônus de INT
+
+    # 2. Swap base effect 0 (FORCA +4) with Mago's effect 0 (INTELIGENCIA +6)
+    char["subclassInheritance"] = {
+        "otherClassId": "cls_mago",
+        "replacedEffectIndex": 0,
+        "inheritedEffect": {"targetStat": "INTELIGENCIA", "modifierType": "FLAT", "value": 6},
+        "inheritedNodeId": "node_mago_arcana",
+    }
+    # Unlock and activate inherited passive node
+    char["skillTreeProgress"]["node_mago_arcana"] = {"unlocked": True, "enabled": True}
+
+    d2 = compute_character_derived_stats(char, [], {}, classes_catalog=classes_catalog)
+    # FORCA lost +4 (back to 10), INT gained +6 (10 + 6 = 16)
+    assert d2["effectiveAttributes"]["FORCA"]["effective"] == 10
+    assert d2["effectiveAttributes"]["INTELIGENCIA"]["effective"] == 16
+    # Inherited passive node granted +8 ARCANA
+    assert d2.get("effectiveArcana") == 8
+
+    # 3. Reset inheritance (remove subclass / reset inheritance):
+    del char["subclassInheritance"]
+    del char["skillTreeProgress"]["node_mago_arcana"]
+    d3 = compute_character_derived_stats(char, [], {}, classes_catalog=classes_catalog)
+    # FORCA restored (+4), INT back to base (10), ARCANA back to 0
+    assert d3["effectiveAttributes"]["FORCA"]["effective"] == 14
+    assert d3["effectiveAttributes"]["INTELIGENCIA"]["effective"] == 10
+    assert d3.get("effectiveArcana") == 0
+
+
+def test_shop_purchase_proposals_flow(tmp_path: Path) -> None:
+    state_path = _setup_isolated_state(tmp_path)
+    client = TestClient(main.app)
+
+    with client.websocket_connect("/ws?memberId=host_master") as ws_m:
+        init_m = _drain_until_type(ws_m, "state_sync")
+        assert "purchaseProposals" in init_m
+
+        # Add a merchant stock item to test proposal
+        test_npc = {
+            "id": "npc_mercador_teste",
+            "name": "Mercador de Teste",
+            "stock": [{"itemId": "item_anel_rubi", "infinite": False, "quantity": 5}],
+        }
+        test_char = init_m["characters"][0]
+        char_id = test_char["id"]
+        # Give character 500 gold (and disable shared wallet for character gold testing)
+        room_conf = copy.deepcopy(init_m["room"])
+        room_conf["isSharedWallet"] = False
+
+        chars = copy.deepcopy(init_m["characters"])
+        for c in chars:
+            if c["id"] == char_id:
+                c["gold"] = 500
+
+        npcs = copy.deepcopy(init_m.get("npcs", [])) + [test_npc]
+
+        # 1. Create a purchase proposal for 2x anel de rubi for 200 gold
+        proposal = {
+            "id": "prop_test_1",
+            "charId": char_id,
+            "charName": test_char["name"],
+            "merchantId": "npc_mercador_teste",
+            "merchantName": "Mercador de Teste",
+            "itemId": "item_anel_rubi",
+            "itemName": "Anel de Rubi",
+            "originalUnitPrice": 150,
+            "quantity": 2,
+            "proposedGold": 200,
+            "message": "Pechincha de teste",
+            "status": "PENDENTE",
+            "createdAt": 1700000000,
+        }
+
+        ws_m.send_json({
+            "type": "update_state",
+            "room": room_conf,
+            "characters": chars,
+            "npcs": npcs,
+            "purchaseProposals": [proposal],
+        })
+        sync = _drain_until_type(ws_m, "state_sync")
+        assert len(sync["purchaseProposals"]) == 1
+        assert sync["purchaseProposals"][0]["status"] == "PENDENTE"
+
+        # 2. Master accepts proposal: deduct 200 gold, grant 2x item, reduce stock from 5 to 3, set status ACEITA
+        chars_updated = copy.deepcopy(sync["characters"])
+        buyer = next(c for c in chars_updated if c["id"] == char_id)
+        buyer["gold"] -= 200
+        buyer.setdefault("inventory", []).append({
+            "id": "inv_test_anel",
+            "itemId": "item_anel_rubi",
+            "quantity": 2,
+            "isEquipped": False,
+            "status": "IN_INVENTORY",
+        })
+
+        npcs_updated = copy.deepcopy(sync["npcs"])
+        npc_obj = next(n for n in npcs_updated if n["id"] == "npc_mercador_teste")
+        stock_obj = next(s for s in npc_obj["stock"] if s["itemId"] == "item_anel_rubi")
+        stock_obj["quantity"] = 3
+
+        proposals_updated = copy.deepcopy(sync["purchaseProposals"])
+        proposals_updated[0]["status"] = "ACEITA"
+
+        ws_m.send_json({
+            "type": "update_state",
+            "characters": chars_updated,
+            "npcs": npcs_updated,
+            "purchaseProposals": proposals_updated,
+        })
+        sync_after = _drain_until_type(ws_m, "state_sync")
+
+        b_after = next(c for c in sync_after["characters"] if c["id"] == char_id)
+        assert b_after["gold"] == 300
+        # Verify item added in inventory
+        anel_items = [i for i in b_after["inventory"] if i["itemId"] == "item_anel_rubi"]
+        assert len(anel_items) > 0
+        assert sum(int(i.get("quantity", 1)) for i in anel_items) == 2
+
+        # Verify stock decreased
+        n_after = next(n for n in sync_after["npcs"] if n["id"] == "npc_mercador_teste")
+        s_after = next(s for s in n_after["stock"] if s["itemId"] == "item_anel_rubi")
+        assert s_after["quantity"] == 3
+
+        # Verify proposal marked ACEITA
+        assert sync_after["purchaseProposals"][0]["status"] == "ACEITA"
+
 
 
 

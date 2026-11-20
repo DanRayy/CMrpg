@@ -1213,6 +1213,7 @@
           const target = st.characters.find((c) => c.id === targetCharId);
           if (!target) return false;
           addItemsToCharacterInventory(target, item, rawQty);
+          AudioManager.play('move');
           toasts.push(`${rawQty}x ${item.nome} concedido(s) para ${target.name}!`);
           return true;
         },
@@ -1252,6 +1253,7 @@
 
         inv.isEquipped = false;
         addItemsToCharacterInventory(rChar, tpl, sendQty);
+        AudioManager.play('move');
 
         if (availableQty > sendQty) {
           inv.quantity = availableQty - sendQty;
@@ -1372,6 +1374,400 @@
     );
 
     closeModal('modal-sell-escrow');
+  }
+
+  // ---------------------------------------------------------------------------
+  // Modais: Propostas de Compra na Loja (Barganhas & Solicitações)
+  // ---------------------------------------------------------------------------
+  function openCreateProposalModal(itemId, npcId) {
+    const item = (state.itemsCatalog || []).find((i) => i.id === itemId);
+    const npc = (state.npcs || []).find((n) => n.id === npcId);
+    if (!item || !npc) return;
+
+    const buyer = (state.characters || []).find((c) => c.id === state.selectedBuyerCharId);
+    if (!buyer) {
+      showToast('Selecione uma ficha de personagem vinculada como compradora no topo da loja!', 'warning');
+      return;
+    }
+    if (buyer.isEnemy || buyer.type === 'enemy' || buyer.bestiaryId) {
+      showToast('Inimigos não podem fazer propostas na loja!', 'error');
+      return;
+    }
+    if (!isEffectiveMaster() && !isCharacterOwner(buyer)) {
+      showToast('Você só pode fazer propostas para a sua própria ficha vinculada!', 'warning');
+      return;
+    }
+
+    const stockObj = npc.stock?.find((s) => s.itemId === itemId);
+    let unitPrice = Number(item.preco || 0);
+    if (
+      stockObj &&
+      stockObj.customPrice !== undefined &&
+      stockObj.customPrice !== null &&
+      String(stockObj.customPrice).trim() !== ''
+    ) {
+      unitPrice = Math.max(0, Math.round(Number(stockObj.customPrice)));
+    }
+
+    const maxStock = stockObj && !stockObj.infinite ? Math.max(1, Number(stockObj.quantity || 1)) : 999;
+
+    const propItemInp = document.getElementById('prop-item-id');
+    const propNpcInp = document.getElementById('prop-npc-id');
+    const propPriceInp = document.getElementById('prop-unit-price');
+    if (propItemInp) propItemInp.value = item.id;
+    if (propNpcInp) propNpcInp.value = npc.id;
+    if (propPriceInp) propPriceInp.value = String(unitPrice);
+
+    const nameEl = document.getElementById('prop-item-name');
+    if (nameEl) nameEl.textContent = item.nome;
+    const stdPriceEl = document.getElementById('prop-standard-price');
+    if (stdPriceEl) stdPriceEl.textContent = `${unitPrice} ${state.room?.currencyName || 'Ouro'} (Unitário)`;
+    const merchEl = document.getElementById('prop-merchant-name');
+    if (merchEl) merchEl.textContent = npc.name;
+    const buyerEl = document.getElementById('prop-buyer-name');
+    if (buyerEl) buyerEl.textContent = buyer.name;
+
+    const qtyInp = document.getElementById('prop-qty');
+    const goldInp = document.getElementById('prop-gold');
+    const msgInp = document.getElementById('prop-message');
+
+    if (qtyInp) {
+      qtyInp.max = String(maxStock);
+      qtyInp.value = '1';
+    }
+    if (goldInp) {
+      goldInp.value = String(unitPrice);
+    }
+    if (msgInp) {
+      msgInp.value = '';
+    }
+
+    const updateProposedGold = () => {
+      const q = Math.max(1, Math.round(Number(qtyInp?.value || 1)));
+      if (goldInp) {
+        goldInp.value = String(q * unitPrice);
+      }
+    };
+    if (qtyInp) {
+      qtyInp.oninput = updateProposedGold;
+    }
+
+    openModal('modal-create-proposal');
+    setTimeout(() => goldInp?.focus(), 60);
+  }
+
+  function handleCreateProposalSubmit(e) {
+    e.preventDefault();
+    const itemId = document.getElementById('prop-item-id')?.value;
+    const npcId = document.getElementById('prop-npc-id')?.value;
+    const rawQty = Math.max(1, Math.round(Number(document.getElementById('prop-qty')?.value || 1)));
+    const rawGold = Math.max(0, Math.round(Number(document.getElementById('prop-gold')?.value || 0)));
+    const message = (document.getElementById('prop-message')?.value || '').trim();
+
+    const item = (state.itemsCatalog || []).find((i) => i.id === itemId);
+    const npc = (state.npcs || []).find((n) => n.id === npcId);
+    const buyer = (state.characters || []).find((c) => c.id === state.selectedBuyerCharId);
+    if (!item || !npc || !buyer) return;
+
+    const stockObj = npc.stock?.find((s) => s.itemId === itemId);
+    const unitPrice =
+      stockObj && stockObj.customPrice !== undefined && String(stockObj.customPrice).trim() !== ''
+        ? Math.max(0, Math.round(Number(stockObj.customPrice)))
+        : Number(item.preco || 0);
+
+    const proposal = {
+      id: `prop_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      charId: buyer.id,
+      charName: buyer.name,
+      merchantId: npc.id,
+      merchantName: npc.name,
+      itemId: item.id,
+      itemName: item.nome,
+      itemIcon: item.icone || 'game-icons:swap-bag',
+      originalUnitPrice: unitPrice,
+      quantity: rawQty,
+      proposedGold: rawGold,
+      message,
+      status: 'PENDENTE',
+      createdAt: Date.now(),
+    };
+
+    commitMutation(
+      (st, toasts) => {
+        if (!Array.isArray(st.purchaseProposals)) st.purchaseProposals = [];
+        st.purchaseProposals.unshift(proposal);
+        toasts.push(
+          `📜 Proposta de ${rawQty}x ${item.nome} por ${rawGold} ${st.room?.currencyName || 'Ouro'} enviada ao Mestre!`
+        );
+        return true;
+      },
+      {
+        actionType: 'PROPOSAL_CREATED',
+        targetEntity: `${buyer.name} -> ${rawQty}x ${item.nome}`,
+        summary: `${buyer.name} enviou proposta de compra (${rawQty}x ${item.nome} por ${rawGold} ${state.room?.currencyName || 'Ouro'}).`,
+      }
+    );
+
+    closeModal('modal-create-proposal');
+  }
+
+  function openPurchaseProposalsModal(filter = 'ALL') {
+    state.activeProposalFilter = filter;
+    renderPurchaseProposalsList(filter);
+    openModal('modal-purchase-proposals');
+  }
+
+  function renderPurchaseProposalsList(filter = 'ALL') {
+    state.activeProposalFilter = filter;
+    const listEl = document.getElementById('purchase-proposals-list');
+    const countEl = document.getElementById('proposals-count-label');
+    const chipsEl = document.getElementById('proposals-filter-chips');
+    if (!listEl) return;
+
+    if (chipsEl) {
+      chipsEl.querySelectorAll('button[data-prop-filter]').forEach((b) => {
+        const f = b.getAttribute('data-prop-filter');
+        if (f === filter) {
+          b.className = 'px-2.5 py-1 rounded text-[11px] font-bold btn-gold';
+        } else {
+          b.className = 'px-2.5 py-1 rounded text-[11px] font-bold app-secondary-btn';
+        }
+      });
+    }
+
+    const allProps = state.purchaseProposals || [];
+    const filtered = allProps.filter((p) => {
+      if (!p) return false;
+      if (filter === 'ALL') return true;
+      return p.status === filter;
+    });
+
+    if (countEl) {
+      countEl.textContent = `${filtered.length} solicitação(ões)${filter !== 'ALL' ? ` [${filter}]` : ''}`;
+    }
+
+    if (filtered.length === 0) {
+      listEl.innerHTML = `
+        <div class="p-8 text-center app-muted space-y-2">
+          <iconify-icon icon="game-icons:trade" class="text-3xl text-zinc-600 block mx-auto"></iconify-icon>
+          <p class="text-xs">Nenhuma proposta de compra ${filter !== 'ALL' ? `com status "${filter}"` : ''} encontrada.</p>
+        </div>
+      `;
+      return;
+    }
+
+    const isMaster = isEffectiveMaster();
+    listEl.innerHTML = filtered
+      .map((p) => {
+        const totalOriginal = Math.round(Number(p.originalUnitPrice || 0) * Number(p.quantity || 1));
+        const diff = Number(p.proposedGold || 0) - totalOriginal;
+        const diffPct = totalOriginal > 0 ? Math.round((diff / totalOriginal) * 100) : 0;
+        const diffStr = diffPct !== 0 ? `(${diffPct > 0 ? '+' : ''}${diffPct}%)` : '';
+
+        let statusBadge = '';
+        if (p.status === 'ACEITA') {
+          statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/40 flex items-center gap-1"><iconify-icon icon="game-icons:check-mark"></iconify-icon> Aceita</span>`;
+        } else if (p.status === 'RECUSADA') {
+          statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-rose-500/15 text-rose-300 border border-rose-500/40 flex items-center gap-1"><iconify-icon icon="game-icons:cross-mark"></iconify-icon> Recusada</span>`;
+        } else {
+          statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-500/15 text-amber-300 border border-amber-500/40 flex items-center gap-1"><iconify-icon icon="game-icons:sands-of-time"></iconify-icon> Pendente</span>`;
+        }
+
+        const dateStr = p.createdAt
+          ? new Date(p.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+          : '';
+
+        return `
+          <div class="p-3.5 rounded-lg bg-black/40 border border-gold-mate/20 space-y-2.5 transition hover:border-gold-mate/40">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div class="flex items-center gap-2">
+                <span class="text-xl text-amber-400 flex items-center"><iconify-icon icon="${escapeHtml(
+                  p.itemIcon || 'game-icons:swap-bag'
+                )}"></iconify-icon></span>
+                <div>
+                  <h4 class="font-bold text-xs gold-title">${escapeHtml(p.quantity)}x ${escapeHtml(p.itemName)}</h4>
+                  <p class="text-[10px] app-muted">Comprador: <strong class="text-amber-200">${escapeHtml(
+                    p.charName
+                  )}</strong> • Mercador: <strong class="text-white">${escapeHtml(p.merchantName)}</strong></p>
+                </div>
+              </div>
+              <div class="flex items-center gap-2">
+                ${statusBadge}
+                ${dateStr ? `<span class="text-[10px] font-mono app-muted">${escapeHtml(dateStr)}</span>` : ''}
+              </div>
+            </div>
+
+            <div class="p-2 rounded bg-black/30 border app-divider-border flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono">
+              <div class="app-muted">
+                Tabela: <span class="line-through text-zinc-400">${totalOriginal} ${escapeHtml(
+                  state.room?.currencyName || 'Ouro'
+                )}</span>
+              </div>
+              <div class="font-bold text-amber-300 flex items-center gap-1">
+                <span>Proposta:</span>
+                <span class="text-xs text-amber-400 font-black"><iconify-icon icon="game-icons:two-coins" class="icon-gold"></iconify-icon> ${
+                  p.proposedGold
+                } ${escapeHtml(state.room?.currencyName || 'Ouro')}</span>
+                <span class="text-[10px] ${diff < 0 ? 'text-emerald-400' : 'text-amber-300'}">${diffStr}</span>
+              </div>
+            </div>
+
+            ${
+              p.message
+                ? `<div class="text-[11px] app-muted italic bg-black/20 p-1.5 rounded border border-white/5">
+                    "${escapeHtml(p.message)}"
+                  </div>`
+                : ''
+            }
+
+            ${
+              isMaster && p.status === 'PENDENTE'
+                ? `
+                <div class="pt-2 border-t app-divider-border flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    data-reject-proposal="${escapeHtml(p.id)}"
+                    class="px-3 py-1 rounded text-xs font-bold uppercase app-secondary-btn hover:border-rose-500/50 hover:text-rose-300 flex items-center gap-1"
+                  >
+                    <iconify-icon icon="game-icons:cross-mark"></iconify-icon>
+                    <span>Recusar</span>
+                  </button>
+                  <button
+                    type="button"
+                    data-accept-proposal="${escapeHtml(p.id)}"
+                    class="btn-gold px-3.5 py-1 rounded text-xs font-serif-fantasy font-extrabold uppercase flex items-center gap-1"
+                  >
+                    <iconify-icon icon="game-icons:check-mark"></iconify-icon>
+                    <span>Aceitar Proposta</span>
+                  </button>
+                </div>
+              `
+                : ''
+            }
+          </div>
+        `;
+      })
+      .join('');
+  }
+
+  function handleAcceptPurchaseProposal(propId) {
+    if (!isEffectiveMaster()) {
+      showToast('Apenas o Mestre pode aprovar ou recusar solicitações de compras!', 'warning');
+      return;
+    }
+    const prop = (state.purchaseProposals || []).find((p) => p.id === propId);
+    if (!prop) return;
+    if (prop.status !== 'PENDENTE') {
+      showToast(`Esta proposta já foi marcada como ${prop.status}!`, 'info');
+      return;
+    }
+
+    const buyer = (state.characters || []).find((c) => c.id === prop.charId);
+    if (!buyer) {
+      showToast('Personagem comprador não encontrado no sistema!', 'error');
+      return;
+    }
+    const item = (state.itemsCatalog || []).find((i) => i.id === prop.itemId);
+    if (!item) {
+      showToast('Item não encontrado no catálogo!', 'error');
+      return;
+    }
+    const npc = (state.npcs || []).find((n) => n.id === prop.merchantId);
+    const stockObj = npc?.stock?.find((s) => s.itemId === prop.itemId);
+
+    const isShared = state.room.isSharedWallet !== false;
+    const currentBalance = isShared ? state.room.sharedGold : buyer.gold || 0;
+    const totalCost = Math.max(0, Number(prop.proposedGold || 0));
+
+    if (currentBalance < totalCost) {
+      showToast(
+        `Saldo insuficiente para aprovar esta proposta! Ouro necessário: ${totalCost} ${
+          state.room.currencyName || 'Ouro'
+        }.`,
+        'warning'
+      );
+      return;
+    }
+
+    if (stockObj && !stockObj.infinite) {
+      const currentStock = Math.max(0, Number(stockObj.quantity || 0));
+      if (currentStock < prop.quantity) {
+        showToast(
+          `Estoque insuficiente no mercador (${currentStock} disponíveis, ${prop.quantity} solicitados)!`,
+          'warning'
+        );
+        return;
+      }
+    }
+
+    commitMutation(
+      (st, toasts) => {
+        const p = (st.purchaseProposals || []).find((x) => x.id === propId);
+        const b = (st.characters || []).find((x) => x.id === prop.charId);
+        const it = (st.itemsCatalog || []).find((x) => x.id === prop.itemId);
+        const n = (st.npcs || []).find((x) => x.id === prop.merchantId);
+        if (!p || !b || !it) return false;
+
+        const cost = Math.max(0, Number(p.proposedGold || 0));
+        if (st.room.isSharedWallet !== false) {
+          if (st.room.sharedGold < cost) return false;
+          st.room.sharedGold -= cost;
+        } else {
+          if ((b.gold || 0) < cost) return false;
+          b.gold -= cost;
+        }
+
+        const sEntry = n?.stock?.find((s) => s.itemId === it.id);
+        if (sEntry && !sEntry.infinite) {
+          sEntry.quantity = Math.max(0, (sEntry.quantity || 1) - p.quantity);
+        }
+
+        addItemsToCharacterInventory(b, it, p.quantity);
+        p.status = 'ACEITA';
+
+        AudioManager.play('buy');
+        toasts.push(
+          `✅ Proposta de ${b.name} aceita! ${p.quantity}x ${it.nome} entregue(s) por ${cost} ${
+            st.room.currencyName || 'Ouro'
+          }.`
+        );
+        return true;
+      },
+      {
+        actionType: 'PROPOSAL_ACCEPTED',
+        targetEntity: `${buyer.name} ⬅ ${prop.quantity}x ${item.nome}`,
+        summary: `Mestre aceitou proposta de ${prop.quantity}x ${item.nome} para ${buyer.name} por ${totalCost} ${state.room.currencyName}.`,
+      }
+    );
+
+    renderPurchaseProposalsList(state.activeProposalFilter || 'ALL');
+  }
+
+  function handleRejectPurchaseProposal(propId) {
+    if (!isEffectiveMaster()) {
+      showToast('Apenas o Mestre pode aprovar ou recusar solicitações de compras!', 'warning');
+      return;
+    }
+    const prop = (state.purchaseProposals || []).find((p) => p.id === propId);
+    if (!prop) return;
+    if (prop.status !== 'PENDENTE') return;
+
+    commitMutation(
+      (st, toasts) => {
+        const p = (st.purchaseProposals || []).find((x) => x.id === propId);
+        if (!p) return false;
+        p.status = 'RECUSADA';
+        toasts.push(`❌ Proposta de compra de ${p.charName} recusada.`);
+        return true;
+      },
+      {
+        actionType: 'PROPOSAL_REJECTED',
+        targetEntity: `${prop.charName} (${prop.itemName})`,
+        summary: `Mestre recusou proposta de compra de ${prop.quantity}x ${prop.itemName} para ${prop.charName}.`,
+      }
+    );
+
+    renderPurchaseProposalsList(state.activeProposalFilter || 'ALL');
   }
 
   // ===========================================================================

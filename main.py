@@ -835,6 +835,7 @@ def build_default_campaign_state() -> Dict[str, Any]:
             }
         ],
         "escrowSales": [],
+        "purchaseProposals": [],
         "bestiary": [
             {
                 "id": "bestiary_guardiao_cinzas",
@@ -1597,6 +1598,7 @@ class StateManager:
                 "itemsCatalog": self.state["itemsCatalog"],
                 "npcs": self.state["npcs"],
                 "escrowSales": self.state["escrowSales"],
+                "purchaseProposals": self.state.get("purchaseProposals", []),
                 "battle": self.state["battle"],
                 "quests": self.state["quests"],
                 "bestiary": self.state.get("bestiary", []),
@@ -1608,7 +1610,7 @@ class StateManager:
         )
 
     def _restore_core(self, snap: Dict[str, Any]) -> None:
-        for key in ("room", "members", "characters", "itemsCatalog", "npcs", "escrowSales", "battle", "quests", "bestiary", "customPermissionPresets", "skillTrees", "classes", "races"):
+        for key in ("room", "members", "characters", "itemsCatalog", "npcs", "escrowSales", "purchaseProposals", "battle", "quests", "bestiary", "customPermissionPresets", "skillTrees", "classes", "races"):
             if key in snap:
                 self.state[key] = copy.deepcopy(snap[key])
         self._recalculate_all()
@@ -1932,6 +1934,7 @@ class StateManager:
             "itemsCatalog": self.state["itemsCatalog"],
             "npcs": self.state["npcs"],
             "escrowSales": self.state["escrowSales"],
+            "purchaseProposals": self.state.get("purchaseProposals", []),
             "battle": self.state["battle"],
             "quests": self.state["quests"],
             "bestiary": self.state.get("bestiary", []),
@@ -2230,7 +2233,7 @@ class StateManager:
                     self.undo_stack = self.undo_stack[-HISTORY_LIMIT:]
                 self.redo_stack.clear()
 
-            for key in ("room", "members", "characters", "itemsCatalog", "npcs", "escrowSales", "battle", "quests", "bestiary", "customPermissionPresets", "skillTrees", "classes", "races"):
+            for key in ("room", "members", "characters", "itemsCatalog", "npcs", "escrowSales", "purchaseProposals", "battle", "quests", "bestiary", "customPermissionPresets", "skillTrees", "classes", "races"):
                 if key in data and data[key] is not None:
                     self.state[key] = data[key]
 
@@ -2368,7 +2371,7 @@ async def lifespan(app_instance: FastAPI) -> AsyncIterator[None]:
 app = FastAPI(
     title="CMrpg Server",
     description="Sistema de Gestão de RPG Local via Radmin VPN.",
-    version="1.15.1",
+    version="1.16.0",
     lifespan=lifespan,
 )
 

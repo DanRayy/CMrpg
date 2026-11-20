@@ -1014,6 +1014,21 @@
                   `🔄 Subclasse anterior "${oldSub.name}" resetada (+${refSub.refundedPoints} pt(s) devolvidos e habilidades/passivas desequipadas em ${name}).`
                 );
               }
+              if (target.subclassInheritance) {
+                if (target.subclassInheritance.inheritedNodeId) {
+                  const otherCls = (st.classes || []).find((c) => c && c.id === target.subclassInheritance.otherClassId);
+                  const inhNode = otherCls?.nodes?.find((n) => n && n.id === target.subclassInheritance.inheritedNodeId);
+                  if (inhNode) {
+                    const ns = getCharacterSkillNodeState(target, inhNode);
+                    if (ns.unlocked) {
+                      const refPts = ns.isTalent ? ns.rank * ns.costPerRank : ns.unlockCost + ns.upgrades * ns.upgradeCost;
+                      target.skillPoints = Math.max(0, Math.round(Number(target.skillPoints || 0)) + refPts);
+                    }
+                    delete target.skillTreeProgress[inhNode.id];
+                  }
+                }
+                delete target.subclassInheritance;
+              }
             }
 
             target.name = name;
@@ -1150,6 +1165,23 @@
             refunded = res.refundedPoints;
           }
           if (isSub) {
+            // Se possuía herança anterior, resetar efeito e devolver pontos de nó herdado
+            if (target.subclassInheritance) {
+              if (target.subclassInheritance.inheritedNodeId) {
+                const otherCls = (st.classes || []).find((c) => c && c.id === target.subclassInheritance.otherClassId);
+                const inhNode = otherCls?.nodes?.find((n) => n && n.id === target.subclassInheritance.inheritedNodeId);
+                if (inhNode) {
+                  const ns = getCharacterSkillNodeState(target, inhNode);
+                  if (ns.unlocked) {
+                    const refPts = ns.isTalent ? ns.rank * ns.costPerRank : ns.unlockCost + ns.upgrades * ns.upgradeCost;
+                    target.skillPoints = Math.max(0, Math.round(Number(target.skillPoints || 0)) + refPts);
+                    refunded += refPts;
+                  }
+                  delete target.skillTreeProgress[inhNode.id];
+                }
+              }
+              delete target.subclassInheritance;
+            }
             target.subclassId = newId;
           } else {
             target.classId = newId;
@@ -1190,6 +1222,176 @@
     }
 
     doCommit();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Modal: Herança Opcional de Classe (Subclasse - Nível 15+)
+  // ---------------------------------------------------------------------------
+  function openSubclassInheritanceModal(charId) {
+    const char = state.characters.find((c) => c.id === charId);
+    if (!char || !canEditCharacter(char)) {
+      showToast('Você não possui permissão para editar esta ficha.', 'warning');
+      return;
+    }
+    if (Number(char.level || 1) < 15 || !char.subclassId) {
+      showToast('Apenas personagens de Nível 15+ com uma Subclasse selecionada podem configurar Herança.', 'warning');
+      return;
+    }
+
+    const charIdInput = document.getElementById('subclass-inh-char-id');
+    const subtitleEl = document.getElementById('subclass-inh-subtitle');
+    const otherClassSelect = document.getElementById('subclass-inh-other-class-select');
+    const replaceIdxSelect = document.getElementById('subclass-inh-replace-idx-select');
+    const targetEffSelect = document.getElementById('subclass-inh-target-eff-select');
+    const nodeSelect = document.getElementById('subclass-inh-node-select');
+
+    if (!charIdInput || !otherClassSelect) return;
+
+    charIdInput.value = char.id;
+    if (subtitleEl) {
+      const mySub = (state.classes || []).find((c) => c && c.id === char.subclassId);
+      subtitleEl.textContent = `Configurando Herança Opcional para ${char.name} (Subclasse: ${mySub?.name || 'Ativa'}).`;
+    }
+
+    const baseClasses = (state.classes || []).filter((c) => c && !c.isSubclass && c.id !== char.classId);
+    const myBaseClass = (state.classes || []).find((c) => c && c.id === char.classId);
+
+    const inh = char.subclassInheritance || {};
+    const selectedOtherClassId = inh.otherClassId || '';
+
+    otherClassSelect.innerHTML =
+      `<option value="">Nenhuma (Sem Herança de Outra Classe)</option>` +
+      baseClasses
+        .map(
+          (c) =>
+            `<option value="${escapeHtml(c.id)}" ${c.id === selectedOtherClassId ? 'selected' : ''}>${escapeHtml(c.name)}</option>`
+        )
+        .join('');
+
+    const refreshInhOptions = () => {
+      const otherId = otherClassSelect.value;
+      const otherCls = baseClasses.find((c) => c.id === otherId);
+
+      // Efeitos da minha classe
+      const myEffects = myBaseClass ? (myBaseClass.completionEffects || myBaseClass.classEffects || []) : [];
+      let replaceHtml = '<option value="none">Manter efeitos originais (Não substituir)</option>';
+      myEffects.forEach((ef, idx) => {
+        const valStr = `${ef.value >= 0 ? '+' : ''}${ef.value}${ef.modifierType === 'PERCENT' ? '%' : ''}`;
+        const isSel =
+          inh.replacedEffectIndex !== null &&
+          inh.replacedEffectIndex !== undefined &&
+          Number(inh.replacedEffectIndex) === idx &&
+          otherId === inh.otherClassId;
+        replaceHtml += `<option value="${idx}" ${isSel ? 'selected' : ''}>[Efeito ${idx + 1}] ${valStr} ${formatEffectTargetLabel(ef.targetStat)}</option>`;
+      });
+      if (replaceIdxSelect) replaceIdxSelect.innerHTML = replaceHtml;
+
+      // Efeitos da outra classe
+      const otherEffects = otherCls ? (otherCls.completionEffects || otherCls.classEffects || []) : [];
+      let targetHtml = '<option value="none">Nenhum</option>';
+      otherEffects.forEach((ef, idx) => {
+        const valStr = `${ef.value >= 0 ? '+' : ''}${ef.value}${ef.modifierType === 'PERCENT' ? '%' : ''}`;
+        const isSel =
+          inh.inheritedEffect &&
+          inh.inheritedEffect.targetStat === ef.targetStat &&
+          Number(inh.inheritedEffect.value) === Number(ef.value) &&
+          otherId === inh.otherClassId;
+        targetHtml += `<option value="${idx}" ${isSel ? 'selected' : ''}>[Efeito ${idx + 1}] ${valStr} ${formatEffectTargetLabel(ef.targetStat)}</option>`;
+      });
+      if (targetEffSelect) targetEffSelect.innerHTML = targetHtml;
+
+      // Nós da outra classe (apenas TALENTO, ATIVA e PASSIVA — SUPREMA excluída)
+      const validNodes = otherCls
+        ? (otherCls.nodes || []).filter((n) => n && String(n.category || '').toUpperCase() !== 'SUPREMA')
+        : [];
+      let nodeHtml = '<option value="">Nenhuma habilidade herdada</option>';
+      validNodes.forEach((nd) => {
+        const costStr = nd.category === 'TALENTO' ? `${nd.costPerRank || 1} pt/rank` : `${nd.unlockCost || 1} pt`;
+        const isSel = inh.inheritedNodeId === nd.id && otherId === inh.otherClassId;
+        nodeHtml += `<option value="${escapeHtml(nd.id)}" ${isSel ? 'selected' : ''}>[${escapeHtml(nd.category)}] ${escapeHtml(nd.name)} (${costStr})</option>`;
+      });
+      if (nodeSelect) nodeSelect.innerHTML = nodeHtml;
+    };
+
+    otherClassSelect.onchange = refreshInhOptions;
+    refreshInhOptions();
+
+    openModal('modal-subclass-inheritance');
+  }
+
+  function handleSubclassInheritanceSubmit(e) {
+    e.preventDefault();
+    const charId = document.getElementById('subclass-inh-char-id')?.value;
+    const char = state.characters.find((c) => c.id === charId);
+    if (!char || !canEditCharacter(char)) return;
+
+    const otherClassId = document.getElementById('subclass-inh-other-class-select')?.value || '';
+    const replaceIdxVal = document.getElementById('subclass-inh-replace-idx-select')?.value || 'none';
+    const targetEffVal = document.getElementById('subclass-inh-target-eff-select')?.value || 'none';
+    const chosenNodeId = document.getElementById('subclass-inh-node-select')?.value || '';
+
+    const otherCls = otherClassId ? (state.classes || []).find((c) => c && c.id === otherClassId) : null;
+
+    commitMutation(
+      (st, toasts) => {
+        const target = st.characters.find((c) => c.id === charId);
+        if (!target) return false;
+
+        const prevInh = target.subclassInheritance || null;
+
+        // Se o nó herdado mudou ou foi removido, devolver pontos gastos e desativar
+        if (prevInh?.inheritedNodeId && prevInh.inheritedNodeId !== chosenNodeId) {
+          const oldOtherCls = (st.classes || []).find((c) => c && c.id === prevInh.otherClassId);
+          const oldNode = oldOtherCls?.nodes?.find((n) => n && n.id === prevInh.inheritedNodeId);
+          if (oldNode) {
+            const ns = getCharacterSkillNodeState(target, oldNode);
+            if (ns.unlocked) {
+              const refPts = ns.isTalent ? ns.rank * ns.costPerRank : ns.unlockCost + ns.upgrades * ns.upgradeCost;
+              target.skillPoints = Math.max(0, Math.round(Number(target.skillPoints || 0)) + refPts);
+              toasts.push(`🔄 Habilidade herdada anterior "${oldNode.name}" resetada (+${refPts} pt(s) devolvidos).`);
+            }
+            delete target.skillTreeProgress[oldNode.id];
+          }
+        }
+
+        if (!otherClassId) {
+          delete target.subclassInheritance;
+          recalculateCharacterDerived(target);
+          toasts.push(`Herança de classe desativada em ${target.name}. Efeitos originais restaurados.`);
+          return true;
+        }
+
+        let replacedEffectIndex = null;
+        let inheritedEffect = null;
+
+        if (replaceIdxVal !== 'none' && targetEffVal !== 'none' && otherCls) {
+          const otherEffs = otherCls.completionEffects || otherCls.classEffects || [];
+          const chosenEff = otherEffs[Number(targetEffVal)];
+          if (chosenEff) {
+            replacedEffectIndex = Number(replaceIdxVal);
+            inheritedEffect = { ...chosenEff };
+          }
+        }
+
+        target.subclassInheritance = {
+          otherClassId,
+          replacedEffectIndex,
+          inheritedEffect,
+          inheritedNodeId: chosenNodeId || null,
+        };
+
+        recalculateCharacterDerived(target);
+        toasts.push(`✨ Herança de Classe (${otherCls.name}) configurada com sucesso em ${target.name}!`);
+        return true;
+      },
+      {
+        actionType: 'SUBCLASS_INHERITANCE_UPDATE',
+        targetEntity: `${char.name} (${otherCls?.name || 'Nenhuma'})`,
+        summary: `Herança de Subclasse configurada em ${char.name}.`,
+      }
+    );
+
+    closeModal('modal-subclass-inheritance');
   }
 
   // ---------------------------------------------------------------------------
@@ -2651,7 +2853,15 @@
                             ? `<button type="button" data-open-char-class-tree="${escapeHtml(sheetSubclass.id)}" data-char-id="${escapeHtml(char.id)}" class="px-2.5 py-1 rounded-lg text-[10px] font-serif-fantasy font-extrabold uppercase btn-gold flex items-center gap-1" title="Abrir árvore radial de 4 quadrantes da Subclasse ${escapeHtml(sheetSubclass.name)}">
                                 <iconify-icon icon="game-icons:compass"></iconify-icon>
                                 <span>Abrir Subclasse</span>
-                              </button>`
+                              </button>
+                              ${
+                                canEdit
+                                  ? `<button type="button" data-open-subclass-inheritance="${escapeHtml(char.id)}" class="px-2.5 py-1 rounded-lg text-[10px] font-serif-fantasy font-extrabold uppercase ${char.subclassInheritance?.otherClassId ? 'btn-gold' : 'app-secondary-btn'} flex items-center gap-1" title="Configurar Herança Opcional de outra Classe Base (Troca de 1 Efeito ou 1 Habilidade)">
+                                      <iconify-icon icon="game-icons:dna2" class="text-purple-400"></iconify-icon>
+                                      <span>Herança Opcional</span>
+                                    </button>`
+                                  : ''
+                              }`
                             : ''
                         }
                       </div>`
@@ -2673,6 +2883,37 @@
                         formatModPillsHtml(sheetSubclass.completionEffects)
                           ? `<div class="flex flex-wrap gap-1 pt-0.5">${formatModPillsHtml(sheetSubclass.completionEffects)}</div>`
                           : ''
+                      }
+                      ${
+                        (() => {
+                          if (!char.subclassInheritance?.otherClassId) return '';
+                          const otherCls = (state.classes || []).find((c) => c && c.id === char.subclassInheritance.otherClassId);
+                          if (!otherCls) return '';
+                          const swapped =
+                            char.subclassInheritance.replacedEffectIndex !== null &&
+                            char.subclassInheritance.inheritedEffect;
+                          const inhNode = otherCls.nodes?.find(
+                            (n) => n && n.id === char.subclassInheritance.inheritedNodeId
+                          );
+                          return `
+                            <div class="mt-2 p-2 rounded-lg bg-black/60 border border-purple-500/40 space-y-1 text-[11px]">
+                              <div class="flex items-center justify-between font-mono font-bold text-[10px] text-purple-300">
+                                <span class="flex items-center gap-1"><iconify-icon icon="game-icons:dna2"></iconify-icon> HERANÇA DE CLASSE (${escapeHtml(otherCls.name)})</span>
+                                <span class="text-emerald-400">Ativa</span>
+                              </div>
+                              ${
+                                swapped
+                                  ? `<div class="text-sky-300 flex items-center gap-1"><span>🔄 <strong>Efeito Trocado:</strong> +${char.subclassInheritance.inheritedEffect.value}${char.subclassInheritance.inheritedEffect.modifierType === 'PERCENT' ? '%' : ''} ${formatEffectTargetLabel(char.subclassInheritance.inheritedEffect.targetStat)}</span></div>`
+                                  : '<div class="app-muted">Efeitos de Classe: Mantidos originais</div>'
+                              }
+                              ${
+                                inhNode
+                                  ? `<div class="text-amber-300 flex items-center justify-between gap-1"><span>🌱 <strong>Habilidade Herdada:</strong> [${escapeHtml(inhNode.category)}] ${escapeHtml(inhNode.name)}</span> <button type="button" data-open-char-class-tree="${escapeHtml(otherCls.id)}" data-char-id="${escapeHtml(char.id)}" class="text-[10px] text-purple-300 underline hover:text-white">Ver na Árvore</button></div>`
+                                  : ''
+                              }
+                            </div>
+                          `;
+                        })()
                       }
                     </div>`
                   : ''
@@ -2821,6 +3062,13 @@
       if (c && c.id && !seen.has(c.id)) {
         seen.add(c.id);
         combined.push(c);
+      }
+    }
+    if (char?.subclassInheritance?.otherClassId) {
+      const otherCls = (state.classes || []).find((c) => c && c.id === char.subclassInheritance.otherClassId);
+      if (otherCls && otherCls.id && !seen.has(otherCls.id)) {
+        seen.add(otherCls.id);
+        combined.unshift(otherCls);
       }
     }
     for (const t of visibleTrees) {
@@ -3122,18 +3370,24 @@
     // Ações respeitando permissões do dono da ficha / Mestre
     const isClsContainer = isClassContainer(tree);
     const isSubContainer = Boolean(tree.isSubclass);
+    const isInheritedNodeForChar =
+      char?.subclassInheritance?.otherClassId === tree.id &&
+      char?.subclassInheritance?.inheritedNodeId === node.id;
     const isEquippedClassOnChar = !isClsContainer
       ? true
       : char
       ? isSubContainer
         ? char.subclassId === tree.id && Number(char.level || 1) >= 15
-        : char.classId === tree.id
+        : char.classId === tree.id || isInheritedNodeForChar
       : false;
 
     let actionsHtml = '';
     if (char && canEditChar && !isEquippedClassOnChar) {
+      const isOtherInhClass = char?.subclassInheritance?.otherClassId === tree.id;
       actionsHtml = `<div class="sk-insp-actions"><div class="sk-act-note">${
-        isSubContainer && Number(char.level || 1) < 15
+        isOtherInhClass
+          ? `Apenas a habilidade herdada desta classe (${escapeHtml(tree.name)}) pode ser adquirida na ficha de ${escapeHtml(char.name)}.`
+          : isSubContainer && Number(char.level || 1) < 15
           ? 'Subclasse desbloqueia apenas no Nível 15.'
           : `Selecione esta ${isSubContainer ? 'Subclasse' : 'Classe'} na ficha de ${escapeHtml(char.name)} para adquirir seus nós.`
       }</div></div>`;
@@ -3595,9 +3849,19 @@
         showToast('Subclasses exigem Nível 15 ou superior!', 'warning');
         return;
       }
-      const equipped = isSub ? char.subclassId === tree.id : char.classId === tree.id;
+      const isInheritedNode =
+        char.subclassInheritance?.otherClassId === tree.id &&
+        char.subclassInheritance?.inheritedNodeId === node.id;
+      const equipped = isSub
+        ? char.subclassId === tree.id
+        : char.classId === tree.id || isInheritedNode;
       if (!equipped) {
-        showToast(`Selecione "${tree.name}" como sua ${isSub ? 'Subclasse' : 'Classe'} na ficha antes de liberar nós nela!`, 'warning');
+        showToast(
+          isInheritedNode === false && char.subclassInheritance?.otherClassId === tree.id
+            ? `Apenas a habilidade herdada desta classe pode ser adquirida na ficha de ${char.name}!`
+            : `Selecione "${tree.name}" como sua ${isSub ? 'Subclasse' : 'Classe'} na ficha antes de liberar nós nela!`,
+          'warning'
+        );
         return;
       }
     }

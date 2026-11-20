@@ -428,7 +428,19 @@ def compute_character_derived_stats(
                 continue
             equipped_classes.append(eq_cls)
             # Aplicação imediata do Efeito de Classe / Efeito de Subclasse ao escolher
-            for c_eff in (eq_cls.get("completionEffects") or eq_cls.get("classEffects") or []):
+            effs = list(eq_cls.get("completionEffects") or eq_cls.get("classEffects") or [])
+            if eq_cls.get("id") == cid and isinstance(char.get("subclassInheritance"), dict):
+                inh = char["subclassInheritance"]
+                rep_idx = inh.get("replacedEffectIndex")
+                inh_eff = inh.get("inheritedEffect")
+                if rep_idx is not None and inh_eff and isinstance(inh_eff, dict):
+                    try:
+                        rep_idx_int = int(rep_idx)
+                        if 0 <= rep_idx_int < len(effs):
+                            effs[rep_idx_int] = inh_eff
+                    except (ValueError, TypeError):
+                        pass
+            for c_eff in effs:
                 _apply_eff_to_mods(c_eff, 1.0)
 
     active_passives_applied = 0
@@ -510,6 +522,19 @@ def compute_character_derived_stats(
     for tree in (skill_trees or []):
         if isinstance(tree, dict):
             _process_container_nodes(tree, is_class_entity=False)
+
+    # Herança de Subclasse: Habilidade herdada de outra classe (1 nó exclusivo)
+    if isinstance(char.get("subclassInheritance"), dict):
+        inh = char["subclassInheritance"]
+        other_cid = inh.get("otherClassId")
+        inh_node_id = inh.get("inheritedNodeId")
+        if other_cid and inh_node_id:
+            cls_list = [c for c in (classes_catalog or []) if isinstance(c, dict)]
+            other_cls = next((c for c in cls_list if c.get("id") == other_cid), None)
+            if other_cls and isinstance(other_cls.get("nodes"), list):
+                inh_node = next((n for n in other_cls["nodes"] if isinstance(n, dict) and n.get("id") == inh_node_id), None)
+                if inh_node:
+                    _process_container_nodes({"nodes": [inh_node]}, is_class_entity=True)
 
     base_attrs = char.get("attributes") or {}
     effective_attrs: Dict[str, Dict[str, Any]] = {}

@@ -51,6 +51,124 @@
     { name: 'Atordoamento', icon: '<iconify-icon icon="game-icons:knockout" style="color: #c084fc;"></iconify-icon>', barClass: 'from-purple-500 to-fuchsia-400', textClass: 'text-purple-400' },
   ];
 
+  // ===========================================================================
+  // Gerenciador Global de Áudio (static/sounds - 25% Volume + Reverso Web Audio)
+  // ===========================================================================
+  const AudioManager = (() => {
+    const DEFAULT_VOLUME = 0.25;
+    const SOUND_PATHS = {
+      buy: 'static/sounds/buy_item.mp3',
+      equip: 'static/sounds/equip_item.mp3',
+      move: 'static/sounds/move_item_to_player.mp3',
+      hover: 'static/sounds/ui_hover_sound.mp3',
+    };
+
+    let audioCtx = null;
+    const audioBuffers = {};
+    let lastHoverTime = 0;
+
+    function getAudioContext() {
+      if (!audioCtx && (window.AudioContext || window.webkitAudioContext)) {
+        const CtxClass = window.AudioContext || window.webkitAudioContext;
+        audioCtx = new CtxClass();
+      }
+      if (audioCtx && audioCtx.state === 'suspended') {
+        audioCtx.resume().catch(() => {});
+      }
+      return audioCtx;
+    }
+
+    async function loadBuffer(url) {
+      if (audioBuffers[url]) return audioBuffers[url];
+      try {
+        const resp = await fetch(url);
+        if (!resp.ok) return null;
+        const arrayBuf = await resp.arrayBuffer();
+        const ctx = getAudioContext();
+        if (!ctx) return null;
+        const decoded = await ctx.decodeAudioData(arrayBuf);
+        audioBuffers[url] = decoded;
+        return decoded;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    async function playReversed(url, volume = DEFAULT_VOLUME) {
+      try {
+        const ctx = getAudioContext();
+        if (!ctx) {
+          playNormal(url, volume);
+          return;
+        }
+        const buffer = await loadBuffer(url);
+        if (!buffer) {
+          playNormal(url, volume);
+          return;
+        }
+        const revBuffer = ctx.createBuffer(
+          buffer.numberOfChannels,
+          buffer.length,
+          buffer.sampleRate
+        );
+        for (let ch = 0; ch < buffer.numberOfChannels; ch++) {
+          const src = buffer.getChannelData(ch);
+          const dst = revBuffer.getChannelData(ch);
+          for (let i = 0, j = buffer.length - 1; i < buffer.length; i++, j--) {
+            dst[i] = src[j];
+          }
+        }
+        const source = ctx.createBufferSource();
+        source.buffer = revBuffer;
+        const gainNode = ctx.createGain();
+        gainNode.gain.value = volume;
+        source.connect(gainNode);
+        gainNode.connect(ctx.destination);
+        source.start(0);
+      } catch (err) {
+        playNormal(url, volume);
+      }
+    }
+
+    function playNormal(url, volume = DEFAULT_VOLUME) {
+      try {
+        const a = new Audio(url);
+        a.volume = volume;
+        a.play().catch(() => {});
+      } catch (_) {}
+    }
+
+    function play(type) {
+      if (type === 'hover') {
+        const now = Date.now();
+        if (now - lastHoverTime < 60) return;
+        lastHoverTime = now;
+        playNormal(SOUND_PATHS.hover, DEFAULT_VOLUME);
+      } else if (type === 'buy') {
+        playNormal(SOUND_PATHS.buy, DEFAULT_VOLUME);
+      } else if (type === 'equip') {
+        playNormal(SOUND_PATHS.equip, DEFAULT_VOLUME);
+      } else if (type === 'unequip') {
+        playReversed(SOUND_PATHS.equip, DEFAULT_VOLUME);
+      } else if (type === 'move') {
+        playNormal(SOUND_PATHS.move, DEFAULT_VOLUME);
+      }
+    }
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('pointerdown', () => {
+        getAudioContext();
+        loadBuffer(SOUND_PATHS.equip);
+      }, { once: true });
+    }
+
+    return { play, getAudioContext };
+  })();
+
+  if (typeof window !== 'undefined') {
+    window.AudioManager = AudioManager;
+  }
+
   const ACCUMULATION_MAX_EFFECTS = {
     Atordoamento: {
       description: '-1 PA por 2 turnos',
@@ -292,6 +410,7 @@
     itemsCatalog: [],
     npcs: [],
     escrowSales: [],
+    purchaseProposals: [],
     bestiary: [],
     bestiarySearchQuery: '',
     bestiaryPage: 1,
@@ -681,7 +800,24 @@
     }
     const equippedClasses = !char.isEnemy ? getCharacterEquippedClasses(char) : [];
     for (const eqCls of equippedClasses) {
-      for (const cEff of eqCls.completionEffects || eqCls.classEffects || []) {
+      let effs = Array.isArray(eqCls.completionEffects)
+        ? [...eqCls.completionEffects]
+        : Array.isArray(eqCls.classEffects)
+        ? [...eqCls.classEffects]
+        : [];
+      if (
+        eqCls.id === char.classId &&
+        char.subclassInheritance &&
+        char.subclassInheritance.replacedEffectIndex !== null &&
+        char.subclassInheritance.replacedEffectIndex !== undefined &&
+        char.subclassInheritance.inheritedEffect
+      ) {
+        const repIdx = Number(char.subclassInheritance.replacedEffectIndex);
+        if (repIdx >= 0 && repIdx < effs.length) {
+          effs[repIdx] = char.subclassInheritance.inheritedEffect;
+        }
+      }
+      for (const cEff of effs) {
         let stat = cEff.targetStat || cEff.stat;
         if (stat === 'RESISTENCIA_GERAL') stat = 'RES_GERAL';
         else if (stat === 'ACUMULOS_GERAIS') stat = 'ACUMULO_GERAL';
@@ -765,6 +901,15 @@
     }
     for (const tree of state.skillTrees || []) {
       processContainerNodes(tree, false);
+    }
+
+    // Herança de Subclasse: Habilidade herdada de outra classe (1 nó exclusivo)
+    if (char.subclassInheritance?.inheritedNodeId && char.subclassInheritance?.otherClassId) {
+      const otherCls = (state.classes || []).find((c) => c && c.id === char.subclassInheritance.otherClassId);
+      const inhNode = otherCls?.nodes?.find((n) => n && n.id === char.subclassInheritance.inheritedNodeId);
+      if (inhNode) {
+        processContainerNodes({ nodes: [inhNode] }, true);
+      }
     }
 
     const effectiveAttributes = {};
@@ -2410,6 +2555,7 @@
           itemsCatalog: state.itemsCatalog,
           npcs: state.npcs,
           escrowSales: state.escrowSales,
+          purchaseProposals: state.purchaseProposals,
           bestiary: state.bestiary,
           battle: state.battle,
           quests: state.quests,
@@ -2579,6 +2725,9 @@
     if (!Array.isArray(state.classes)) {
       state.classes = [];
     }
+    if (!Array.isArray(state.purchaseProposals)) {
+      state.purchaseProposals = [];
+    }
     if (!Array.isArray(state.races) || state.races.length === 0) {
       state.races = buildDefaultRacesTemplate();
     }
@@ -2629,6 +2778,9 @@
           }
           if (!Array.isArray(state.classes)) {
             state.classes = [];
+          }
+          if (!Array.isArray(state.purchaseProposals)) {
+            state.purchaseProposals = [];
           }
           if (!Array.isArray(state.races) || state.races.length === 0) {
             state.races = buildDefaultRacesTemplate();
@@ -2706,7 +2858,7 @@
   }
 
   function restoreCoreState(snap) {
-    for (const k of ['room', 'members', 'characters', 'itemsCatalog', 'npcs', 'escrowSales', 'bestiary', 'battle', 'quests', 'customPermissionPresets', 'skillTrees', 'classes', 'races', 'table']) {
+    for (const k of ['room', 'members', 'characters', 'itemsCatalog', 'npcs', 'escrowSales', 'purchaseProposals', 'bestiary', 'battle', 'quests', 'customPermissionPresets', 'skillTrees', 'classes', 'races', 'table']) {
       if (snap[k] !== undefined) state[k] = deepClone(snap[k]);
     }
     state.characters.forEach(recalculateCharacterDerived);
@@ -2780,6 +2932,7 @@
           itemsCatalog: state.itemsCatalog,
           npcs: state.npcs,
           escrowSales: state.escrowSales,
+          purchaseProposals: state.purchaseProposals,
           bestiary: state.bestiary,
           battle: state.battle,
           quests: state.quests,

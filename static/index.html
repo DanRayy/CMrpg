@@ -28,7 +28,7 @@
   <!-- Iconify Web Component (game-icons) -->
   <script src="https://code.iconify.design/iconify-icon/2.1.0/iconify-icon.min.js"></script>
   <!-- Estilos Customizados -->
-  <link rel="stylesheet" href="styles.css?v=1.15.1" />
+  <link rel="stylesheet" href="styles.css?v=1.16.0" />
 </head>
 <body class="min-h-screen flex select-none">
 
@@ -771,6 +771,15 @@
               <span class="text-xs font-bold app-muted">Comprador:</span>
               <select id="shop-buyer-char-select" class="px-3 py-1.5 text-xs font-bold app-input"></select>
             </div>
+            <button
+              type="button"
+              id="btn-open-purchase-proposals"
+              class="app-secondary-btn px-3.5 py-2 text-xs font-serif-fantasy uppercase tracking-wider flex items-center gap-1.5 border border-amber-500/30 hover:border-amber-500/60"
+            >
+              <iconify-icon icon="game-icons:trade" class="text-amber-400"></iconify-icon>
+              <span>Solicitações de Compras</span>
+              <span id="badge-pending-proposals" class="hidden px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-500 text-black leading-none">0</span>
+            </button>
             <button
               type="button"
               id="btn-new-npc"
@@ -2902,6 +2911,227 @@
   </div>
 
   <!-- ========================================================================= -->
+  <!-- MODAL: SOLICITAÇÕES DE COMPRAS (BARGANHAS NA LOJA)                         -->
+  <!-- ========================================================================= -->
+  <div id="modal-purchase-proposals" class="modal-backdrop hidden fixed inset-0 z-[75] flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm">
+    <div class="fantasy-card w-full max-w-3xl max-h-[90vh] flex flex-col border border-gold-mate/30 bg-[#12100d] rounded-xl shadow-2xl overflow-hidden">
+      <div class="p-4 border-b app-divider-border flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <iconify-icon icon="game-icons:trade" class="text-xl text-amber-400"></iconify-icon>
+          <div>
+            <h3 class="font-serif-fantasy text-sm font-extrabold uppercase gold-title">
+              Solicitações de Compras (Barganhas da Loja)
+            </h3>
+            <p class="text-[11px] app-muted">
+              Propostas de compra feitas por jogadores para avaliação e aprovação do Mestre.
+            </p>
+          </div>
+        </div>
+        <button type="button" data-close-modal="modal-purchase-proposals" class="w-8 h-8 rounded-lg flex items-center justify-center app-secondary-btn hover:text-white">✕</button>
+      </div>
+
+      <!-- Filtros de Status -->
+      <div class="px-4 py-2 border-b app-divider-border flex items-center justify-between text-xs bg-black/30">
+        <div class="flex items-center gap-1.5" id="proposals-filter-chips">
+          <button type="button" data-prop-filter="ALL" class="px-2.5 py-1 rounded text-[11px] font-bold btn-gold">Todas</button>
+          <button type="button" data-prop-filter="PENDENTE" class="px-2.5 py-1 rounded text-[11px] font-bold app-secondary-btn">Pendentes</button>
+          <button type="button" data-prop-filter="ACEITA" class="px-2.5 py-1 rounded text-[11px] font-bold app-secondary-btn">Aceitas</button>
+          <button type="button" data-prop-filter="RECUSADA" class="px-2.5 py-1 rounded text-[11px] font-bold app-secondary-btn">Recusadas</button>
+        </div>
+        <span id="proposals-count-label" class="text-[11px] font-mono app-muted">0 solicitações</span>
+      </div>
+
+      <div id="purchase-proposals-list" class="p-4 overflow-y-auto space-y-3 flex-1"></div>
+
+      <div class="p-3 border-t app-divider-border bg-black/40 flex justify-end">
+        <button type="button" data-close-modal="modal-purchase-proposals" class="px-4 py-1.5 rounded-lg text-xs font-bold uppercase app-secondary-btn">
+          Fechar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- MODAL: FAZER PROPOSTA DE COMPRA (BARGANHA)                                -->
+  <!-- ========================================================================= -->
+  <div id="modal-create-proposal" class="modal-backdrop hidden fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm">
+    <div class="fantasy-card w-full max-w-md flex flex-col border border-gold-mate/30 bg-[#12100d] rounded-xl shadow-2xl overflow-hidden">
+      <div class="p-4 border-b app-divider-border flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <iconify-icon icon="game-icons:trade" class="text-lg text-amber-400"></iconify-icon>
+          <h3 class="font-serif-fantasy text-xs sm:text-sm font-extrabold uppercase gold-title">
+            Fazer Proposta de Compra
+          </h3>
+        </div>
+        <button type="button" data-close-modal="modal-create-proposal" class="w-7 h-7 rounded-lg flex items-center justify-center app-secondary-btn hover:text-white">✕</button>
+      </div>
+
+      <form id="form-create-proposal" class="p-4 space-y-3.5 text-xs">
+        <input type="hidden" id="prop-item-id" value="" />
+        <input type="hidden" id="prop-npc-id" value="" />
+        <input type="hidden" id="prop-unit-price" value="0" />
+
+        <div class="p-2.5 rounded-lg bg-black/40 border border-gold-mate/20 space-y-1">
+          <div class="flex items-center justify-between font-bold">
+            <span id="prop-item-name" class="gold-title text-xs">Item</span>
+            <span id="prop-standard-price" class="text-amber-300 font-mono text-[11px]">0 Ouro</span>
+          </div>
+          <div class="text-[11px] app-muted flex items-center justify-between">
+            <span>Mercador: <strong id="prop-merchant-name" class="text-white">NPC</strong></span>
+            <span>Comprador: <strong id="prop-buyer-name" class="text-amber-200">Personagem</strong></span>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label for="prop-qty" class="block font-bold uppercase tracking-wider mb-1 text-[11px] app-muted">Quantidade (QTD)</label>
+            <input
+              type="number"
+              id="prop-qty"
+              min="1"
+              step="1"
+              value="1"
+              class="w-full app-input px-2.5 py-1.5 rounded text-xs font-mono font-bold"
+              required
+            />
+          </div>
+          <div>
+            <label for="prop-gold" class="block font-bold uppercase tracking-wider mb-1 text-[11px] app-muted">Valor Total Proposto</label>
+            <div class="relative">
+              <input
+                type="number"
+                id="prop-gold"
+                min="0"
+                step="1"
+                value="0"
+                class="w-full app-input px-2.5 py-1.5 rounded text-xs font-mono font-bold text-amber-300 pr-12"
+                required
+              />
+              <span class="absolute right-2 top-1.5 text-[10px] font-bold text-amber-400/80 pointer-events-none">OURO</span>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <label for="prop-message" class="block font-bold uppercase tracking-wider mb-1 text-[11px] app-muted">Justificativa / Mensagem Opcional</label>
+          <textarea
+            id="prop-message"
+            rows="2"
+            placeholder="Ex: Pechincha de bardo, desconto por compra em lote..."
+            class="w-full app-input px-2.5 py-1.5 rounded text-xs resize-none"
+          ></textarea>
+        </div>
+
+        <div class="pt-2 border-t app-divider-border flex items-center justify-end gap-2">
+          <button type="button" data-close-modal="modal-create-proposal" class="px-3.5 py-1.5 rounded-lg font-bold uppercase app-secondary-btn">
+            Cancelar
+          </button>
+          <button type="submit" class="btn-gold px-4 py-1.5 rounded-lg font-serif-fantasy font-extrabold uppercase tracking-wider flex items-center gap-1.5">
+            <iconify-icon icon="game-icons:check-mark"></iconify-icon>
+            <span>Enviar Proposta</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- MODAL: HERANÇA OPCIONAL DE CLASSE (SUBCLASSE - NÍVEL 15+)                  -->
+  <!-- ========================================================================= -->
+  <div id="modal-subclass-inheritance" class="modal-backdrop hidden fixed inset-0 z-[75] flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm">
+    <div class="fantasy-card w-full max-w-2xl max-h-[90vh] flex flex-col border border-gold-mate/30 bg-[#12100d] rounded-xl shadow-2xl overflow-hidden">
+      <div class="p-4 border-b app-divider-border flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <iconify-icon icon="game-icons:dna2" class="text-xl text-purple-400"></iconify-icon>
+          <div>
+            <h3 class="font-serif-fantasy text-sm font-extrabold uppercase gold-title">
+              Herança Opcional de Classe (Subclasse - Nível 15+)
+            </h3>
+            <p id="subclass-inh-subtitle" class="text-[11px] app-muted">
+              Escolha facultativamente outra classe base para trocar 1 efeito ou herdar 1 habilidade exclusiva.
+            </p>
+          </div>
+        </div>
+        <button type="button" data-close-modal="modal-subclass-inheritance" class="w-8 h-8 rounded-lg flex items-center justify-center app-secondary-btn hover:text-white">✕</button>
+      </div>
+
+      <form id="form-subclass-inheritance" class="p-4 space-y-4 text-xs overflow-y-auto flex-1">
+        <input type="hidden" id="subclass-inh-char-id" value="" />
+
+        <!-- Escolha da Outra Classe Base -->
+        <div class="space-y-1">
+          <label class="block font-bold uppercase tracking-wider text-[11px] gold-title flex items-center gap-1.5">
+            <iconify-icon icon="game-icons:shield-reflect"></iconify-icon>
+            <span>Outra Classe Base para Herança (Facultativa)</span>
+          </label>
+          <select id="subclass-inh-other-class-select" class="w-full app-input px-3 py-2 rounded text-xs font-bold">
+            <option value="">Nenhuma (Sem Herança de Outra Classe)</option>
+          </select>
+          <p class="text-[10px] app-muted">Ao selecionar outra classe base, você poderá trocar 1 efeito da sua classe atual e/ou herdar 1 nó de habilidade dela.</p>
+        </div>
+
+        <!-- Opção 1: Troca de Efeito de Classe (1 por 1) -->
+        <div id="subclass-inh-effects-section" class="p-3 rounded-lg bg-black/40 border border-gold-mate/20 space-y-2.5">
+          <div class="flex items-center justify-between">
+            <span class="font-serif-fantasy text-xs font-bold uppercase text-sky-300 flex items-center gap-1.5">
+              <iconify-icon icon="game-icons:cycle"></iconify-icon>
+              <span>1. Troca Opcional de Efeito de Classe (1 por 1)</span>
+            </span>
+            <span class="text-[10px] font-mono text-emerald-400">Opcional</span>
+          </div>
+          <p class="text-[11px] app-muted">
+            Você pode substituir 1 dos efeitos imediatos da sua Classe Base atual por 1 efeito da outra classe escolhida.
+          </p>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label class="block font-bold text-[10px] app-muted uppercase mb-1">Efeito da Sua Classe a Substituir:</label>
+              <select id="subclass-inh-replace-idx-select" class="w-full app-input px-2.5 py-1.5 rounded text-xs font-mono font-bold">
+                <option value="none">Manter efeitos originais (Não substituir)</option>
+              </select>
+            </div>
+            <div>
+              <label class="block font-bold text-[10px] app-muted uppercase mb-1">Novo Efeito da Outra Classe:</label>
+              <select id="subclass-inh-target-eff-select" class="w-full app-input px-2.5 py-1.5 rounded text-xs font-mono font-bold">
+                <option value="none">Nenhum</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Opção 2: Habilidade Herdada (1 Nó Exclusivo) -->
+        <div id="subclass-inh-node-section" class="p-3 rounded-lg bg-black/40 border border-gold-mate/20 space-y-2.5">
+          <div class="flex items-center justify-between">
+            <span class="font-serif-fantasy text-xs font-bold uppercase text-purple-300 flex items-center gap-1.5">
+              <iconify-icon icon="game-icons:sprout"></iconify-icon>
+              <span>2. Habilidade Herdada Opcional (1 Nó Exclusivo)</span>
+            </span>
+            <span class="text-[10px] font-mono text-purple-300">Talento / Ativa / Passiva</span>
+          </div>
+          <p class="text-[11px] app-muted">
+            Escolha até 1 habilidade da outra classe para ter acesso direto e poder investir pontos de talento nela (Supremas não são permitidas). Se for Passiva, respeita o limite global de 3/3 passivas ativas.
+          </p>
+          <div>
+            <label class="block font-bold text-[10px] app-muted uppercase mb-1">Habilidade Herdada:</label>
+            <select id="subclass-inh-node-select" class="w-full app-input px-2.5 py-1.5 rounded text-xs font-bold">
+              <option value="">Nenhuma habilidade herdada</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="pt-2 border-t app-divider-border flex items-center justify-end gap-2">
+          <button type="button" data-close-modal="modal-subclass-inheritance" class="px-4 py-1.5 rounded-lg font-bold uppercase app-secondary-btn">
+            Cancelar
+          </button>
+          <button type="submit" class="btn-gold px-4 py-1.5 rounded-lg font-serif-fantasy font-extrabold uppercase tracking-wider flex items-center gap-1.5">
+            <iconify-icon icon="game-icons:check-mark"></iconify-icon>
+            <span>Salvar Herança</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
   <!-- MODAL: CRIAR / EDITAR INIMIGO (BESTIÁRIO)                                -->
   <!-- ========================================================================= -->
   <div id="modal-enemy-form" class="modal-backdrop hidden fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
@@ -4256,12 +4486,12 @@
   </div>
 
     <!-- Módulos Sequenciais da Aplicação -->
-    <script src="js/01-core-state.js?v=1.15.1"></script>
-    <script src="js/02-websocket-combat.js?v=1.15.1"></script>
-    <script src="js/03-tabs-renderers.js?v=1.15.1"></script>
-    <script src="js/04-modals-character-buffs.js?v=1.15.1"></script>
-    <script src="js/05-modals-notes-inventory-bestiary.js?v=1.15.1"></script>
-    <script src="js/05b-mesa-board.js?v=1.15.1"></script>
-    <script src="js/06-events-init.js?v=1.15.1"></script>
+    <script src="js/01-core-state.js?v=1.16.0"></script>
+    <script src="js/02-websocket-combat.js?v=1.16.0"></script>
+    <script src="js/03-tabs-renderers.js?v=1.16.0"></script>
+    <script src="js/04-modals-character-buffs.js?v=1.16.0"></script>
+    <script src="js/05-modals-notes-inventory-bestiary.js?v=1.16.0"></script>
+    <script src="js/05b-mesa-board.js?v=1.16.0"></script>
+    <script src="js/06-events-init.js?v=1.16.0"></script>
 </body>
 </html>
