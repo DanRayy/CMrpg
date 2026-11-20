@@ -401,10 +401,10 @@ def test_decoupled_mesa_compact_state_and_cards_rendering(tmp_path: Path) -> Non
         assert sync["table"]["sizes"]["char_default_1"] == {"w": 72, "h": 96}
         assert sync["table"]["sizes"]["char_default_2"] == {"w": 420, "h": 468}
 
-        # Static asset query string must be v1.16.0
+        # Static asset query string must be v1.16.1
         resp = client.get("/")
-        assert "js/01-core-state.js?v=1.16.0" in resp.text
-        assert "js/03-tabs-renderers.js?v=1.16.0" in resp.text
+        assert "js/01-core-state.js?v=1.16.1" in resp.text
+        assert "js/03-tabs-renderers.js?v=1.16.1" in resp.text
 
         # Verify 03-tabs-renderers.js restricts compact mode exclusively to Mesa:
         js_resp = client.get("/js/03-tabs-renderers.js")
@@ -569,9 +569,9 @@ def test_v1_13_5_navigation_presence_and_render_stability(tmp_path: Path) -> Non
 
     # 1. HTML and assets checks
     resp_html = client.get("/")
-    assert 'styles.css?v=1.16.0' in resp_html.text
-    assert 'js/02-websocket-combat.js?v=1.16.0' in resp_html.text
-    assert 'js/05b-mesa-board.js?v=1.16.0' in resp_html.text
+    assert 'styles.css?v=1.16.1' in resp_html.text
+    assert 'js/02-websocket-combat.js?v=1.16.1' in resp_html.text
+    assert 'js/05b-mesa-board.js?v=1.16.1' in resp_html.text
 
     # 2. CSS Subpixel stabilization & GPU layer rules
     resp_css = client.get("/styles.css")
@@ -1448,6 +1448,59 @@ def test_shop_purchase_proposals_flow(tmp_path: Path) -> None:
 
         # Verify proposal marked ACEITA
         assert sync_after["purchaseProposals"][0]["status"] == "ACEITA"
+
+
+def test_v1_16_1_preferences_audio_and_shop_buttons(tmp_path: Path) -> None:
+    _setup_isolated_state(tmp_path)
+    client = TestClient(main.app, client=("127.0.0.1", 53045))
+
+    # 1. FastAPI app version check
+    assert main.app.version == "1.16.1"
+
+    # 2. HTML elements check
+    resp = client.get("/")
+    assert resp.status_code == 200
+    html = resp.text
+
+    # Header Preferences button with gear icon
+    assert 'id="btn-open-preferences"' in html
+    assert 'lucide:settings' in html
+
+    # Shop buttons with rounded-lg
+    assert 'id="btn-open-purchase-proposals"' in html
+    assert 'class="app-secondary-btn rounded-lg px-3.5 py-2' in html
+
+    # Modal Preferences structure
+    assert 'id="modal-preferences"' in html
+    assert 'PREFERÊNCIAS &amp; ÁUDIO' in html
+    assert 'id="pref-notifications-toggle"' in html
+    assert 'id="pref-volume-master"' in html
+    assert 'id="pref-volume-master-val"' in html
+    assert 'id="pref-volume-buy"' in html
+    assert 'id="pref-volume-equip"' in html
+    assert 'id="pref-volume-move"' in html
+    assert 'id="pref-volume-hover"' in html
+    assert 'data-test-sound="buy"' in html
+    assert 'data-test-sound="equip"' in html
+    assert 'data-test-sound="move"' in html
+    assert 'data-test-sound="hover"' in html
+    assert 'id="btn-pref-reset-defaults"' in html
+    assert 'Restaurar Padrão (25%)' in html
+
+    # 3. Check 03-tabs-renderers.js for rounded-lg on shop proposal button
+    resp_js3 = client.get("/js/03-tabs-renderers.js")
+    assert resp_js3.status_code == 200
+    assert 'data-propose-buy' in resp_js3.text
+    assert 'class="app-secondary-btn rounded-lg py-2 px-2.5' in resp_js3.text
+
+    # 4. Check 01-core-state.js for audio preferences logic
+    resp_js1 = client.get("/js/01-core-state.js")
+    assert resp_js1.status_code == 200
+    assert 'cmrpg_audio_preferences_v1' in resp_js1.text
+    assert 'getEffectiveVolume' in resp_js1.text
+    assert 'resetDefaults' in resp_js1.text
+    assert 'openPreferencesModal' in resp_js1.text
+
 
 
 

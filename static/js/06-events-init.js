@@ -35,8 +35,60 @@
       document.getElementById('sidebar-mobile-backdrop')?.classList.add('hidden');
     });
 
-    // Alternar Notificações (Botão de Sino)
-    document.getElementById('btn-toggle-notifications')?.addEventListener('click', toggleNotifications);
+    // Alternar Notificações / Abrir Preferências & Áudio
+    document.getElementById('btn-open-preferences')?.addEventListener('click', openPreferencesModal);
+    document.getElementById('btn-toggle-notifications')?.addEventListener('click', openPreferencesModal);
+
+    // Toggle de Notificações dentro do Modal de Preferências
+    document.getElementById('pref-notifications-toggle')?.addEventListener('change', (e) => {
+      applyNotificationsState(e.target.checked);
+      if (e.target.checked) {
+        showToast('🔔 Notificações ativadas.', 'success');
+      } else {
+        showToast('🔕 Notificações silenciadas.', 'warning');
+      }
+    });
+
+    // Slider de Volume Master
+    const prefMasterSlider = document.getElementById('pref-volume-master');
+    const prefMasterVal = document.getElementById('pref-volume-master-val');
+    prefMasterSlider?.addEventListener('input', (e) => {
+      const val = e.target.value;
+      if (prefMasterVal) prefMasterVal.textContent = `${val}%`;
+      AudioManager.setPreference('master', val);
+    });
+
+    // Sliders de Canais Individuais de Áudio
+    ['buy', 'equip', 'move', 'hover'].forEach((ch) => {
+      const slider = document.getElementById(`pref-volume-${ch}`);
+      const valSpan = document.getElementById(`pref-volume-${ch}-val`);
+      slider?.addEventListener('input', (e) => {
+        const val = e.target.value;
+        if (valSpan) valSpan.textContent = `${val}%`;
+        AudioManager.setPreference(ch, val);
+      });
+    });
+
+    // Botões de Teste de Som (▶)
+    document.addEventListener('click', (e) => {
+      const testBtn = e.target.closest('[data-test-sound]');
+      if (!testBtn) return;
+      const soundType = testBtn.getAttribute('data-test-sound');
+      if (soundType && AudioManager && typeof AudioManager.play === 'function') {
+        AudioManager.play(soundType);
+      }
+    });
+
+    // Botão "Restaurar Padrão (25%)"
+    document.getElementById('btn-pref-reset-defaults')?.addEventListener('click', () => {
+      if (AudioManager && typeof AudioManager.resetDefaults === 'function') {
+        AudioManager.resetDefaults();
+      }
+      if (typeof syncPreferencesUI === 'function') {
+        syncPreferencesUI();
+      }
+      showToast('🔊 Volume padrão restaurado (Master: 25%, Canais: 100%).', 'info');
+    });
 
     // Toggle de Descrições Longas de Itens
     document.addEventListener('click', (e) => {

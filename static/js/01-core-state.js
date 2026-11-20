@@ -55,13 +55,50 @@
   // Gerenciador Global de Áudio (static/sounds - 25% Volume + Reverso Web Audio)
   // ===========================================================================
   const AudioManager = (() => {
-    const DEFAULT_VOLUME = 0.25;
+    const STORAGE_KEY_AUDIO_PREFS = 'cmrpg_audio_preferences_v1';
     const SOUND_PATHS = {
       buy: 'static/sounds/buy_item.mp3',
       equip: 'static/sounds/equip_item.mp3',
       move: 'static/sounds/move_item_to_player.mp3',
       hover: 'static/sounds/ui_hover_sound.mp3',
     };
+
+    const DEFAULT_PREFS = {
+      master: 25,
+      buy: 100,
+      equip: 100,
+      move: 100,
+      hover: 100,
+    };
+
+    let audioPrefs = { ...DEFAULT_PREFS };
+
+    function loadPreferences() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY_AUDIO_PREFS);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed && typeof parsed === 'object') {
+            if (typeof parsed.master === 'number' && !Number.isNaN(parsed.master)) {
+              audioPrefs.master = Math.max(0, Math.min(100, Math.round(parsed.master)));
+            }
+            ['buy', 'equip', 'move', 'hover'].forEach((k) => {
+              if (typeof parsed[k] === 'number' && !Number.isNaN(parsed[k])) {
+                audioPrefs[k] = Math.max(0, Math.min(100, Math.round(parsed[k])));
+              }
+            });
+          }
+        }
+      } catch (_) {}
+    }
+
+    function savePreferences() {
+      try {
+        localStorage.setItem(STORAGE_KEY_AUDIO_PREFS, JSON.stringify(audioPrefs));
+      } catch (_) {}
+    }
+
+    loadPreferences();
 
     let audioCtx = null;
     const audioBuffers = {};
@@ -94,7 +131,18 @@
       }
     }
 
-    async function playReversed(url, volume = DEFAULT_VOLUME) {
+    function getEffectiveVolume(type) {
+      const channel = type === 'unequip' ? 'equip' : type;
+      const masterVal = audioPrefs.master !== undefined ? audioPrefs.master : 25;
+      const indivVal = audioPrefs[channel] !== undefined ? audioPrefs[channel] : 100;
+      const masterFrac = Math.max(0, Math.min(100, masterVal)) / 100;
+      const indivFrac = Math.max(0, Math.min(100, indivVal)) / 100;
+      const effective = masterFrac * indivFrac;
+      return Math.max(0, Math.min(1, effective));
+    }
+
+    async function playReversed(url, volume) {
+      if (volume <= 0) return;
       try {
         const ctx = getAudioContext();
         if (!ctx) {
@@ -130,7 +178,8 @@
       }
     }
 
-    function playNormal(url, volume = DEFAULT_VOLUME) {
+    function playNormal(url, volume) {
+      if (volume <= 0) return;
       try {
         const a = new Audio(url);
         a.volume = volume;
@@ -139,20 +188,41 @@
     }
 
     function play(type) {
+      const vol = getEffectiveVolume(type);
+      if (vol <= 0) return;
+
       if (type === 'hover') {
         const now = Date.now();
         if (now - lastHoverTime < 60) return;
         lastHoverTime = now;
-        playNormal(SOUND_PATHS.hover, DEFAULT_VOLUME);
+        playNormal(SOUND_PATHS.hover, vol);
       } else if (type === 'buy') {
-        playNormal(SOUND_PATHS.buy, DEFAULT_VOLUME);
+        playNormal(SOUND_PATHS.buy, vol);
       } else if (type === 'equip') {
-        playNormal(SOUND_PATHS.equip, DEFAULT_VOLUME);
+        playNormal(SOUND_PATHS.equip, vol);
       } else if (type === 'unequip') {
-        playReversed(SOUND_PATHS.equip, DEFAULT_VOLUME);
+        playReversed(SOUND_PATHS.equip, vol);
       } else if (type === 'move') {
-        playNormal(SOUND_PATHS.move, DEFAULT_VOLUME);
+        playNormal(SOUND_PATHS.move, vol);
       }
+    }
+
+    function getPreferences() {
+      return { ...audioPrefs };
+    }
+
+    function setPreference(key, value) {
+      const num = Math.max(0, Math.min(100, Math.round(Number(value) || 0)));
+      if (key in audioPrefs) {
+        audioPrefs[key] = num;
+        savePreferences();
+      }
+    }
+
+    function resetDefaults() {
+      audioPrefs = { ...DEFAULT_PREFS };
+      savePreferences();
+      return { ...audioPrefs };
     }
 
     if (typeof window !== 'undefined') {
@@ -162,7 +232,14 @@
       }, { once: true });
     }
 
-    return { play, getAudioContext };
+    return {
+      play,
+      getAudioContext,
+      getEffectiveVolume,
+      getPreferences,
+      setPreference,
+      resetDefaults,
+    };
   })();
 
   if (typeof window !== 'undefined') {
@@ -1957,6 +2034,11 @@
     html.setAttribute('data-theme', 'dark');
     html.classList.add('dark');
 
+    const toggleInput = document.getElementById('pref-notifications-toggle');
+    if (toggleInput) {
+      toggleInput.checked = isEnabled;
+    }
+
     const btn = document.getElementById('btn-toggle-notifications');
     const iconSpan = document.getElementById('notifications-bell-icon');
     if (btn) {
@@ -1978,6 +2060,39 @@
     try {
       localStorage.setItem(STORAGE_KEY_NOTIFICATIONS, isEnabled ? 'true' : 'false');
     } catch (_) {}
+  }
+
+  function syncPreferencesUI() {
+    const toggleInput = document.getElementById('pref-notifications-toggle');
+    if (toggleInput) {
+      toggleInput.checked = Boolean(notificationsEnabled);
+    }
+    const prefs = AudioManager && typeof AudioManager.getPreferences === 'function'
+      ? AudioManager.getPreferences()
+      : { master: 25, buy: 100, equip: 100, move: 100, hover: 100 };
+
+    const masterEl = document.getElementById('pref-volume-master');
+    const masterValEl = document.getElementById('pref-volume-master-val');
+    if (masterEl) masterEl.value = prefs.master;
+    if (masterValEl) masterValEl.textContent = `${prefs.master}%`;
+
+    const channels = ['buy', 'equip', 'move', 'hover'];
+    channels.forEach((ch) => {
+      const inputEl = document.getElementById(`pref-volume-${ch}`);
+      const valEl = document.getElementById(`pref-volume-${ch}-val`);
+      if (inputEl) inputEl.value = prefs[ch] !== undefined ? prefs[ch] : 100;
+      if (valEl) valEl.textContent = `${prefs[ch] !== undefined ? prefs[ch] : 100}%`;
+    });
+  }
+
+  function openPreferencesModal() {
+    syncPreferencesUI();
+    document.getElementById('modal-preferences')?.classList.remove('hidden');
+  }
+
+  if (typeof window !== 'undefined') {
+    window.syncPreferencesUI = syncPreferencesUI;
+    window.openPreferencesModal = openPreferencesModal;
   }
 
   function toggleNotifications() {

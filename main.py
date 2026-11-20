@@ -2371,7 +2371,7 @@ async def lifespan(app_instance: FastAPI) -> AsyncIterator[None]:
 app = FastAPI(
     title="CMrpg Server",
     description="Sistema de Gestão de RPG Local via Radmin VPN.",
-    version="1.16.0",
+    version="1.16.1",
     lifespan=lifespan,
 )
 

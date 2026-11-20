@@ -1222,7 +1222,7 @@
                   data-npc-id="${escapeHtml(activeNpc.id)}"
                   data-unit-price="${effectivePrice}"
                   ${buyDisabled ? 'disabled' : ''}
-                  class="btn-gold flex-1 py-2 px-3 text-xs font-serif-fantasy uppercase tracking-wider disabled:opacity-40 flex items-center justify-center gap-1.5"
+                  class="btn-gold rounded-lg flex-1 py-2 px-3 text-xs font-serif-fantasy uppercase tracking-wider disabled:opacity-40 flex items-center justify-center gap-1.5"
                 >
                   ${buyBtnLabel}
                 </button>
@@ -1234,7 +1234,7 @@
                   data-item-name="${escapeHtml(item.nome)}"
                   data-npc-name="${escapeHtml(activeNpc.name)}"
                   ${buyDisabled ? 'disabled' : ''}
-                  class="app-secondary-btn py-2 px-2.5 text-xs font-serif-fantasy uppercase tracking-wider disabled:opacity-40 flex items-center justify-center gap-1 hover:border-amber-500/60"
+                  class="app-secondary-btn rounded-lg py-2 px-2.5 text-xs font-serif-fantasy uppercase tracking-wider disabled:opacity-40 flex items-center justify-center gap-1 hover:border-amber-500/60"
                   title="Fazer proposta personalizada de compra para o Mestre"
                 >
                   <iconify-icon icon="game-icons:trade" class="text-amber-400"></iconify-icon>
