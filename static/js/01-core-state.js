@@ -523,6 +523,7 @@
     hostSkillTreeCategoryFilter: 'ALL',
     hostProgressionSubTab: 'TREES', // 'TREES' | 'CLASSES' | 'RACES'
     notificationsEnabled: true,
+    cardCombatStatMode: {},
 
     // UI Filters & Selections
     searchQuery: '',

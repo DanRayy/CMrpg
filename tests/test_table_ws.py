@@ -401,10 +401,10 @@ def test_decoupled_mesa_compact_state_and_cards_rendering(tmp_path: Path) -> Non
         assert sync["table"]["sizes"]["char_default_1"] == {"w": 72, "h": 96}
         assert sync["table"]["sizes"]["char_default_2"] == {"w": 420, "h": 468}
 
-        # Static asset query string must be v1.16.2
+        # Static asset query string must be v1.16.3
         resp = client.get("/")
-        assert "js/01-core-state.js?v=1.16.2" in resp.text
-        assert "js/03-tabs-renderers.js?v=1.16.2" in resp.text
+        assert "js/01-core-state.js?v=1.16.3" in resp.text
+        assert "js/03-tabs-renderers.js?v=1.16.3" in resp.text
 
         # Verify 03-tabs-renderers.js restricts compact mode exclusively to Mesa:
         js_resp = client.get("/js/03-tabs-renderers.js")
@@ -569,9 +569,9 @@ def test_v1_13_5_navigation_presence_and_render_stability(tmp_path: Path) -> Non
 
     # 1. HTML and assets checks
     resp_html = client.get("/")
-    assert 'styles.css?v=1.16.2' in resp_html.text
-    assert 'js/02-websocket-combat.js?v=1.16.2' in resp_html.text
-    assert 'js/05b-mesa-board.js?v=1.16.2' in resp_html.text
+    assert 'styles.css?v=1.16.3' in resp_html.text
+    assert 'js/02-websocket-combat.js?v=1.16.3' in resp_html.text
+    assert 'js/05b-mesa-board.js?v=1.16.3' in resp_html.text
 
     # 2. CSS Subpixel stabilization & GPU layer rules
     resp_css = client.get("/styles.css")
@@ -1455,7 +1455,7 @@ def test_v1_16_1_preferences_audio_and_shop_buttons(tmp_path: Path) -> None:
     client = TestClient(main.app, client=("127.0.0.1", 53045))
 
     # 1. FastAPI app version check
-    assert main.app.version == "1.16.2"
+    assert main.app.version == "1.16.3"
 
     # 2. HTML elements check
     resp = client.get("/")
@@ -1506,7 +1506,7 @@ def test_v1_16_2_character_card_redesign(tmp_path: Path) -> None:
     _setup_isolated_state(tmp_path)
     client = TestClient(main.app, client=("127.0.0.1", 53046))
 
-    assert main.app.version == "1.16.2"
+    assert main.app.version == "1.16.3"
 
     resp_js3 = client.get("/js/03-tabs-renderers.js")
     assert resp_js3.status_code == 200
@@ -1537,6 +1537,24 @@ def test_v1_16_2_character_card_redesign(tmp_path: Path) -> None:
     assert ".char-card-icon-dock" in resp_css.text
     assert ".char-tactical-box" in resp_css.text
     assert ".card-action-btn" in resp_css.text
+
+
+def test_v1_16_3_combat_stat_toggle(tmp_path: Path) -> None:
+    _setup_isolated_state(tmp_path)
+    client = TestClient(main.app, client=("127.0.0.1", 53047))
+
+    assert main.app.version == "1.16.3"
+
+    resp_js1 = client.get("/js/01-core-state.js")
+    assert "cardCombatStatMode: {}" in resp_js1.text
+
+    resp_js3 = client.get("/js/03-tabs-renderers.js")
+    assert 'data-action="toggle-combat-stat"' in resp_js3.text
+    assert "state.cardCombatStatMode?.[c.id]" in resp_js3.text
+
+    resp_js6 = client.get("/js/06-events-init.js")
+    assert "action === 'toggle-combat-stat'" in resp_js6.text
+    assert "renderMesaBoard()" in resp_js6.text
 
 
 

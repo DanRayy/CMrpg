@@ -1219,6 +1219,15 @@
         if (e.target.closest('#mesa-viewport') && typeof toggleCharacterCompactMode === 'function') {
           toggleCharacterCompactMode(charId);
         }
+      } else if (action === 'toggle-combat-stat') {
+        const c = (state.characters || []).find((x) => x.id === charId);
+        if (!c) return;
+        if (!state.cardCombatStatMode) state.cardCombatStatMode = {};
+        const defaultMode = Number(c.attack ?? 0) >= Number(c.arcana ?? 0) ? 'ATTACK' : 'ARCANA';
+        const curMode = state.cardCombatStatMode[charId] || defaultMode;
+        state.cardCombatStatMode[charId] = curMode === 'ATTACK' ? 'ARCANA' : 'ATTACK';
+        if (typeof renderCharactersTab === 'function') renderCharactersTab();
+        if (typeof renderMesaBoard === 'function') renderMesaBoard();
       }
     };
 

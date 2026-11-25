@@ -323,12 +323,28 @@
       `;
     }
 
-    const col1Label = isMasked ? 'ATK / ARC' : (atkVal >= arcVal ? 'ATAQUE' : 'ARCANA');
-    const col1ValueHtml = isMasked
-      ? `<span class="inline-flex items-center gap-1 font-mono font-extrabold text-xs text-[#8e8266]"><iconify-icon icon="game-icons:broadsword"></iconify-icon><span>?</span></span>`
-      : atkVal >= arcVal
-        ? `<span class="inline-flex items-center gap-1 font-mono font-extrabold text-xs text-rose-300" title="Poder de Ataque (Base + Equipamentos)"><iconify-icon icon="game-icons:broadsword" class="text-rose-400"></iconify-icon><span>${atkVal}</span></span>`
-        : `<span class="inline-flex items-center gap-1 font-mono font-extrabold text-xs text-sky-300" title="Poder Arcano (Base + Equipamentos)"><iconify-icon icon="game-icons:crystal-wand" class="text-sky-400"></iconify-icon><span>${arcVal}</span></span>`;
+    const defaultCombatStatMode = atkVal >= arcVal ? 'ATTACK' : 'ARCANA';
+    const activeCombatStatMode = (state.cardCombatStatMode && state.cardCombatStatMode[char.id]) || defaultCombatStatMode;
+    const showAttack = activeCombatStatMode === 'ATTACK';
+
+    const col1Html = isMasked
+      ? `<div class="char-tactical-cell bg-[#181512] border border-[#fff4e0]/[0.08] rounded-lg p-2 flex flex-col items-center justify-center text-center">
+          <span class="text-[9.5px] font-bold uppercase tracking-wider app-muted leading-none mb-1">ATK / ARC</span>
+          <span class="inline-flex items-center gap-1 font-mono font-extrabold text-xs text-[#8e8266]"><iconify-icon icon="game-icons:broadsword"></iconify-icon><span>?</span></span>
+        </div>`
+      : `<button
+          type="button"
+          data-action="toggle-combat-stat"
+          data-char-id="${escapeHtml(char.id)}"
+          class="char-tactical-cell bg-[#181512] border border-[#fff4e0]/[0.08] hover:border-[#c8aa6e66] rounded-lg p-2 flex flex-col items-center justify-center text-center cursor-pointer transition"
+        >
+          <span class="text-[9.5px] font-bold uppercase tracking-wider app-muted leading-none mb-1">${showAttack ? 'ATAQUE' : 'ARCANA'}</span>
+          ${
+            showAttack
+              ? `<span class="inline-flex items-center gap-1 font-mono font-extrabold text-xs text-rose-300"><iconify-icon icon="game-icons:broadsword" class="text-rose-400"></iconify-icon><span>${atkVal}</span></span>`
+              : `<span class="inline-flex items-center gap-1 font-mono font-extrabold text-xs text-sky-300"><iconify-icon icon="game-icons:crystal-wand" class="text-sky-400"></iconify-icon><span>${arcVal}</span></span>`
+          }
+        </button>`;
 
     const col2ValueHtml = isMasked
       ? `<span class="inline-flex items-center gap-1 font-mono font-extrabold text-xs text-[#8e8266]"><iconify-icon icon="game-icons:fairy-wand"></iconify-icon><span>?</span></span>`
@@ -354,10 +370,7 @@
 
         <!-- Grade Central de 3 Colunas Iguais -->
         <div class="grid grid-cols-3 gap-2">
-          <div class="char-tactical-cell bg-[#181512] border border-[#fff4e0]/[0.08] rounded-lg p-2 flex flex-col items-center justify-center text-center">
-            <span class="text-[9.5px] font-bold uppercase tracking-wider app-muted leading-none mb-1">${col1Label}</span>
-            ${col1ValueHtml}
-          </div>
+          ${col1Html}
           <div class="char-tactical-cell bg-[#181512] border border-[#fff4e0]/[0.08] rounded-lg p-2 flex flex-col items-center justify-center text-center">
             <span class="text-[9.5px] font-bold uppercase tracking-wider app-muted leading-none mb-1">REGEN</span>
             ${col2ValueHtml}
@@ -868,6 +881,7 @@
             c.pa, c.maxPa, c.xp, c.xpNext, c.image, c.avatar, c.isEnemy, c.reveladoParaJogadores,
             c.isDead ? 1 : 0, c.pendingAttributePoints, c.skillPoints,
             c.defense, c.attack, c.arcana, c.santidade, c.regen,
+            state.cardCombatStatMode?.[c.id] || '',
             c.maxWeight, c.derived?.totalWeight ?? 0,
             c.conditions?.length || 0,
             resSig,
