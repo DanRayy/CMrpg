@@ -401,10 +401,10 @@ def test_decoupled_mesa_compact_state_and_cards_rendering(tmp_path: Path) -> Non
         assert sync["table"]["sizes"]["char_default_1"] == {"w": 72, "h": 96}
         assert sync["table"]["sizes"]["char_default_2"] == {"w": 420, "h": 468}
 
-        # Static asset query string must be v1.16.1
+        # Static asset query string must be v1.16.2
         resp = client.get("/")
-        assert "js/01-core-state.js?v=1.16.1" in resp.text
-        assert "js/03-tabs-renderers.js?v=1.16.1" in resp.text
+        assert "js/01-core-state.js?v=1.16.2" in resp.text
+        assert "js/03-tabs-renderers.js?v=1.16.2" in resp.text
 
         # Verify 03-tabs-renderers.js restricts compact mode exclusively to Mesa:
         js_resp = client.get("/js/03-tabs-renderers.js")
@@ -569,9 +569,9 @@ def test_v1_13_5_navigation_presence_and_render_stability(tmp_path: Path) -> Non
 
     # 1. HTML and assets checks
     resp_html = client.get("/")
-    assert 'styles.css?v=1.16.1' in resp_html.text
-    assert 'js/02-websocket-combat.js?v=1.16.1' in resp_html.text
-    assert 'js/05b-mesa-board.js?v=1.16.1' in resp_html.text
+    assert 'styles.css?v=1.16.2' in resp_html.text
+    assert 'js/02-websocket-combat.js?v=1.16.2' in resp_html.text
+    assert 'js/05b-mesa-board.js?v=1.16.2' in resp_html.text
 
     # 2. CSS Subpixel stabilization & GPU layer rules
     resp_css = client.get("/styles.css")
@@ -1455,7 +1455,7 @@ def test_v1_16_1_preferences_audio_and_shop_buttons(tmp_path: Path) -> None:
     client = TestClient(main.app, client=("127.0.0.1", 53045))
 
     # 1. FastAPI app version check
-    assert main.app.version == "1.16.1"
+    assert main.app.version == "1.16.2"
 
     # 2. HTML elements check
     resp = client.get("/")
@@ -1500,6 +1500,43 @@ def test_v1_16_1_preferences_audio_and_shop_buttons(tmp_path: Path) -> None:
     assert 'getEffectiveVolume' in resp_js1.text
     assert 'resetDefaults' in resp_js1.text
     assert 'openPreferencesModal' in resp_js1.text
+
+
+def test_v1_16_2_character_card_redesign(tmp_path: Path) -> None:
+    _setup_isolated_state(tmp_path)
+    client = TestClient(main.app, client=("127.0.0.1", 53046))
+
+    assert main.app.version == "1.16.2"
+
+    resp_js3 = client.get("/js/03-tabs-renderers.js")
+    assert resp_js3.status_code == 200
+    js3 = resp_js3.text
+
+    # Header: level badge, unified subtitle, icon dock, full-width XP bar
+    assert "char-card-level-badge" in js3
+    assert "char-card-icon-dock" in js3
+    assert "EXPERIÊNCIA" in js3
+
+    # Tactical box: PA, DEF, Skill points, 3-col grid (ATAQUE/ARCANA, REGEN, CARGA) + accumulations inside
+    assert "char-tactical-box" in js3
+    assert "char-tactical-cell" in js3
+    assert "REGEN" in js3
+    assert "CARGA" in js3
+
+    # Bottom 6 action buttons in 3x2 grid with matte finish and icons on left
+    assert 'data-action="pill-damage"' in js3
+    assert 'data-action="pill-attr"' in js3
+    assert 'data-action="pill-reset"' in js3
+    assert 'data-action="pill-notes"' in js3
+    assert "card-action-btn" in js3
+
+    # CSS classes present and zero glow on avatar/tactical box
+    resp_css = client.get("/styles.css")
+    assert resp_css.status_code == 200
+    assert ".char-card-level-badge" in resp_css.text
+    assert ".char-card-icon-dock" in resp_css.text
+    assert ".char-tactical-box" in resp_css.text
+    assert ".card-action-btn" in resp_css.text
 
 
 

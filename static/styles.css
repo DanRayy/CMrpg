@@ -924,7 +924,7 @@ iconify-icon {
 }
 
 .card-active-turn {
-  border: 2px solid #f59e0b !important;
+  border: 2px solid #c8aa6e !important;
   box-shadow: none !important;
 }
 
@@ -1819,7 +1819,7 @@ iconify-icon {
 .character-card-with-avatar {
   position: relative;
   margin-top: 32px !important;
-  padding-top: 36px !important;
+  padding-top: 44px !important;
   overflow: visible !important;
 }
 
@@ -1835,12 +1835,11 @@ iconify-icon {
   width: 64px;
   height: 64px;
   border-radius: 50%;
-  background: radial-gradient(circle at 30% 30%, #241b12 0%, #0d0a07 100%);
-  border: 2.5px solid var(--gold-bright, #f0c674);
+  background: #12100d;
+  border: 2px solid #c8aa6e;
   box-shadow:
-    0 6px 16px rgba(0, 0, 0, 0.85),
-    0 0 0 3px rgba(18, 14, 10, 0.92),
-    0 0 12px rgba(212, 168, 83, 0.35);
+    0 4px 12px rgba(0, 0, 0, 0.8),
+    0 0 0 3px #12100d;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1849,11 +1848,64 @@ iconify-icon {
 }
 
 .char-card-top-avatar-wrap.enemy-avatar-ring {
-  border-color: #fb7185;
+  border-color: #e11d48;
   box-shadow:
-    0 6px 16px rgba(0, 0, 0, 0.85),
-    0 0 0 3px rgba(18, 14, 10, 0.92),
-    0 0 12px rgba(244, 63, 94, 0.35);
+    0 4px 12px rgba(0, 0, 0, 0.8),
+    0 0 0 3px #12100d;
+}
+
+.char-card-level-badge {
+  position: absolute;
+  top: 22px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 26;
+  padding: 1px 10px;
+  border-radius: 9999px;
+  background-color: #12100d;
+  border: 1px solid #c8aa6e;
+  color: #f0c674;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  line-height: 1.4;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.char-card-level-badge.enemy-level-badge {
+  border-color: rgba(225, 29, 72, 0.7);
+  color: #fda4af;
+}
+
+.char-card-icon-dock {
+  box-shadow: none !important;
+}
+
+.char-dock-btn {
+  color: #a69882;
+  background: transparent;
+  border: 1px solid transparent;
+}
+
+.char-dock-btn:hover:not(:disabled) {
+  color: #f0c674;
+  background-color: #1c1915;
+  border-color: rgba(200, 170, 110, 0.28);
+}
+
+.char-tactical-box {
+  box-shadow: none !important;
+}
+
+.card-action-btn {
+  box-shadow: none !important;
+  cursor: pointer;
+}
+
+.card-action-btn:active {
+  transform: scale(0.97);
 }
 
 .char-card-avatar-img {

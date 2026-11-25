@@ -87,16 +87,16 @@
 
     const resChipsHtml =
       !isMasked && activeResBadges.length > 0
-        ? `<div class="flex flex-wrap gap-1.5 pt-1">
+        ? `<div class="flex flex-wrap gap-1.5 pt-2 border-t border-[#fff4e0]/[0.06]">
             ${activeResBadges
               .map(
                 (b) => `
-              <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-mono font-bold border ${
+              <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-mono font-bold border ${
                 b.isMax
-                  ? 'bg-rose-500/20 text-rose-300 border-rose-500/50 animate-pulse'
-                  : 'bg-amber-500/10 text-amber-200 border-amber-500/25'
+                  ? 'bg-rose-950/60 text-rose-200 border-rose-500/50'
+                  : 'bg-[#1a1510] text-amber-200 border-amber-500/30'
               }">
-                <span>${b.icon}</span>
+                <span class="flex items-center">${b.icon}</span>
                 <span>${escapeHtml(b.name)}: ${b.current}/${b.max}</span>
               </span>`
               )
@@ -110,10 +110,10 @@
             type="button"
             data-action="open-sheet"
             data-char-id="${escapeHtml(char.id)}"
-            class="w-full py-1.5 px-3 rounded-lg bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 text-[11px] font-extrabold flex items-center justify-between hover:bg-emerald-500/25 transition"
+            class="w-full py-1.5 px-3 rounded-lg bg-emerald-950/40 border border-emerald-500/35 text-emerald-300 text-[11px] font-extrabold flex items-center justify-between hover:bg-emerald-950/65 transition"
           >
             <span class="flex items-center gap-1.5"><iconify-icon icon="game-icons:chest"></iconify-icon> <span>+${char.pendingAttributePoints} Ponto(s) de Atributo Pendente(s)!</span></span>
-            <span class="underline">Distribuir →</span>
+            <span class="inline-flex items-center gap-1 underline">Distribuir <iconify-icon icon="lucide:arrow-right" class="text-xs"></iconify-icon></span>
           </button>`
         : '';
 
@@ -145,12 +145,12 @@
     }
 
     const activeTurnBannerHtml = isCurrentTurn
-      ? `<div class="p-2.5 rounded-lg bg-amber-500/20 border border-amber-400/60 flex items-center justify-between text-amber-300 font-serif-fantasy text-xs font-black uppercase tracking-wider shadow-md animate-pulse">
+      ? `<div class="px-3 py-2 rounded-lg bg-[#1d1810] border border-[#c8aa6e] flex items-center justify-between text-[#f0c674] font-serif-fantasy text-xs font-black uppercase tracking-wider">
           <span class="flex items-center gap-2">
-            <iconify-icon icon="game-icons:crossed-swords" class="text-base text-amber-400"></iconify-icon>
+            <iconify-icon icon="game-icons:crossed-swords" class="text-base text-[#d4a853]"></iconify-icon>
             <span>TURNO ATUAL${enemyCurrentSlotLabel}</span>
           </span>
-          <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-400/20 border border-amber-400/40 text-amber-200">AGINDO AGORA</span>
+          <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-[#2a2216] border border-[#c8aa6e]/50 text-[#f0c674]">AGINDO AGORA</span>
         </div>`
       : '';
 
@@ -174,21 +174,23 @@
       ? ownerMem.nickname?.trim() || ownerMem.name || ownerMem.ip
       : char.ownerIp || 'Mestre';
 
-    // Sub-bar / Metadados sob o nome
-    let metaBarHtml = '';
+    // Linha de Subtítulo Limpa sob o Nome
+    let subtitleHtml = '';
     if (isEnemy) {
       if (isMasked) {
-        metaBarHtml = `
-          <div class="flex items-center gap-2 mt-1 text-[10px] font-mono text-neutral-500 italic">
-            <iconify-icon icon="game-icons:blindfold"></iconify-icon>
-            <span>Informações Ocultas pelo Mestre</span>
+        subtitleHtml = `
+          <div class="flex items-center gap-1.5 mt-0.5 text-[11px] app-muted italic truncate">
+            <iconify-icon icon="game-icons:blindfold" class="text-xs shrink-0"></iconify-icon>
+            <span class="truncate">Informações Ocultas pelo Mestre</span>
           </div>
         `;
       } else {
-        metaBarHtml = `
-          <div class="flex items-center gap-2 mt-1 text-[10px] font-mono text-amber-200/80">
-            <iconify-icon icon="game-icons:monster-grasp" class="text-rose-400"></iconify-icon>
-            <span>Criatura Hostil • Modelo: ${escapeHtml(bestiaryRef ? bestiaryRef.name : char.name)}</span>
+        const enemyModelName = bestiaryRef ? bestiaryRef.name : char.name;
+        const turnsMeta = char.turnsPerRound > 1 ? ` • ${char.turnsPerRound} Turnos/Rodada` : '';
+        subtitleHtml = `
+          <div class="flex items-center gap-1.5 mt-0.5 text-[11px] app-label truncate" title="${escapeHtml(`Criatura Hostil • ${enemyModelName}${turnsMeta}`)}">
+            <iconify-icon icon="game-icons:monster-grasp" class="text-rose-400 text-xs shrink-0"></iconify-icon>
+            <span class="truncate">Criatura Hostil • ${escapeHtml(enemyModelName)}${escapeHtml(turnsMeta)}</span>
           </div>
         `;
       }
@@ -199,217 +201,178 @@
         Number(char.level || 1) >= 15 && char.subclassId
           ? (state.classes || []).find((c) => c && c.id === char.subclassId && Boolean(c.isSubclass))
           : null;
-      const raceBadgeText = cardRace ? `${cardRace.name}${cardSubrace ? ` (${cardSubrace.name})` : ''}` : '';
-      const clsBadgeText = cardBaseCls ? `${cardBaseCls.name}${cardSubCls ? ` • ${cardSubCls.name}` : ''}` : cardSubCls ? cardSubCls.name : '';
+      const racePart = cardRace ? (cardSubrace ? `${cardRace.name} / ${cardSubrace.name}` : cardRace.name) : '';
+      const clsPart = cardBaseCls ? (cardSubCls ? `${cardBaseCls.name} / ${cardSubCls.name}` : cardBaseCls.name) : (cardSubCls ? cardSubCls.name : '');
+      const subtitleText = [racePart, clsPart, ownerLabel].filter(Boolean).join(' • ');
 
-      metaBarHtml = `
-        <div class="flex flex-wrap items-center gap-2 mt-1">
-          <div class="stat-bar-track h-1.5 w-20 rounded-full">
+      subtitleHtml = `
+        <div class="mt-0.5 text-[11px] app-label truncate" title="${escapeHtml(subtitleText)}">
+          ${escapeHtml(subtitleText)}
+        </div>
+      `;
+    }
+
+    // Barra de Experiência Horizontal Full-Width (ou Linha de Identificação para Inimigos)
+    let xpOrEnemyBarHtml = '';
+    if (!isEnemy) {
+      xpOrEnemyBarHtml = `
+        <div class="space-y-1">
+          <div class="flex items-center justify-between text-[10px]">
+            <span class="font-bold uppercase tracking-wider text-[#c8aa6e]">EXPERIÊNCIA</span>
+            <span class="font-mono font-semibold text-[#a69882]">${char.xp || 0} / ${char.xpNext || 80} XP</span>
+          </div>
+          <div class="stat-bar-track h-1.5 w-full rounded-full">
             <div class="stat-bar-fill stat-bar-xp" style="width: ${xpPct}%"></div>
           </div>
-          <span class="text-[10px] font-mono app-muted">XP ${char.xp || 0}/${char.xpNext || 80}</span>
-          <span class="text-[10px] font-mono app-muted" title="Membro/IP vinculado a este personagem">• <iconify-icon icon="game-icons:hooded-figure"></iconify-icon> ${escapeHtml(ownerLabel)}</span>
-          ${
-            raceBadgeText
-              ? `<span class="px-1.5 py-0.2 rounded text-[10px] font-mono font-bold bg-amber-500/15 gold-title border border-amber-500/30" title="Raça / Sub-raça"><iconify-icon icon="game-icons:dna1"></iconify-icon> ${escapeHtml(raceBadgeText)}</span>`
-              : ''
-          }
-          ${
-            clsBadgeText
-              ? `<span class="px-1.5 py-0.2 rounded text-[10px] font-mono font-bold bg-sky-500/15 text-sky-300 border border-sky-500/30" title="Classe / Subclasse"><iconify-icon icon="game-icons:crested-helmet"></iconify-icon> ${escapeHtml(clsBadgeText)}</span>`
-              : ''
-          }
-          ${
-            char.skillPoints > 0
-              ? `<span class="text-[10px] font-mono font-bold text-purple-400">• +${char.skillPoints} Hab</span>`
-              : ''
-          }
         </div>
       `;
-    }
-
-    // Indicadores Táticos (PA, DEF, ATAQUE/ARCANA, REGEN)
-    let tacticalHtml = '';
-    const atkVal = Number(char.attack ?? 0);
-    const arcVal = Number(char.arcana ?? 0);
-    const combatStatHtml = atkVal >= arcVal
-      ? `<span class="px-2 py-0.5 rounded text-[11px] font-mono font-bold stat-badge-attack flex items-center gap-1" title="Poder de Ataque (Base + Equipamentos)">
-          <iconify-icon icon="game-icons:broadsword"></iconify-icon> Ataque: ${atkVal}
-        </span>`
-      : `<span class="px-2 py-0.5 rounded text-[11px] font-mono font-bold stat-badge-arcana flex items-center gap-1" title="Poder Arcano (Base + Equipamentos)">
-          <iconify-icon icon="game-icons:crystal-wand"></iconify-icon> Arcana: ${arcVal}
-        </span>`;
-
-    if (isMasked) {
-      tacticalHtml = `
-        <div class="flex flex-wrap items-center gap-1.5 mt-2">
-          <span class="px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-black/40 text-neutral-400 border app-divider-border">
-            <iconify-icon icon="game-icons:lightning-branches"></iconify-icon> PA: ?
+    } else if (!isMasked) {
+      xpOrEnemyBarHtml = `
+        <div class="flex items-center justify-between gap-2 text-[10px] font-mono text-[#a69882] pt-0.5">
+          <span class="inline-flex items-center gap-1 text-rose-300 font-bold uppercase tracking-wider">
+            <iconify-icon icon="game-icons:monster-grasp" class="text-rose-400"></iconify-icon>
+            <span>INIMIGO</span>
           </span>
-          <span class="px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-black/40 text-neutral-400 border app-divider-border">
-            <iconify-icon icon="game-icons:dragon-shield"></iconify-icon> DEF: ?
-          </span>
-          <span class="px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-black/40 text-neutral-400 border app-divider-border">
-            <iconify-icon icon="game-icons:broadsword"></iconify-icon> ATK/ARC: ?
-          </span>
-          <span class="px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-black/40 text-neutral-400 border app-divider-border">
-            <iconify-icon icon="game-icons:fairy-wand" class="icon-mana"></iconify-icon> REGEN: ?
-          </span>
-        </div>
-      `;
-    } else {
-      const paInteractiveHtml = canPa
-        ? `<span class="inline-flex items-center gap-0.5 px-1 py-0.5 rounded text-[11px] font-mono font-bold bg-amber-500/10 text-amber-300 border border-amber-500/25 select-none" title="Pontos de Ação (PA): Clique para gastar 1 PA ou use os botões - / +">
-            <button type="button" data-action="adjust-pa" data-delta="-1" data-char-id="${escapeHtml(char.id)}" class="w-4 h-4 rounded flex items-center justify-center hover:bg-amber-500/30 text-amber-200 transition font-black" title="Gastar 1 PA">-</button>
-            <button type="button" data-action="spend-pa" data-char-id="${escapeHtml(char.id)}" class="inline-flex items-center gap-1 hover:text-amber-100 transition px-1" title="Gastar 1 PA">
-              <iconify-icon icon="game-icons:lightning-branches"></iconify-icon>
-              <span>PA: ${char.pa}/${char.maxPa}</span>
-            </button>
-            <button type="button" data-action="adjust-pa" data-delta="1" data-char-id="${escapeHtml(char.id)}" class="w-4 h-4 rounded flex items-center justify-center hover:bg-amber-500/30 text-amber-200 transition font-black" title="Restaurar 1 PA">+</button>
-          </span>`
-        : `<span class="px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-amber-500/10 text-amber-300 border border-amber-500/25">
-            <iconify-icon icon="game-icons:lightning-branches"></iconify-icon> PA: ${char.pa}/${char.maxPa}
-          </span>`;
-
-      tacticalHtml = `
-        <div class="flex flex-wrap items-center gap-1.5 mt-2">
-          ${paInteractiveHtml}
-          <span class="px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/25">
-            <iconify-icon icon="game-icons:dragon-shield"></iconify-icon> DEF: ${char.defense}
-          </span>
-          ${combatStatHtml}
-          <span class="px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-violet-500/10 text-violet-400 border border-violet-500/25">
-            <iconify-icon icon="game-icons:fairy-wand" class="icon-mana"></iconify-icon> REGEN: ${char.regen}%
-          </span>
-          ${
-            !isEnemy
-              ? `<span class="px-2 py-0.5 rounded text-[11px] font-mono font-bold ${
-                  isOverweight
-                    ? 'bg-rose-500/20 text-rose-300 border border-rose-500/50 animate-pulse'
-                    : 'bg-black/25 app-muted border app-divider-border'
-                }">
-                  <iconify-icon icon="game-icons:weight"></iconify-icon> ${weight}/${maxWeight}kg
-                </span>`
-              : ''
-          }
-        </div>
-      `;
-    }
-
-    // Botões de Topo no Card
-    let topButtonsHtml = '';
-    if (isEnemy) {
-      if (isMasked) {
-        topButtonsHtml = `
-          <button
-            type="button"
-            title="Ficha e habilidades ocultas pelo Mestre"
-            class="w-9 h-9 rounded-lg flex items-center justify-center text-base app-icon-btn opacity-40 cursor-not-allowed shrink-0"
-          >
-            <iconify-icon icon="game-icons:blindfold"></iconify-icon>
-          </button>
-        `;
-      } else {
-        topButtonsHtml = `
-          <button
-            type="button"
-            data-action="open-sheet"
-            data-char-id="${escapeHtml(char.id)}"
-            title="Abrir Ficha Completa do Inimigo (Atributos, Resistências e Habilidades)"
-            class="w-9 h-9 rounded-lg flex items-center justify-center text-base app-icon-btn shrink-0 transition"
-          >
-            <iconify-icon icon="game-icons:tied-scroll"></iconify-icon>
-          </button>
-          <button
-            type="button"
-            data-action="open-resistances"
-            data-char-id="${escapeHtml(char.id)}"
-            title="Painel de Acúmulos"
-            class="relative w-9 h-9 rounded-lg flex items-center justify-center text-base app-icon-btn shrink-0 transition"
-          >
-            <iconify-icon icon="game-icons:round-bottom-flask"></iconify-icon>
+          <div class="flex items-center gap-2">
             ${
-              activeResCount > 0
-                ? `<span class="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-mono font-black flex items-center justify-center text-white ${
-                    maxedResCount > 0 ? 'bg-rose-600 animate-bounce' : 'bg-amber-600'
-                  }">${activeResCount}</span>`
+              char.turnsPerRound > 1
+                ? `<span class="inline-flex items-center gap-1 text-amber-300 font-bold"><iconify-icon icon="game-icons:sands-of-time"></iconify-icon> ${char.turnsPerRound} Turnos/Rodada</span>`
+                : '<span>1 Turno/Rodada</span>'
+            }
+            ${
+              isBattleActive
+                ? `<span class="inline-flex items-center gap-1 text-sky-300 font-bold">• Turnos: ${turnCount}</span>`
                 : ''
             }
-          </button>
-          ${
-            (isMaster || hasPermission('bestiary_summon'))
-              ? `<button
-                  type="button"
-                  data-action="dismiss-enemy"
-                  data-char-id="${escapeHtml(char.id)}"
-                  title="Remover da Mesa (Despachar)"
-                  class="w-9 h-9 rounded-lg flex items-center justify-center text-base app-icon-btn text-rose-400 hover:bg-rose-950/60 shrink-0 transition"
-                >
-                  <iconify-icon icon="game-icons:portal"></iconify-icon>
-                </button>`
-              : ''
-          }
-        `;
-      }
-    } else {
-      topButtonsHtml = `
-        ${
-          canViewSheet
-            ? `<button
-                type="button"
-                data-action="open-sheet"
-                data-char-id="${escapeHtml(char.id)}"
-                title="${canEdit ? 'Abrir Ficha Completa, 5 Atributos e Habilidades' : 'Visualizar Ficha do Personagem (Somente Leitura)'}"
-                class="w-9 h-9 rounded-lg flex items-center justify-center text-base app-icon-btn shrink-0 transition"
-              >
-                <iconify-icon icon="game-icons:tied-scroll"></iconify-icon>
-              </button>`
-            : ''
-        }
-        ${
-          canViewInv
-            ? `<button
-                type="button"
-                data-action="open-inventory"
-                data-char-id="${escapeHtml(char.id)}"
-                title="${canEdit ? 'Abrir Inventário 3x(Infinito) com Filtros e Pesquisa' : 'Visualizar Inventário (Somente Leitura)'}"
-                class="w-9 h-9 rounded-lg flex items-center justify-center text-base app-icon-btn shrink-0 transition"
-              >
-                <iconify-icon icon="game-icons:knapsack"></iconify-icon>
-              </button>`
-            : ''
-        }
-        <button
-          type="button"
-          data-action="open-resistances"
-          data-char-id="${escapeHtml(char.id)}"
-          title="Painel de Acúmulos"
-          class="relative w-9 h-9 rounded-lg flex items-center justify-center text-base app-icon-btn shrink-0 transition"
-        >
-          <iconify-icon icon="game-icons:round-bottom-flask"></iconify-icon>
-          ${
-            activeResCount > 0
-              ? `<span class="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-mono font-black flex items-center justify-center text-white ${
-                  maxedResCount > 0 ? 'bg-rose-600 animate-bounce' : 'bg-amber-600'
-                }">${activeResCount}</span>`
-              : ''
-          }
-        </button>
-        ${
-          canEdit
-            ? `<button
-                type="button"
-                data-action="open-edit"
-                data-char-id="${escapeHtml(char.id)}"
-                title="Editar Personagem"
-                class="w-9 h-9 rounded-lg flex items-center justify-center text-base app-icon-btn shrink-0 transition"
-              >
-                <iconify-icon icon="game-icons:quill-ink"></iconify-icon>
-              </button>`
-            : ''
-        }
+          </div>
+        </div>
       `;
     }
+
+    // Painel Interno de Status Táticos (Box Escuro Consolidado)
+    const atkVal = Number(char.attack ?? 0);
+    const arcVal = Number(char.arcana ?? 0);
+
+    let paPillHtml = '';
+    if (isMasked) {
+      paPillHtml = `
+        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold bg-[#181512] text-[#8e8266] border border-[#fff4e0]/10">
+          <iconify-icon icon="game-icons:lightning-branches"></iconify-icon>
+          <span>PA: ?</span>
+        </span>
+      `;
+    } else if (canPa) {
+      paPillHtml = `
+        <span class="inline-flex items-center gap-1 px-1.5 py-1 rounded-lg text-[11px] font-mono font-bold bg-[#181512] text-[#f0c674] border border-[#fff4e0]/10 select-none" title="Pontos de Ação (PA): Clique para gastar 1 PA ou use os botões - / +">
+          <button type="button" data-action="adjust-pa" data-delta="-1" data-char-id="${escapeHtml(char.id)}" class="w-5 h-5 rounded flex items-center justify-center bg-[#231f1a] hover:bg-[#2f2922] text-[#d9ccae] transition font-black" title="Gastar 1 PA">-</button>
+          <button type="button" data-action="spend-pa" data-char-id="${escapeHtml(char.id)}" class="inline-flex items-center gap-1 hover:text-[#fff4e0] transition px-1" title="Gastar 1 PA">
+            <iconify-icon icon="game-icons:lightning-branches" class="text-amber-400"></iconify-icon>
+            <span>PA: ${char.pa}/${char.maxPa}</span>
+          </button>
+          <button type="button" data-action="adjust-pa" data-delta="1" data-char-id="${escapeHtml(char.id)}" class="w-5 h-5 rounded flex items-center justify-center bg-[#231f1a] hover:bg-[#2f2922] text-[#d9ccae] transition font-black" title="Restaurar 1 PA">+</button>
+        </span>
+      `;
+    } else {
+      paPillHtml = `
+        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold bg-[#181512] text-[#f0c674] border border-[#fff4e0]/10">
+          <iconify-icon icon="game-icons:lightning-branches" class="text-amber-400"></iconify-icon>
+          <span>PA: ${char.pa}/${char.maxPa}</span>
+        </span>
+      `;
+    }
+
+    const defPillHtml = `
+      <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold ${
+        isMasked
+          ? 'bg-[#181512] text-[#8e8266] border border-[#fff4e0]/10'
+          : 'bg-emerald-950/35 text-emerald-300 border border-emerald-500/35'
+      }">
+        <iconify-icon icon="game-icons:dragon-shield"></iconify-icon>
+        <span>DEF: ${isMasked ? '?' : char.defense}</span>
+      </span>
+    `;
+
+    let thirdTopPillHtml = '';
+    if (!isEnemy && !isMasked) {
+      if (char.skillPoints > 0) {
+        thirdTopPillHtml = `
+          <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold bg-purple-950/40 text-purple-300 border border-purple-500/35" title="Pontos de Habilidade disponíveis">
+            <span>+${char.skillPoints} Hab</span>
+          </span>
+        `;
+      } else if (isBattleActive) {
+        thirdTopPillHtml = `
+          <span class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-mono font-bold bg-[#181512] text-sky-300 border border-sky-500/30" title="Turnos executados nesta batalha">
+            <iconify-icon icon="game-icons:sands-of-time"></iconify-icon>
+            <span>T: ${turnCount}</span>
+          </span>
+        `;
+      } else {
+        thirdTopPillHtml = `
+          <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold bg-purple-950/20 text-purple-300/60 border border-purple-500/20" title="Pontos de Habilidade disponíveis">
+            <span>0 Hab</span>
+          </span>
+        `;
+      }
+    } else if (isEnemy && !isMasked && char.turnsPerRound > 1) {
+      thirdTopPillHtml = `
+        <span class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-mono font-bold bg-rose-950/40 text-rose-300 border border-rose-500/35" title="Turnos por rodada">
+          <iconify-icon icon="game-icons:sands-of-time"></iconify-icon>
+          <span>${char.turnsPerRound}T</span>
+        </span>
+      `;
+    }
+
+    const col1Label = isMasked ? 'ATK / ARC' : (atkVal >= arcVal ? 'ATAQUE' : 'ARCANA');
+    const col1ValueHtml = isMasked
+      ? `<span class="inline-flex items-center gap-1 font-mono font-extrabold text-xs text-[#8e8266]"><iconify-icon icon="game-icons:broadsword"></iconify-icon><span>?</span></span>`
+      : atkVal >= arcVal
+        ? `<span class="inline-flex items-center gap-1 font-mono font-extrabold text-xs text-rose-300" title="Poder de Ataque (Base + Equipamentos)"><iconify-icon icon="game-icons:broadsword" class="text-rose-400"></iconify-icon><span>${atkVal}</span></span>`
+        : `<span class="inline-flex items-center gap-1 font-mono font-extrabold text-xs text-sky-300" title="Poder Arcano (Base + Equipamentos)"><iconify-icon icon="game-icons:crystal-wand" class="text-sky-400"></iconify-icon><span>${arcVal}</span></span>`;
+
+    const col2ValueHtml = isMasked
+      ? `<span class="inline-flex items-center gap-1 font-mono font-extrabold text-xs text-[#8e8266]"><iconify-icon icon="game-icons:fairy-wand"></iconify-icon><span>?</span></span>`
+      : `<span class="inline-flex items-center gap-1 font-mono font-extrabold text-xs text-violet-300" title="Regeneração de Mana"><iconify-icon icon="game-icons:fairy-wand" class="text-violet-400"></iconify-icon><span>${char.regen}%</span></span>`;
+
+    const col3Label = isEnemy ? 'TURNOS' : 'CARGA';
+    const col3ValueHtml = isEnemy
+      ? `<span class="inline-flex items-center gap-1 font-mono font-extrabold text-xs ${isMasked ? 'text-[#8e8266]' : 'text-amber-300'}" title="Turnos por rodada em combate"><iconify-icon icon="game-icons:sands-of-time" class="${isMasked ? 'text-[#8e8266]' : 'text-amber-300'}"></iconify-icon><span>${isMasked ? '?' : `${char.turnsPerRound || 1}/rod`}</span></span>`
+      : `<span class="inline-flex items-center gap-1 font-mono font-extrabold text-xs ${isOverweight ? 'text-rose-300' : 'text-amber-200'}" title="Carga atual / Capacidade máxima"><iconify-icon icon="game-icons:weight" class="${isOverweight ? 'text-rose-400' : 'text-amber-300'}"></iconify-icon><span>${weight}/${maxWeight}kg</span></span>`;
+
+    const tacticalBoxHtml = `
+      <div class="char-tactical-box bg-[#12100d] rounded-xl p-3 space-y-2.5 border ${
+        isCurrentTurn ? 'border-[#c8aa6e]' : 'border-[#c8aa6e]/25'
+      }">
+        <!-- Linha Superior: PA, DEF, Pontos de Habilidade -->
+        <div class="flex items-center justify-between gap-1.5 flex-wrap">
+          ${paPillHtml}
+          <div class="flex items-center gap-1.5">
+            ${defPillHtml}
+            ${thirdTopPillHtml}
+          </div>
+        </div>
+
+        <!-- Grade Central de 3 Colunas Iguais -->
+        <div class="grid grid-cols-3 gap-2">
+          <div class="char-tactical-cell bg-[#181512] border border-[#fff4e0]/[0.08] rounded-lg p-2 flex flex-col items-center justify-center text-center">
+            <span class="text-[9.5px] font-bold uppercase tracking-wider app-muted leading-none mb-1">${col1Label}</span>
+            ${col1ValueHtml}
+          </div>
+          <div class="char-tactical-cell bg-[#181512] border border-[#fff4e0]/[0.08] rounded-lg p-2 flex flex-col items-center justify-center text-center">
+            <span class="text-[9.5px] font-bold uppercase tracking-wider app-muted leading-none mb-1">REGEN</span>
+            ${col2ValueHtml}
+          </div>
+          <div class="char-tactical-cell ${
+            isOverweight ? 'bg-rose-950/25 border-rose-500/45' : 'bg-[#181512] border-[#fff4e0]/[0.08]'
+          } border rounded-lg p-2 flex flex-col items-center justify-center text-center">
+            <span class="text-[9.5px] font-bold uppercase tracking-wider ${isOverweight ? 'text-rose-300' : 'app-muted'} leading-none mb-1">${col3Label}</span>
+            ${col3ValueHtml}
+          </div>
+        </div>
+
+        ${resChipsHtml}
+      </div>
+    `;
 
     const activeBuffsNerfsCount = Array.isArray(char.buffsNerfs) ? char.buffsNerfs.length : 0;
     const buffsNerfsSig = Array.isArray(char.buffsNerfs)
@@ -429,16 +392,133 @@
           data-char-id="${escapeHtml(char.id)}"
           data-buffs-sig="${escapeHtml(buffsNerfsSig)}"
           title="Buffs & Nerfs (Efeitos Ativos)"
-          class="relative w-9 h-9 rounded-lg flex items-center justify-center text-base app-icon-btn shrink-0 transition"
+          class="char-dock-btn relative w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center text-sm shrink-0 transition"
         >
           <iconify-icon icon="game-icons:arrows-shield"></iconify-icon>
           ${
             activeBuffsNerfsCount > 0
-              ? `<span class="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-mono font-black flex items-center justify-center text-white bg-purple-600 shadow-sm animate-pulse">${activeBuffsNerfsCount}</span>`
+              ? `<span class="absolute -top-1 -right-1 min-w-[16px] h-[16px] px-1 rounded-full text-[9px] font-mono font-black flex items-center justify-center text-white bg-purple-600">${activeBuffsNerfsCount}</span>`
               : ''
           }
         </button>`
       : '';
+
+    // Botões de Topo Agrupados no Container Fosco à Direita
+    let topButtonsHtml = '';
+    if (isEnemy) {
+      if (isMasked) {
+        topButtonsHtml = `
+          <button
+            type="button"
+            title="Ficha e habilidades ocultas pelo Mestre"
+            class="char-dock-btn w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center text-sm opacity-40 cursor-not-allowed shrink-0"
+          >
+            <iconify-icon icon="game-icons:blindfold"></iconify-icon>
+          </button>
+        `;
+      } else {
+        topButtonsHtml = `
+          <button
+            type="button"
+            data-action="open-sheet"
+            data-char-id="${escapeHtml(char.id)}"
+            title="Abrir Ficha Completa do Inimigo (Atributos, Resistências e Habilidades)"
+            class="char-dock-btn w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center text-sm shrink-0 transition"
+          >
+            <iconify-icon icon="game-icons:tied-scroll"></iconify-icon>
+          </button>
+          <button
+            type="button"
+            data-action="open-resistances"
+            data-char-id="${escapeHtml(char.id)}"
+            title="Painel de Acúmulos"
+            class="char-dock-btn relative w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center text-sm shrink-0 transition"
+          >
+            <iconify-icon icon="game-icons:round-bottom-flask"></iconify-icon>
+            ${
+              activeResCount > 0
+                ? `<span class="absolute -top-1 -right-1 min-w-[16px] h-[16px] px-1 rounded-full text-[9px] font-mono font-black flex items-center justify-center text-white ${
+                    maxedResCount > 0 ? 'bg-rose-600' : 'bg-amber-600'
+                  }">${activeResCount}</span>`
+                : ''
+            }
+          </button>
+          ${buffsNerfsBtnHtml}
+          ${
+            (isMaster || hasPermission('bestiary_summon'))
+              ? `<button
+                  type="button"
+                  data-action="dismiss-enemy"
+                  data-char-id="${escapeHtml(char.id)}"
+                  title="Remover da Mesa (Despachar)"
+                  class="char-dock-btn w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center text-sm text-rose-400 hover:bg-rose-950/60 shrink-0 transition"
+                >
+                  <iconify-icon icon="game-icons:portal"></iconify-icon>
+                </button>`
+              : ''
+          }
+        `;
+      }
+    } else {
+      topButtonsHtml = `
+        ${
+          canViewSheet
+            ? `<button
+                type="button"
+                data-action="open-sheet"
+                data-char-id="${escapeHtml(char.id)}"
+                title="${canEdit ? 'Abrir Ficha Completa, 5 Atributos e Habilidades' : 'Visualizar Ficha do Personagem (Somente Leitura)'}"
+                class="char-dock-btn w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center text-sm shrink-0 transition"
+              >
+                <iconify-icon icon="game-icons:tied-scroll"></iconify-icon>
+              </button>`
+            : ''
+        }
+        ${
+          canViewInv
+            ? `<button
+                type="button"
+                data-action="open-inventory"
+                data-char-id="${escapeHtml(char.id)}"
+                title="${canEdit ? 'Abrir Inventário 3x(Infinito) com Filtros e Pesquisa' : 'Visualizar Inventário (Somente Leitura)'}"
+                class="char-dock-btn w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center text-sm shrink-0 transition"
+              >
+                <iconify-icon icon="game-icons:knapsack"></iconify-icon>
+              </button>`
+            : ''
+        }
+        <button
+          type="button"
+          data-action="open-resistances"
+          data-char-id="${escapeHtml(char.id)}"
+          title="Painel de Acúmulos"
+          class="char-dock-btn relative w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center text-sm shrink-0 transition"
+        >
+          <iconify-icon icon="game-icons:round-bottom-flask"></iconify-icon>
+          ${
+            activeResCount > 0
+              ? `<span class="absolute -top-1 -right-1 min-w-[16px] h-[16px] px-1 rounded-full text-[9px] font-mono font-black flex items-center justify-center text-white ${
+                  maxedResCount > 0 ? 'bg-rose-600' : 'bg-amber-600'
+                }">${activeResCount}</span>`
+              : ''
+          }
+        </button>
+        ${
+          canEdit
+            ? `<button
+                type="button"
+                data-action="open-edit"
+                data-char-id="${escapeHtml(char.id)}"
+                title="Editar Personagem"
+                class="char-dock-btn w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center text-sm shrink-0 transition"
+              >
+                <iconify-icon icon="game-icons:quill-ink"></iconify-icon>
+              </button>`
+            : ''
+        }
+        ${buffsNerfsBtnHtml}
+      `;
+    }
 
     // Habilidades Gerais Banner para Inimigos Revelados
     let generalSkillsBannerHtml = '';
@@ -448,7 +528,7 @@
           type="button"
           data-action="open-general-skills"
           data-char-id="${escapeHtml(char.id)}"
-          class="w-full py-1.5 px-3 rounded-lg font-serif-fantasy font-extrabold text-xs uppercase tracking-wider bg-purple-950/40 hover:bg-purple-900/60 border border-purple-500/40 text-purple-200 flex items-center justify-center gap-1.5 transition"
+          class="w-full py-1.5 px-3 rounded-lg font-serif-fantasy font-extrabold text-xs uppercase tracking-wider bg-purple-950/40 hover:bg-purple-900/55 border border-purple-500/35 text-purple-200 flex items-center justify-center gap-1.5 transition"
         >
           <iconify-icon icon="game-icons:scroll-unfurled"></iconify-icon>
           <span>HABILIDADES GERAIS</span>
@@ -456,99 +536,99 @@
       `;
     }
 
-    // Action Pills ou Mensagem de Bloqueio
+    // Grade Inferior de 6 Botões de Ação (ou Mensagem de Bloqueio)
     let bottomActionsHtml = '';
     if (isMasked) {
       bottomActionsHtml = `
-        <div class="p-2.5 rounded-lg bg-black/30 border app-divider-border text-center text-xs font-mono text-amber-300/70 italic flex items-center justify-center gap-1.5">
+        <div class="p-2.5 rounded-lg bg-[#12100d] border app-divider-border text-center text-xs font-mono text-amber-300/70 italic flex items-center justify-center gap-1.5">
           <iconify-icon icon="game-icons:blindfold"></iconify-icon>
           <span>Atributos e Ficha Ocultos pelo Mestre</span>
         </div>
       `;
     } else if (!canCombat) {
       bottomActionsHtml = `
-        <div class="flex items-center gap-2 pt-2 border-t app-divider-border">
-          <div class="flex-1 p-2 rounded-lg bg-black/20 border app-divider-border text-center text-xs font-mono ${isEnemy ? 'text-emerald-300/80' : 'text-amber-200/80'} flex items-center justify-center gap-1.5">
-            <iconify-icon icon="${isEnemy ? 'game-icons:eyeball' : 'game-icons:tied-scroll'}" style="color: ${isEnemy ? '#4ade80' : '#f59e0b'};"></iconify-icon>
+        <div class="flex items-center gap-2 pt-2.5 border-t app-divider-border">
+          <div class="flex-1 p-2 rounded-lg bg-[#12100d] border app-divider-border text-center text-xs font-mono ${isEnemy ? 'text-emerald-300/80' : 'text-amber-200/80'} flex items-center justify-center gap-1.5">
+            <iconify-icon icon="${isEnemy ? 'game-icons:eyeball' : 'game-icons:tied-scroll'}" style="color: ${isEnemy ? '#4ade80' : '#c8aa6e'};"></iconify-icon>
             <span>${isEnemy ? 'Criatura Revelada (Controle do Mestre)' : 'Ficha de Aliado (Somente Visualização)'}</span>
           </div>
           <button
             type="button"
             data-action="pill-notes"
             data-char-id="${escapeHtml(char.id)}"
-            class="action-pill action-pill-notes py-2 px-3 rounded-lg font-extrabold text-[11px] tracking-tight flex items-center justify-center gap-1 shrink-0"
+            class="card-action-btn bg-[#1c1915] border border-teal-500/30 text-teal-200 hover:bg-[#24201b] hover:border-teal-400/55 py-2 px-3 rounded-lg font-bold text-xs flex items-center justify-center gap-1.5 shrink-0 transition"
             title="Anotações e Bloco de Notas"
           >
-            <span>NOTAS</span>
-            <iconify-icon icon="game-icons:quill-ink" class="shrink-0"></iconify-icon>
+            <iconify-icon icon="game-icons:quill-ink" class="text-teal-300 shrink-0"></iconify-icon>
+            <span>Notas</span>
           </button>
         </div>
       `;
     } else {
       bottomActionsHtml = `
-        <div class="grid grid-cols-3 gap-2 pt-2 border-t app-divider-border">
+        <div class="grid grid-cols-3 gap-2 pt-2.5 border-t app-divider-border">
           <button
             type="button"
             data-action="pill-damage"
             data-char-id="${escapeHtml(char.id)}"
-            class="action-pill action-pill-damage py-2 px-1 rounded-lg font-extrabold text-[11px] tracking-tight flex items-center justify-center gap-1"
+            class="card-action-btn bg-rose-950/45 border border-rose-500/40 text-rose-200 hover:bg-rose-950/70 hover:border-rose-400/60 py-2 px-2 rounded-lg font-bold text-xs flex items-center justify-center gap-1.5 transition"
             title="Aplicar Dano"
           >
-            <span>DANO</span>
-            <iconify-icon icon="game-icons:broadsword" class="icon-dmg shrink-0"></iconify-icon>
+            <iconify-icon icon="game-icons:broadsword" class="text-rose-400 shrink-0"></iconify-icon>
+            <span>Dano</span>
           </button>
           <button
             type="button"
             data-action="pill-attr"
             data-attr="hp"
             data-char-id="${escapeHtml(char.id)}"
-            class="action-pill py-2 px-1 rounded-lg font-extrabold text-[11px] tracking-tight flex items-center justify-center gap-1"
+            class="card-action-btn bg-[#1c1915] border border-emerald-500/30 text-emerald-200 hover:bg-[#24201b] hover:border-emerald-400/55 py-2 px-2 rounded-lg font-bold text-xs flex items-center justify-center gap-1.5 transition"
             title="Gerenciar Vida"
           >
-            <span>VIDA</span>
-            <iconify-icon icon="game-icons:heart-bottle" class="icon-hp shrink-0"></iconify-icon>
+            <iconify-icon icon="game-icons:heart-bottle" class="text-emerald-400 shrink-0"></iconify-icon>
+            <span>Vida</span>
           </button>
           <button
             type="button"
             data-action="pill-attr"
             data-attr="armor"
             data-char-id="${escapeHtml(char.id)}"
-            class="action-pill py-2 px-1 rounded-lg font-extrabold text-[11px] tracking-tight flex items-center justify-center gap-1"
+            class="card-action-btn bg-[#1c1915] border border-sky-500/30 text-sky-200 hover:bg-[#24201b] hover:border-sky-400/55 py-2 px-2 rounded-lg font-bold text-xs flex items-center justify-center gap-1.5 transition"
             title="Gerenciar Armadura"
           >
-            <span>ARMADURA</span>
-            <iconify-icon icon="game-icons:breastplate" class="icon-armor shrink-0"></iconify-icon>
+            <iconify-icon icon="game-icons:breastplate" class="text-sky-400 shrink-0"></iconify-icon>
+            <span>Armadura</span>
           </button>
           <button
             type="button"
             data-action="pill-attr"
             data-attr="mana"
             data-char-id="${escapeHtml(char.id)}"
-            class="action-pill py-2 px-1 rounded-lg font-extrabold text-[11px] tracking-tight flex items-center justify-center gap-1"
+            class="card-action-btn bg-[#1c1915] border border-indigo-500/30 text-indigo-200 hover:bg-[#24201b] hover:border-indigo-400/55 py-2 px-2 rounded-lg font-bold text-xs flex items-center justify-center gap-1.5 transition"
             title="Gerenciar Mana"
           >
-            <span>MANA</span>
-            <iconify-icon icon="game-icons:crystal-bars" class="icon-mana shrink-0"></iconify-icon>
+            <iconify-icon icon="game-icons:crystal-bars" class="text-indigo-400 shrink-0"></iconify-icon>
+            <span>Mana</span>
           </button>
           <button
             type="button"
             data-action="pill-reset"
             data-char-id="${escapeHtml(char.id)}"
-            class="action-pill py-2 px-1 rounded-lg font-extrabold text-[11px] tracking-tight flex items-center justify-center gap-1"
+            class="card-action-btn bg-[#1c1915] border border-amber-500/25 text-amber-200 hover:bg-[#24201b] hover:border-amber-400/50 py-2 px-2 rounded-lg font-bold text-xs flex items-center justify-center gap-1.5 transition"
             title="Resetar Personagem"
           >
-            <span>RESETAR</span>
-            <iconify-icon icon="game-icons:sands-of-time" class="shrink-0"></iconify-icon>
+            <iconify-icon icon="game-icons:sands-of-time" class="text-amber-400 shrink-0"></iconify-icon>
+            <span>Resetar</span>
           </button>
           <button
             type="button"
             data-action="pill-notes"
             data-char-id="${escapeHtml(char.id)}"
-            class="action-pill action-pill-notes py-2 px-1 rounded-lg font-extrabold text-[11px] tracking-tight flex items-center justify-center gap-1"
+            class="card-action-btn bg-[#1c1915] border border-teal-500/30 text-teal-200 hover:bg-[#24201b] hover:border-teal-400/55 py-2 px-2 rounded-lg font-bold text-xs flex items-center justify-center gap-1.5 transition"
             title="Anotações e Bloco de Notas"
           >
-            <span>NOTAS</span>
-            <iconify-icon icon="game-icons:quill-ink" class="shrink-0"></iconify-icon>
+            <iconify-icon icon="game-icons:quill-ink" class="text-teal-300 shrink-0"></iconify-icon>
+            <span>Notas</span>
           </button>
         </div>
       `;
@@ -597,17 +677,17 @@
 
     return `
         <article
-          class="char-card character-card character-card-with-avatar p-4 sm:p-5 flex flex-col justify-between gap-3.5 relative ${
+          class="char-card character-card character-card-with-avatar p-4 sm:p-5 flex flex-col justify-between gap-3 relative ${
             isCurrentTurn ? 'card-active-turn' : ''
           } ${
             char.isDead
               ? 'border-red-500/50 opacity-90'
-              : (isEnemy ? 'border-rose-950/40 hover:border-amber-500/40' : '')
+              : (isEnemy ? 'border-rose-950/50 hover:border-[#c8aa6e]/50' : '')
           }"
           data-char-id="${escapeHtml(char.id)}"
           data-buffs-sig="${escapeHtml(buffsNerfsSig)}"
         >
-          <!-- Avatar Circular no Topo Central -->
+          <!-- Avatar Circular no Topo Central & Badge de Nível -->
           <div
             class="char-card-top-avatar-wrap ${isEnemy ? 'enemy-avatar-ring' : ''} ${entityFullImage ? 'image-viewer-trigger' : ''}"
             ${avatarViewerAttrs}
@@ -615,79 +695,57 @@
           >
             ${avatarInnerHtml}
           </div>
+          <div class="char-card-level-badge ${isEnemy ? 'enemy-level-badge' : ''}">
+            ${isMasked ? 'NV. ?' : `NV. ${char.level || 1}`}
+          </div>
 
-          <!-- Topo: Nome Arrastável + Nível/XP + Botões de Ação -->
-          <div class="char-card-header flex items-start justify-between gap-3 min-w-0">
+          <!-- Topo: Identificação à Esquerda + Agrupamento de Ícones à Direita -->
+          <div class="char-card-header flex items-start justify-between gap-2.5 min-w-0">
             <div class="min-w-0 flex-1">
-              <div class="flex items-center flex-wrap gap-2 min-w-0">
-                <div
-                  class="${canReorderChar ? 'char-drag-handle' : ''} inline-flex items-center gap-1.5 px-2 py-0.5 -ml-2 rounded-lg ${canReorderChar ? 'hover:bg-amber-500/10 cursor-grab' : 'cursor-default'} transition group min-w-0 max-w-full"
-                  ${canReorderChar ? `data-drag-char-id="${escapeHtml(char.id)}"` : ''}
-                  title="${dragTitle}"
-                >
-                  ${canReorderChar ? '<span class="text-xs opacity-40 group-hover:opacity-90 shrink-0">⠿</span>' : ''}
-                  <h2 class="font-serif-fantasy text-lg sm:text-xl font-black tracking-wide truncate app-title">
-                    ${escapeHtml(char.name)}
-                  </h2>
-                </div>
-                ${
-                  isEnemy
-                    ? `<span class="px-2 py-0.5 rounded text-[10px] font-mono font-extrabold bg-rose-500/20 text-rose-300 border border-rose-500/40 shrink-0 flex items-center gap-1">
-                        <iconify-icon icon="game-icons:monster-grasp"></iconify-icon> INIMIGO
-                      </span>`
-                    : ''
-                }
-                <span class="px-2 py-0.5 rounded text-[10px] font-mono font-extrabold bg-amber-500/15 gold-title border border-amber-500/30 shrink-0">
-                  ${isMasked ? 'NV. ?' : `NV. ${char.level || 1}`}
-                </span>
-                ${
-                  isEnemy && !isMasked && char.turnsPerRound > 1
-                    ? `<span class="px-2 py-0.5 rounded text-[10px] font-mono font-extrabold bg-rose-500/20 text-rose-300 border border-rose-500/40 shrink-0 flex items-center gap-1" title="Quantidade de turnos por rodada em combate">
-                        <iconify-icon icon="game-icons:sands-of-time"></iconify-icon> ${char.turnsPerRound} Turnos/Rodada
-                      </span>`
-                    : ''
-                }
-                ${
-                  isBattleActive
-                    ? `<span class="px-2 py-0.5 rounded text-[10px] font-mono font-extrabold bg-blue-500/20 text-blue-300 border border-blue-500/40 shrink-0 flex items-center gap-1" title="Quantidade de turnos executados nesta batalha">
-                        <iconify-icon icon="game-icons:sands-of-time"></iconify-icon> Turnos: ${turnCount}
-                      </span>`
-                    : ''
-                }
+              <div
+                class="${canReorderChar ? 'char-drag-handle' : ''} inline-flex items-center gap-1 px-1.5 py-0.5 -ml-1.5 rounded-lg ${canReorderChar ? 'hover:bg-amber-500/10 cursor-grab' : 'cursor-default'} transition group min-w-0 max-w-full"
+                ${canReorderChar ? `data-drag-char-id="${escapeHtml(char.id)}"` : ''}
+                title="${dragTitle}"
+              >
+                ${canReorderChar ? '<iconify-icon icon="lucide:grip-vertical" class="text-xs opacity-40 group-hover:opacity-90 shrink-0 text-[#c8aa6e]"></iconify-icon>' : ''}
+                <h2 class="font-serif-fantasy text-base sm:text-lg font-black tracking-wide uppercase truncate app-title leading-tight">
+                  ${escapeHtml(char.name)}
+                </h2>
               </div>
-
-              ${metaBarHtml}
-              ${tacticalHtml}
+              ${subtitleHtml}
             </div>
 
-            <!-- Botões de Ação no Canto Superior Direito -->
-            <div class="char-top-actions shrink-0 pt-0.5 flex flex-col items-end gap-1.5">
-              <div class="flex items-center gap-1">
-                ${topButtonsHtml}
-              </div>
-              ${buffsNerfsBtnHtml ? `<div class="flex items-center justify-end">${buffsNerfsBtnHtml}</div>` : ''}
+            <!-- Container Fosco Agrupado de Ícones no Topo Direito -->
+            <div class="char-card-icon-dock flex items-center gap-0.5 bg-[#12100d] border border-[#fff4e0]/10 rounded-xl p-1 shrink-0">
+              ${topButtonsHtml}
             </div>
           </div>
+
+          <!-- Barra de Experiência Full-Width / Identificação de Inimigo -->
+          ${xpOrEnemyBarHtml}
 
           ${activeTurnBannerHtml}
           ${deadBannerHtml}
           ${pendingBannerHtml}
 
-          <!-- Barras Visuais: Vida, Armadura e Mana -->
+          <!-- Painel Interno de Status Táticos Consolidado -->
+          ${tacticalBoxHtml}
+
+          <!-- Barras Vitais: Vida, Armadura e Mana -->
           <div class="space-y-2.5">
             <!-- VIDA -->
             <div>
               <div class="flex items-center justify-between text-xs font-bold mb-1">
-                <span class="flex items-center gap-1.5 text-rose-400 uppercase tracking-wider">
+                <span class="flex items-center gap-1.5 text-rose-400 uppercase tracking-wider text-[11px]">
                   <iconify-icon icon="game-icons:heart-bottle" class="icon-hp"></iconify-icon>
-                  <span>Vida</span>
+                  <span>VIDA</span>
                   ${hpOverflow ? '<span class="px-1.5 py-0.2 rounded text-[9px] bg-amber-500/20 text-amber-300 border border-amber-400/40">OVERFLOW</span>' : ''}
                 </span>
-                <span class="font-mono font-extrabold text-sm ${hpOverflow ? 'text-amber-400' : 'app-title'}">
+                <span class="font-mono font-extrabold text-xs sm:text-sm ${hpOverflow ? 'text-amber-400' : 'app-title'}">
                   ${isMasked ? '? <span class="opacity-50">/ ?</span>' : `${char.hp} <span class="opacity-50">/ ${char.maxHp}</span>`}
                 </span>
               </div>
-              <div class="stat-bar-track h-3 rounded-full ${hpOverflow ? 'stat-overflow-glow' : ''}">
+              <div class="stat-bar-track h-2.5 rounded-full ${hpOverflow ? 'stat-overflow-glow' : ''}">
                 <div class="stat-bar-fill stat-bar-hp" style="width: ${hpPct}%"></div>
               </div>
             </div>
@@ -695,16 +753,16 @@
             <!-- ARMADURA -->
             <div>
               <div class="flex items-center justify-between text-xs font-bold mb-1">
-                <span class="flex items-center gap-1.5 text-sky-400 uppercase tracking-wider">
+                <span class="flex items-center gap-1.5 text-sky-400 uppercase tracking-wider text-[11px]">
                   <iconify-icon icon="game-icons:breastplate" class="icon-armor"></iconify-icon>
-                  <span>Armadura</span>
+                  <span>ARMADURA</span>
                   ${armorOverflow ? '<span class="px-1.5 py-0.2 rounded text-[9px] bg-amber-500/20 text-amber-300 border border-amber-400/40">OVERFLOW</span>' : ''}
                 </span>
-                <span class="font-mono font-extrabold text-sm ${armorOverflow ? 'text-amber-400' : 'app-title'}">
+                <span class="font-mono font-extrabold text-xs sm:text-sm ${armorOverflow ? 'text-amber-400' : 'app-title'}">
                   ${isMasked ? '? <span class="opacity-50">/ ?</span>' : `${char.armor} <span class="opacity-50">/ ${char.maxArmor}</span>`}
                 </span>
               </div>
-              <div class="stat-bar-track h-3 rounded-full ${armorOverflow ? 'stat-overflow-glow' : ''}">
+              <div class="stat-bar-track h-2.5 rounded-full ${armorOverflow ? 'stat-overflow-glow' : ''}">
                 <div class="stat-bar-fill stat-bar-armor" style="width: ${armorPct}%"></div>
               </div>
             </div>
@@ -712,21 +770,19 @@
             <!-- MANA -->
             <div>
               <div class="flex items-center justify-between text-xs font-bold mb-1">
-                <span class="flex items-center gap-1.5 text-indigo-400 uppercase tracking-wider">
+                <span class="flex items-center gap-1.5 text-indigo-400 uppercase tracking-wider text-[11px]">
                   <iconify-icon icon="game-icons:crystal-bars" class="icon-mana"></iconify-icon>
-                  <span>Mana</span>
+                  <span>MANA</span>
                   ${manaOverflow ? '<span class="px-1.5 py-0.2 rounded text-[9px] bg-amber-500/20 text-amber-300 border border-amber-400/40">OVERFLOW</span>' : ''}
                 </span>
-                <span class="font-mono font-extrabold text-sm ${manaOverflow ? 'text-amber-400' : 'app-title'}">
+                <span class="font-mono font-extrabold text-xs sm:text-sm ${manaOverflow ? 'text-amber-400' : 'app-title'}">
                   ${isMasked ? '? <span class="opacity-50">/ ?</span>' : `${char.mana} <span class="opacity-50">/ ${char.maxMana}</span>`}
                 </span>
               </div>
-              <div class="stat-bar-track h-3 rounded-full ${manaOverflow ? 'stat-overflow-glow' : ''}">
+              <div class="stat-bar-track h-2.5 rounded-full ${manaOverflow ? 'stat-overflow-glow' : ''}">
                 <div class="stat-bar-fill stat-bar-mana" style="width: ${manaPct}%"></div>
               </div>
             </div>
-
-            ${resChipsHtml}
           </div>
 
           ${generalSkillsBannerHtml}
