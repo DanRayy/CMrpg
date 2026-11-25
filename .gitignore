@@ -7,29 +7,35 @@ ENV/
 # Byte-compiled / cache Python
 __pycache__/
 *.py[cod]
+*.pyo
 *$py.class
 *.so
+.pytest_cache/
 
-# Arquivos de sistema e IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-.DS_Store
-Thumbs.db
-
-# Logs e variáveis de ambiente
-*.log
-.env
-
-# Backups e pacotes compactados locais
+# Estado local da campanha, escrita atômica e backups automáticos
+state.json
+state.json.tmp
+state.backup.json
+*.bak
+*.tmp
 *.rar
 *.zip
 backups/
 
-# Estado da aplicacao e arquivos temporarios de escrita atomica
-/state.json
-/state.json.tmp
-/state.json.*.bak
-*.tmp
-.pytest_cache/
+# Uploads dinâmicos de imagens de campanha (preservando .gitkeep)
+static/img/fichas/personagens/*
+!static/img/fichas/personagens/.gitkeep
+static/img/fichas/inimigos/*
+!static/img/fichas/inimigos/.gitkeep
+static/img/itens/*/*
+!static/img/itens/*/.gitkeep
+
+# Arquivos de sistema operacional, IDEs, logs e variáveis locais
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+*.log
+.env

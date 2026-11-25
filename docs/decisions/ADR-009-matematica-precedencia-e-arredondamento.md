@@ -1,21 +1,23 @@
-# ADR-009: Precedência Matemática e Estratégia de Arredondamento Configuráveis
+# ADR-009: Precedência Matemática e Estratégia de Arredondamento (`rules_engine.py`)
 
-## Status
-Aceito
+- **Status:** Aceito (Em Produção)
 
 ## Contexto
-Diferentes mestres e mesas de RPG possuem interpretações divergentes sobre a ordem em que modificadores matemáticos devem ser aplicados (fixo antes de percentual ou percentual antes de fixo) e como lidar com frações decimais resultantes de porcentagens.
+
+Ao combinar bônus fixos (`FLAT`) e percentuais (`PERCENT`) de múltiplas origens (raças, itens, buffs, classes e árvores), a ordem das operações altera o resultado final. Além disso, sistemas de RPG exigem arredondamento previsível e sem erros de representação binária (`float`).
 
 ## Decisão
-A tabela de configurações da sala (`RoomSettings`) possuirá duas configurações matemáticas explícitas:
-1. `statModifierPrecedence`:
-   - `'FLAT_FIRST'` (Padrão): Soma os valores fixos à base e depois multiplica pelo percentual:
-     $$\text{Final} = (\text{Base} + \sum \text{Fixo}) \times (1 + \sum \text{Percentual})$$
-   - `'PERCENT_FIRST'`: Multiplica a base pelo percentual e soma os valores fixos ao final:
-     $$\text{Final} = (\text{Base} \times (1 + \sum \text{Percentual})) + \sum \text{Fixo}$$
-2. `roundingMode`:
-   - `'ROUND_UP'`: Arredonda frações para cima (`Math.ceil`).
-   - `'ROUND_DOWN'` (Padrão): Trunca / arredonda frações para baixo (`Math.floor`).
+
+Centralizar em `rules_engine.py` (`apply_rounding` e `compute_stat_with_modifiers`) e espelhar no frontend (`01-core-state.js`):
+1. **Precedência Configurável na Sala (`room.statModifierPrecedence`):**
+   - `FLAT_FIRST` (padrão): `(Base + Σ Flat) × (1 + Σ Percent / 100)`
+   - `PERCENT_FIRST`: `(Base × (1 + Σ Percent / 100)) + Σ Flat`
+2. **Estratégia de Arredondamento (`room.roundingMode`):**
+   - Antes de arredondar, valores com diferença menor que **`1e-9`** de um inteiro retornam o inteiro exato (evitando desvios de ponto flutuante como `100 * 1.08 = 108.00000000000001`).
+   - `ROUND_DOWN` (padrão): `math.floor(value)`
+   - `ROUND_UP`: `math.ceil(value)`
 
 ## Consequências
-- Aplicação consistente e determinística de todas as fórmulas matemáticas no motor de regras (`packages/rules-engine`), garantindo previsibilidade para Mestre e Jogadores.
+
+- **Positivas:** paridade exata entre preview no cliente, cálculo de dano em `/api/preview-damage` e persistência no servidor.
+- **Negativas:** modificadores compostos complexos fora do par `FLAT`/`PERCENT` exigem extensão explícita em `rules_engine.py`.

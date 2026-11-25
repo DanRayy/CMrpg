@@ -1,55 +1,23 @@
-# ADR-012: Pipeline Modular de Cálculo de Dano, Mitigação e Penetrações
+# ADR-012: Pipeline Modular de Cálculo de Dano e Penetrações
 
-## Status
-Aceito
+- **Status:** Aceito (Em Produção)
 
 ## Contexto
-O sistema possui uma mecânica aprofundada de dano e mitigação dividida em camadas ofensivas (Dano Base, Multiplicadores, Bônus de Dano) e defensivas (Defesa, Resistência e Redução de Dano), com suas respectivas penetrações percentuais (**Letalidade**, **Perfuração** e **Ruptura**). Requer-se que a equação seja de fácil alteração, permitindo reordenar, ajustar ou substituir fórmulas futuramente sem refatorar a aplicação inteira.
+
+O combate do CMrpg suporta tanto aplicação direta de dano quanto ataques táticos que combinam dano base, multiplicadores de status, bônus percentuais e três camadas independentes de penetração (**Letalidade %**, **Perfuração %** e **Ruptura %**), além de **Dano Real** que ignora todas as mitigações e a Armadura.
 
 ## Decisão
-1. **Padrão Pipeline de Execução (Chain of Responsibility / Pure Functions):**
-   - O cálculo de dano é desacoplado em etapas puras no pacote `@rpg/rules-engine`.
-   - Cada etapa recebe o estado anterior e devolve o estado transformado, gerando um detalhamento passo a passo (*breakdown*) para visualização do Mestre.
-2. **Ordem Estrita de Resolução:**
-   $$\text{Letalidade (Defesa)} \longrightarrow \text{Perfuração (Resistência)} \longrightarrow \text{Ruptura (Redução de Dano)}$$
-3. **Fórmula Matemática Atual:**
-   * **Etapa 1 (Dano Bruto Ofensivo):**
-     $$D_{\text{base\_efetivo}} = DanoBase + Multiplicadores$$
-     $$D_{\text{bruto}} = D_{\text{base\_efetivo}} \times (1 + B\text{ô}nusDeDano\%)$$
-   * **Etapa 2 (Mitigação de Defesa com Letalidade %):**
-     $$Defesa_{\text{efetiva}} = \max(0, Defesa \times (1 - Letalidade\%))$$
-     $$D_1 = \max(0, D_{\text{bruto}} - Defesa_{\text{efetiva}})$$
-   * **Etapa 3 (Mitigação de Resistência com Perfuração %):**
-     $$Resist\hat{e}ncia_{\text{efetiva}} = \max(0, Resist\hat{e}ncia\% \times (1 - Perfura\text{ç}\tilde{a}o\%))$$
-     $$D_2 = D_1 \times (1 - Resist\hat{e}ncia_{\text{efetiva}})$$
-   * **Etapa 4 (Mitigação de Redução de Dano Final com Ruptura %):**
-     $$Redu\text{ç}\tilde{a}o_{\text{efetiva}} = \max(0, Redu\text{ç}\tilde{a}o\% \times (1 - Ruptura\%))$$
-     $$D_{\text{final}} = D_2 \times (1 - Redu\text{ç}\tilde{a}o_{\text{efetiva}})$$
-   * **Etapa 5 (Arredondamento e Impacto):**
-     - Aplica o `roundingMode` da sala (`ROUND_UP` ou `ROUND_DOWN`).
-     - Resolve absorção de Armadura e overflow no HP (com sobrecarga de armadura máxima caso $D_{\text{final}} > ArmaduraAtual$).
 
-## Contrato de Dados da Pipeline (`@rpg/types`):
-```typescript
-export interface DamageCalculationPipelineInput {
-  attacker: {
-    baseDamage: number;
-    statusMultipliers: number; // Arcana, Ataque, Santidade, etc.
-    damageBonusPercent: number;
-    lethalityPercent: number;   // % de defesa ignorada
-    penetrationPercent: number; // % de resistência ignorada
-    rupturePercent: number;     // % de redução final ignorada
-  };
-  target: {
-    defense: number;
-    resistancePercent: number;
-    damageReductionPercent: number;
-    currentArmor: number;
-    currentHp: number;
-  };
-}
-```
+Implementar a função pura `evaluate_damage_pipeline` em `rules_engine.py` (exposta em `POST /api/preview-damage` e espelhada no modal `modal-damage` do cliente):
+1. **Dano Bruto:** `D_raw = max(0, DanoBase + Multiplicadores) × (1 + BonusDano% / 100)`.
+2. **Dano Real (`is_true_damage: true`):** ignora Defesa, Resistência %, Redução % e Armadura; subtrai `apply_rounding(D_raw)` diretamente do `HP`.
+3. **Dano Mitigável (Ordem Estrita):**
+   - **Defesa vs. Letalidade %:** `Def_eff = max(0, Defesa × (1 - Letalidade% / 100))`; `D1 = max(0, D_raw - Def_eff)`.
+   - **Resistência % vs. Perfuração %:** `Res_eff = clamp(Res% × (1 - Perfuracao% / 100), 0, 100)`; `D2 = D1 × (1 - Res_eff / 100)`.
+   - **Redução % vs. Ruptura %:** `Red_eff = clamp(Red% × (1 - Ruptura% / 100), 0, 100)`; `D_final = max(0, apply_rounding(D2 × (1 - Red_eff / 100)))`.
+4. **Absorção Armadura → HP:** `Armadura` absorve primeiro; qualquer excedente (`D_final - ArmaduraAtual`) reduz `HP` (marcando `isDead = true` e `pa = 0` se `HP == 0`).
 
 ## Consequências
-- **Extrema Flexibilidade:** Alterar fórmulas, adicionar dano verdadeiro (*True Damage*), acertos críticos ou mudar a ordem da matemática exige modificar apenas a ordem das funções no pipeline de regras, sem tocar em UI ou Banco de Dados.
-- **Transparência Total:** A UI do Mestre recebe o log de cada etapa para pré-visualização antes da aplicação.
+
+- **Positivas:** preview instantâneo antes de confirmar o ataque no modal de dano e total transparência da ordem matemática entre ataque e defesa.
+- **Negativas:** exige preenchimento correto dos percentuais no modo Pipeline (mitigado pela opção de alternar para o modo **Simples**).

@@ -1,25 +1,24 @@
-# ADR-003: Modelo de Papéis (Mestre vs. Jogador) e Permissões
+# ADR-003: Modelo de Papéis (Host = Mestre vs. Jogadores por IP) e 32 Permissões Granulares
 
-## Status
-Aceito
+- **Status:** Aceito (Em Produção)
 
 ## Contexto
-O sistema necessita de controle de acesso para garantir que apenas o Mestre execute ações críticas da mesa, permitindo ao mesmo tempo delegar tarefas operacionais (como cadastrar itens ou gerenciar missões) para jogadores de confiança.
+
+Em sessões via Radmin VPN / LAN, exigir contas, cadastros ou senhas adicionaria atrito desnecessário antes de iniciar a partida. Ao mesmo tempo, o Mestre precisa de autoridade absoluta garantida pelo servidor e de flexibilidade para delegar funções específicas (como Sub-Mestre) a jogadores de confiança.
 
 ## Decisão
-1. **Apenas 2 Papéis Base:**
-   - `MESTRE`: Criador e proprietário da sala. Possui acesso total e irrestrito (bypass em checagens).
-   - `JOGADOR`: Integrante comum que entrou via convite. Recebe por padrão apenas as permissões básicas da sala.
-2. **Permissões Granulares e Overrides:**
-   - As permissões são modeladas como flags booleanas (ex: `canCreateItems`, `canManageQuests`, `canViewOtherInventories`).
-   - Por padrão, o Jogador não possui nenhuma permissão administrativa.
-   - O Mestre pode conceder ou revogar permissões individualmente para qualquer jogador.
-3. **Ações Não-Delegáveis (Exclusivas do Mestre):**
-   - Conceder pontos de Experiência (XP).
-   - Transferir a propriedade da sala.
-   - Excluir permanentemente a sala.
-   - Alterar o próprio nível de permissão (proteção contra auto-bloqueio).
+
+1. **Identificação Automática por IP (`main.py`):**
+   - O servidor detecta todos os IPs locais da máquina hospedeira (`get_host_ips`). Qualquer conexão vinda desses IPs recebe `id = "host_master"`, `role = "MESTRE"` e todas as permissões habilitadas (`master_full_permissions()`).
+   - Qualquer outro IP conectado via HTTP ou `/ws` recebe `id = "ip_<IP>"`, `role = "JOGADOR"` e o preset padrão `JOGADOR_COMUM`.
+   - O Host pode ativar o modo **Simular Jogador** na UI sem perder sua autoridade real no backend.
+2. **32 Permissões Granulares em 7 Categorias (`PERMISSION_CATEGORIES`):**
+   - `Personagens & Fichas` (7), `Combate, Turnos & Acúmulos` (7), `Itens, Inventário & Ouro` (5), `Loja, Mercadores & Escrow` (3), `Bestiário & Invocação` (4), `Missões & Sistema` (5) e `Árvore de Habilidades` (1 — `manageSkillTrees`).
+   - Presets padrão (`MESTRE_TOTAL`, `JOGADOR_COMUM`, `SUB_MESTRE`, `ESPECTADOR`, `PERSONALIZADO`) e suporte a **Presets Customizados** persistidos em `state.customPermissionPresets`.
+3. **Validação Server-Side:**
+   - O endpoint WebSocket valida as permissões do remetente antes de persistir alterações restritas (`itemsCatalog`, `bestiary`, `skillTrees`, `classes`, `races`, invocação/despacho de inimigos, ativação de batalha, avanço de turno, geração de cargas e `undo`/`redo`).
 
 ## Consequências
-- Simplifica a modelagem relacional eliminando hierarquias intermediárias rígidas (como Admin/Mod fixos).
-- O backend valida permissões em nível de rota/serviço através de middlewares declarativos.
+
+- **Positivas:** entrada instantânea pelo link `http://<IP_RADMIN>:8000` sem login; controle fino de permissões por IP com apelidos persistidos.
+- **Negativas:** qualquer aba aberta diretamente na máquina Host herda identidade de Mestre no servidor (contornável visualmente via modo *Simular Jogador*).

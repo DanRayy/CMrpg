@@ -1,23 +1,20 @@
-# ADR-001: Definição da Stack Tecnológica e Hospedagem
+# ADR-001: Stack Tecnológica Local (FastAPI + Uvicorn + WebSockets + Radmin VPN)
 
-## Status
-Aceito
+- **Status:** Aceito (Em Produção)
 
 ## Contexto
-O projeto consiste em um sistema web de apoio para mesas de RPG jogadas via Discord. O sistema precisa atender inicialmente até 10 jogadores por mesa, com suporte a múltiplas salas privadas, regras próprias (homebrew), inventário, combate por turnos e economia, mantendo custo zero de infraestrutura e alta manutenibilidade.
+
+O **CMrpg** foi concebido originalmente com foco em hospedagem em nuvem, mas evoluiu para um servidor de mesa de RPG autossuficiente, leve, de custo zero e latência mínima para grupos de amigos jogando juntos em rede privada virtual (**Radmin VPN**, faixa `26.x.x.x`) ou LAN. A prioridade é inicializar o servidor em segundos no Windows sem exigir bancos de dados externos, build steps complexos ou serviços pagos de terceiros.
 
 ## Decisão
-Adotamos a seguinte stack tecnológica:
-1. **Linguagem:** TypeScript (Fullstack) para compartilhamento seguro de tipos e regras matemáticas.
-2. **Backend:** Node.js com Express para construção das APIs REST e middlewares de autenticação/autorização.
-3. **Frontend:** React (Vite SPA) componentizado e responsivo (Desktop para o Mestre, Mobile-first para os Jogadores).
-4. **ORM:** Prisma ORM para modelagem relacional tipada e controle de migrações.
-5. **Banco de Dados:** Neon PostgreSQL (Serverless) aproveitando o plano gratuito, escalabilidade a zero e o recurso de Database Branching para testes.
-6. **Autenticação:** Discord OAuth2, integrando nativamente a identidade dos jogadores com seus usuários do Discord.
-7. **Arquitetura de Repositório:** Monorepo (pnpm workspaces / Turborepo) com separação em `apps/web`, `apps/api` e pacotes compartilhados (`packages/rules-engine`, `packages/types`, `packages/database`).
-8. **Hospedagem:** Vercel para o Frontend e APIs Serverless.
-9. **Metodologias:** Spec-Driven Development (SDD) e Test-Driven Development (TDD) para o motor de regras.
+
+Adotar a seguinte stack monolítica local:
+- **Runtime & Backend:** **Python 3.10+** com **FastAPI**, **Uvicorn**, **WebSockets** nativos e **Pydantic** (`requirements.txt`).
+- **Inicializador Automatizado (`iniciar_servidor.bat` + `launcher.py`):** escrito exclusivamente com a *Standard Library* do Python, encarregado de verificar atualizações no GitHub, configurar regra de Firewall (`CMrpg Server` na porta `8000`), provisionar/validar o ambiente virtual `venv/`, listar o IP Radmin VPN, rotacionar backups em `backups/` e iniciar `uvicorn main:app --host 0.0.0.0 --port 8000`.
+- **Frontend Estático Servido pelo Próprio Backend:** HTML5 (`static/index.html`), CSS customizado (`static/styles.css`), Tailwind CSS via CDN, Iconify Web Component (`2.1.0`) e módulos JavaScript Vanilla ES6+ (`static/js/01` a `06` + `05b-mesa-board.js`), servidos diretamente via `StaticFiles` na rota `/` e `/static`.
+- **Motores Dedicados no Backend:** `rules_engine.py` (atributos, modificadores, resistências, pipeline de dano, XP) e `table_engine.py` (geometria AABB da Mesa).
 
 ## Consequências
-- **Positivas:** Custo zero de hospedagem e banco de dados, compartilhamento direto de tipos e regras entre front e back, sem necessidade de implementar gestão de senhas/recuperação de e-mail.
-- **Limitações:** Por ser hospedado na Vercel (ambiente Serverless), WebSockets nativos persistentes não são suportados diretamente na infraestrutura da Vercel, demandando um serviço pub/sub externo compatível (ver ADR-006).
+
+- **Positivas:** zero custo de infraestrutura, zero limite de conexões ou cota mensal, execução offline/LAN imediata e implantação em qualquer PC Windows com um duplo clique em `iniciar_servidor.bat`.
+- **Negativas:** a campanha fica hospedada localmente na máquina do Mestre enquanto o servidor estiver aberto.

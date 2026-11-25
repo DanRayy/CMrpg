@@ -1,48 +1,77 @@
-# 07 — Aba "Mesa" (Tabuleiro Virtual Compartilhado)
+# Especificação 07: Aba "Mesa" (Tabuleiro Virtual Compartilhado)
 
-## 1. Visão Geral
+## 1. Visão Geral do Tabuleiro
 
-A aba **Mesa** (`#tab-mesa`) substitui a antiga seção de listagem estática de fichas por um **tabuleiro virtual compartilhado** com posicionamento livre no mundo (`4800 × 3000 px`), colisão física AABB determinística entre cards, câmera individual por usuário (zoom na posição do cursor + movimentação por botão do meio ou `Espaço + arrastar`), sincronização em tempo real via WebSockets e divisão horizontal automática durante o **Modo de Batalha**.
+A aba **Mesa** (`#tab-mesa`) implementa um **tabuleiro virtual compartilhado em tempo real** (`4800 × 3000 px`) sobre DOM + CSS `translate3d` / `scale`, preservando dentro do próprio tabuleiro todas as fichas de personagens e instâncias de inimigos com seus controles completos, além de suportar **Modo Compacto**, **câmera individual**, **interpolação fluida a 60 FPS**, **colisão física AABB determinística** e **divisão automática de batalha**.
 
 ---
 
-## 2. Regras de Negócio e Comportamento
+## 2. Mundo, Dimensões e Paridade de Colisão AABB
 
-### 2.1 Presença Automática e Permanência dos Personagens
-- Todos os personagens existentes em `state.characters` aparecem automaticamente na Mesa usando seus IDs originais (`char.id`), sem duplicação de dados ou estado paralelo.
-- Personagens criados são posicionados automaticamente na primeira região livre disponível sem sobrepor outros cards.
-- **Permanência Offline:** A desconexão de um jogador nunca remove, oculta ou reseta a posição de seu personagem na Mesa. Um card só deixa a Mesa quando a ficha é **completamente excluída** (ou quando uma instância de inimigo é despachada).
-- **Recuperação via Undo/Redo:** Quando uma ficha é excluída, sua última posição e dimensão são preservadas em `state.table.graveyard[charId]`. Caso a exclusão seja desfeita via `Undo`, o card retorna à sua posição anterior (ou à posição livre mais próxima).
+O motor de geometria é implementado de forma simétrica em **`table_engine.py`** (servidor) e **`static/js/05b-mesa-board.js`** (cliente), validado contra a mesma suíte de cenários em `tests/fixtures/collision_cases.json` (`pytest` + `node --test`):
 
-### 2.2 Integração com o Bestiário
-- Inimigos são trazidos à Mesa a partir do Bestiário (`spawnEnemyInstance`), gerando instâncias independentes (`isEnemy: true`, `bestiaryId`, ID único `char_enemy_...`) com vida, armadura, mana e efeitos próprios.
-- Remover/despachar uma instância da Mesa (`dismissEnemyInstance`) não altera nem exclui a criatura original no Bestiário.
+- **Dimensões do Mundo:** `4800 × 3000 px` (`DEFAULT_WORLD_WIDTH`, `DEFAULT_WORLD_HEIGHT`), sem grade rígida.
+- **Dimensões dos Cards:**
+  - **Modo Completo:** largura padrão `420 px` (`DEFAULT_CARD_WIDTH`) × altura dinâmica monitorada via `ResizeObserver` (fallback `468 px`, sanitizado entre `64..720` × `64..1200`).
+  - **Modo Compacto:** dimensões fixas **`72 × 96 px`** (`COMPACT_CARD_WIDTH`, `COMPACT_CARD_HEIGHT`).
+- **Limites e Não-Sobreposição Estrita (AABB):**
+  - Limiar de `4 px` (`MESA_DRAG_THRESHOLD_PX`) distingue cliques em botões internos do card de operações de arraste.
+  - Nenhum card pode ultrapassar as bordas do mundo (`0 <= x <= world.w - w`, `0 <= y <= world.h - h`).
+  - Durante o arraste e no drop (`resolve_move` / `mesaResolveMove`), o motor aplica deslizamento pelos eixos X e Y (`slide_move`) quando em movimento contínuo próximo a obstáculos, ou projeta para a posição livre mais próxima (`nearest_free` com Nível 1 nas bordas, Nível 2 nos cantos e varredura em grade como fallback), impedindo sobreposição.
+- **Autoridade do Servidor:** todo drop (`table_move` / `REMOTE_CARD_DROP`) é revalidado no servidor (`state_manager.move_table_card`), incrementando `state.table.rev` e propagando `table_update` (ou `table_move_rejected` em caso de erro).
+- **Movimentação na Mesa:** todos os participantes conectados podem posicionar e arrastar livremente fichas e inimigos pela Mesa (`can_move_card` / `canMoveCharacterOnMesa`), respeitando os limites físicos e as zonas de batalha quando ativas.
 
-### 2.3 Sistema de Câmera e Zoom Individual
-- **Dimensões do Mundo:** `4800 × 3000 px` (sem grade e sem células discretas).
-- **Zoom:** `0.25` (25%) a `1.50` (150%), padrão `0.75` (75%), ancorado na posição do cursor do mouse (`wheel`).
-- **Pan (Movimentação da Câmera):** Arraste com botão do meio do mouse (`button === 1`) ou `Espaço + arraste` com botão esquerdo em qualquer ponto da Mesa.
-- **Controles Auxiliares:** Centralizar visualização (`#btn-mesa-center`), Enquadrar todos os cards (`#btn-mesa-fit`), Zoom `-` / `100%` / `+`.
-- **Isolamento:** A câmera (`x`, `y`, `zoom`) é individual por usuário, persistida em `localStorage` e em `state.table.views[memberId]` no servidor, nunca sendo transmitida para alterar a câmera de outros participantes.
+---
 
-### 2.4 Arraste, Caixa de Colisão Real e Validação Server-Side
-- Cada card é renderizado dentro de um container `.mesa-token` (`width: 420px`, altura dinâmica monitorada via `ResizeObserver`).
-- Limiar de arraste de `4px` distingue cliques em botões do card (`Dano`, `Vida`, `Armadura`, `Mana`, `Reset`, `Notas`, `Inventário`, `Ficha`) do movimento de arraste.
-- **Não-sobreposição estrita (AABB):**
-  - Nenhum card pode ultrapassar os limites físicos da Mesa (`0 <= x <= world.w - w`, `0 <= y <= world.h - h`).
-  - Durante o arraste e ao soltar o card, `mesaResolveMove` / `table_engine.resolve_move` aplica deslizamento por eixo (`slide_move`) ou projeção para a borda livre mais próxima (`nearest_free`), impedindo qualquer interseção entre caixas de colisão.
-- **Autoridade do Servidor:** O servidor valida permissões, limites e colisões em todo `table_move` / `table_drag`, incrementando `state.table.rev` e transmitindo o estado definitivo para todos os clientes conectados.
+## 3. Câmera e Zoom Individuais
 
-### 2.5 Permissões de Movimentação
-- **Mestre (Host):** Pode mover **qualquer** card na Mesa a qualquer momento (personagens próprios, personagens de jogadores e inimigos).
-- **Jogador:** Pode mover **apenas** os personagens vinculados a ele (`isCharacterOwner`) e **nunca** pode mover inimigos.
+A câmera (`x`, `y`, `zoom`) é estritamente **individual por usuário** — mover ou dar zoom nunca afeta a tela de outro jogador:
+- **Faixa de Zoom:** **`25%` (`0.25`) a `150%` (`1.50`)**, padrão **`75%` (`0.75`)**.
+- **Navegação:**
+  - `Roda do mouse` (`wheel`): zoom ancorado exatamente na posição do cursor.
+  - `Botão do meio` ou `Espaço + arrastar` com botão esquerdo: pan livre pela Mesa.
+- **Barra de Ferramentas da Mesa:** botões **Centralizar** (`#btn-mesa-center`, foca nas fichas do usuário), **Ver Tudo** (`#btn-mesa-fit`, enquadra todos os cards na tela), **`−`**, **`+`** e **Padrão** (`75%`).
+- **Qualidade Gráfica:** suporte a níveis de renderização `1x`, `1.5x` e `2x` (`updateTableRenderQuality`) com re-rasterização automática ao finalizar zoom para manter nitidez de texto e bordas.
+- **Persistência Individual:** salva em `localStorage` e sincronizada no servidor por `memberId` em `state.table.views[memberId]` via mensagem WebSocket `table_view`.
 
-### 2.6 Modo de Batalha e Divisão Horizontal (`y = 1500`)
-- Ao iniciar uma batalha:
-  - `state.table.battle.active = true`, dividindo o mundo horizontalmente em `y = 1500`.
-  - **Região Superior (`0 <= y <= 1500 - h`):** exclusiva para inimigos (`isEnemy: true`).
-  - **Região Inferior (`1500 <= y <= 3000 - h`):** exclusiva para personagens dos jogadores (`!isEnemy`).
-  - Cards já posicionados em sua região válida e sem colisão permanecem onde estão; apenas cards fora da sua região (ou em colisão) são reposicionados automaticamente para a posição livre mais próxima dentro de sua respectiva metade.
-- Ao encerrar uma batalha:
-  - `state.table.battle.active = false`, restaurando a movimentação livre no mundo inteiro.
-  - Os inimigos e as posições atingidas durante o combate **permanecem na Mesa** sem alterações de HP, mana ou atributos.
+---
+
+## 4. Modo Compacto (Tokens Circulares `72 × 96 px`)
+
+Exclusivo da aba **Mesa** (`char.mesaCompact`):
+- Na parte inferior de cada card completo na Mesa há o botão **Modo Compacto** (`.btn-toggle-compact-mode`).
+- Ao recolher, o card assume formato de **Token Circular** de **`72 × 96 px`** (`.card-compact-mode` / `.mesa-token-compact`), composto por:
+  - Círculo de **`68 × 68 px`** (`.compact-token-circle`) com o avatar recortado (borda dourada para heróis, `#fb7185` para inimigos, `#ef4444` dessaturado quando morto e destaque dourado no turno atual).
+  - Botão inferior retrátil (`.btn-expand-full-mode`, `44 × 22 px`) para retornar ao **Modo Completo**.
+  - Tag flutuante inferior (`.compact-token-label`) exibindo nome e nível (ou nome do inimigo).
+- A alternância (`toggleCharacterCompactMode`) ajusta imediatamente a hitbox AABB no cliente e no servidor (`resolve_char_size`) sem área fantasma invisível.
+
+---
+
+## 5. Interpolação Fluida de Arraste Remoto a 60 FPS
+
+Para proporcionar feedback visual contínuo sem sobrecarregar disco ou rede:
+1. Enquanto um participante arrasta um card na Mesa, o cliente envia pacotes leves `REMOTE_CARD_DRAG` com throttle de **`35 ms`** (`MESA_DRAG_THROTTLE_MS`) e delta mínimo de `2 px`.
+2. O servidor valida o preview em memória (`preview_table_drag`, sem gravar em `state.json`) e repassa via `broadcast_except` para os demais participantes.
+3. Os clientes remotos aplicam interpolação linear (`LERP_FACTOR = 0.22`, `MIN_DELTA = 0.2`) em loop `requestAnimationFrame` (`stepMesaInterpolations`), exibindo borda azul (`.mesa-token-remote-dragging`) e o badge flutuante `"Arrastando: <Usuário>"` com watchdog de **`400 ms`**.
+4. Ao soltar o card, `REMOTE_CARD_DROP` confirma a posição definitiva no servidor.
+
+---
+
+## 6. Modo de Batalha e Divisão Horizontal (`y = 1500`)
+
+- **Ao Iniciar Batalha (`enter_battle`):**
+  - `state.table.battle.active` passa para `true`, salvando um `snapshot` pré-batalha e dividindo o tabuleiro horizontalmente em **`y = 1500`** (`world_h // 2`):
+    - **Região Superior (`0 <= y <= 1500 - h`):** exclusiva para **Inimigos** (`isEnemy: true`).
+    - **Região Inferior (`1500 <= y <= 3000 - h`):** exclusiva para **Personagens dos Jogadores** (`!isEnemy`).
+  - Cards já posicionados no lado correto e sem colisão permanecem imóveis; apenas cards fora de sua metade ou em conflito são realocados para a posição livre mais próxima dentro de sua respectiva região.
+  - Durante a batalha, o motor de colisão impede que um card atravesse a fronteira central (`#mesa-battle-divider`).
+- **Ao Encerrar Batalha (`exit_battle`):**
+  - Restaura a movimentação livre por todo o tabuleiro (`4800 × 3000 px`), preservando as posições alcançadas pelos personagens e inimigos.
+
+---
+
+## 7. Permanência Offline e Recuperação no `Undo/Redo`
+
+- **Permanência Offline:** a desconexão de um jogador nunca remove sua ficha da Mesa. Um card só sai do tabuleiro quando a ficha é excluída permanentemente ou quando uma instância de inimigo é despachada.
+- **Recuperação via Cemitério de Posições (`state.table.graveyard`):** ao excluir uma ficha, sua última posição `(x, y)` e tamanho `(w, h)` são guardados em `graveyard[charId]` (limite circular de **`50` entradas**). Se o Mestre acionar **Desfazer (Undo)**, `reconcile` restaura automaticamente o card na sua posição e dimensão anteriores (ou no ponto livre mais próximo caso o espaço tenha sido ocupado).

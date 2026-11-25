@@ -1,30 +1,27 @@
-# ADR-013: Arquitetura da Aba "Mesa" — Tabuleiro Virtual Compartilhado em DOM + CSS Transforms e Colisão AABB Determinística
+# ADR-013: Arquitetura da Aba "Mesa" — Tabuleiro Virtual, Modo Compacto e Colisão AABB
 
-- **Status:** Aceito (v1.11.0)
-- **Data:** 2026-11-05
+- **Status:** Aceito (Em Produção)
 
 ## Contexto
 
-O CMrpg necessitava substituir a antiga aba de grade estática ("Personagens & Fichas") por uma aba **Mesa**, funcionando como um tabuleiro virtual compartilhado em tempo real onde personagens da sessão e instâncias de inimigos do Bestiário pudessem ser posicionados livremente, mantendo 100% dos controles ricos já existentes nos cards HTML, com câmera e zoom independentes por participante, colisão física real sem sobreposição e divisão regional automática em Modo de Batalha.
+O CMrpg precisava de um tabuleiro virtual compartilhado em tempo real (`#tab-mesa`) que mantivesse 100% dos controles ricos dos cards HTML sem reescrever fichas em `<canvas>`, oferecendo câmera individual, colisão física determinística, tokens compactos para batalhas com muitos combatentes, arraste remoto suave a 60 FPS e divisão automática de zonas em combate.
 
 ## Decisão
 
-1. **DOM Real com Transformações CSS (`translate3d` + `scale`) em vez de `<canvas>` 2D:**
-   - Reutilizamos integralmente o HTML e os delegadores de eventos dos cards existentes (`buildCharacterCardHtml`) dentro de elementos `.mesa-token` posicionados via `transform: translate3d(x, y, 0)` dentro de `#mesa-world` (`4800 × 3000 px`), cuja câmera aplica `translate3d(camX, camY, 0) scale(zoom)` no cliente.
-   - Um `ResizeObserver` acompanha a altura real renderizada de cada card conforme atributos, resistências, equipamentos ou modo oculto de inimigos alteram suas dimensões.
-
-2. **Motor de Geometria e Colisão AABB Simétrico (`table_engine.py` e `static/js/05b-mesa-board.js`):**
-   - Implementamos funções puras idênticas no cliente e no servidor (`get_allowed_region`, `clamp_to_region`, `rects_overlap`, `slide_move`, `nearest_free`, `resolve_move`) validadas pela mesma suíte de fixtures (`tests/fixtures/collision_cases.json`).
-   - O servidor detém a autoridade final sobre permissões e colisões concorrentes, numerando revisões com `table.rev`.
-
-3. **Persistência Unificada em `state.json`:**
-   - O estado da Mesa reside em `state["table"]` (`world`, `positions`, `sizes`, `battle`, `views`, `graveyard`, `rev`), aproveitando a gravação atômica (`_write_state_atomic_sync`) e o sistema de `Undo/Redo` já existentes no `StateManager`.
+1. **DOM Real com Transformações CSS (`translate3d` + `scale`):**
+   - `#mesa-world` (`4800 × 3000 px`) hospeda tokens `.mesa-token` renderizados com `buildCharacterCardHtml(..., { forMesa: true })` e monitorados por `ResizeObserver`.
+   - A câmera individual (`x`, `y`, `zoom` entre `0.25` e `1.50`, padrão `0.75`) é persistida em `localStorage` e em `state.table.views[memberId]`, com qualidade de renderização ajustável (`1x`, `1.5x`, `2x`).
+2. **Motor de Geometria e Colisão AABB Simétrico (`table_engine.py` ↔ `05b-mesa-board.js`):**
+   - Funções idênticas no servidor e no cliente (`get_allowed_region`, `clamp_to_region`, `rects_overlap`, `slide_move`, `nearest_free`, `resolve_move`) validadas por `tests/test_table_engine.py`, `tests/test_table_ws.py` e `tests/mesa-geometry.test.mjs` usando `tests/fixtures/collision_cases.json`.
+   - Movimentação livre na Mesa para participantes conectados (`can_move_card`), com autoridade final de limites e colisão no servidor e revisão incremental (`table.rev`).
+3. **Modo Compacto (`72 × 96 px`) e Interpolação a 60 FPS:**
+   - Cada card na Mesa possui toggle para **Modo Compacto** (`char.mesaCompact`), reduzindo o token para círculo de `68 × 68 px` em caixa `72 × 96 px` e atualizando imediatamente a hitbox em `resolve_char_size`.
+   - O arraste remoto usa pacotes leves `REMOTE_CARD_DRAG` (throttle `35 ms`) interpolados via `requestAnimationFrame` (`LERP_FACTOR = 0.22`) com watchdog de `400 ms`.
+4. **Modo de Batalha (`y = 1500`) e `graveyard`:**
+   - `enter_battle` divide o tabuleiro em `y = 1500` (Inimigos acima, Heróis abaixo), realocando apenas cards fora de sua região ou em colisão.
+   - `state.table.graveyard` preserva até `50` posições de fichas excluídas para recuperação exata em operações `Undo`.
 
 ## Consequências
 
-- **Positivas:**
-  - Zero duplicação de lógica de fichas: alterações de HP, armadura, mana, PA, notas, inventário e buffs refletem imediatamente no card sobre a Mesa.
-  - Desempenho superior a 60 FPS durante o arraste (< 0.1ms por frame no cálculo de colisão para 30+ cards).
-  - Paridade matemática garantida por testes automatizados entre Python (`pytest`) e Node.js (`node --test`).
-- **Limitações Conhecidas:**
-  - Como a identificação de Mestre (`is_client_host_master`) baseia-se no IP da máquina Host (`127.0.0.1` / IPs locais), qualquer navegador aberto na própria máquina Host recebe identidade de Mestre no servidor (exceto quando o botão "Simular Jogador" está ativo na UI local).
+- **Positivas:** zero duplicação de interface de fichas, 60 FPS durante arraste simultâneo, paridade matemática garantida por testes automatizados em Python e Node.js.
+- **Negativas:** requer manutenção espelhada entre `table_engine.py` e `05b-mesa-board.js` sempre que regras geométricas forem alteradas.

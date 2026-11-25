@@ -1,26 +1,29 @@
-# ADR-007: Motor de Efeitos de Itens (Data-Driven Effects Engine)
+# ADR-007: Motor Unificado de Efeitos e Modificadores (`rules_engine.py`)
 
-## Status
-Aceito
+- **Status:** Aceito (Em Produção)
 
 ## Contexto
-Itens podem alterar atributos e status dos personagens de formas variadas: bônus numéricos fixos, bônus percentuais, penalidades, durações permanentes (enquanto equipado) ou temporárias (baseadas em turnos, para consumíveis).
+
+Múltiplos sistemas do RPG — Raças/Sub-raças, Itens Equipados, Consumíveis, Buffs/Nerfs, Talentos, Árvores de Habilidades, Classes/Subclasses e Herança de Subclasse — alteram simultaneamente atributos, vitais, resistências elementais e limites de acúmulos. Manter cálculos isolados por funcionalidade geraria divergências entre ficha, servidor e combate.
 
 ## Decisão
-1. **Tipos de Itens:** `ARMADURA`, `ARMA`, `ACESSORIO`, `CONSUMIVEL`, `OUTRO`.
-2. **Capacidade de Efeitos:**
-   - Tipos equipáveis (`ARMADURA`, `ARMA`, `ACESSORIO`): suportam 0, 1 ou múltiplos efeitos contínuos enquanto equipados.
-   - Tipo `CONSUMIVEL`: suporta 0, 1 ou múltiplos efeitos temporários com duração finita em turnos (`durationTurns`).
-   - Tipo `OUTRO`: apenas nome e descrição (ex: "Pedra / muito dura"), sem efeitos mecânicos.
-3. **Estrutura Normalizada do Efeito:**
-   - `targetStat`:
-     - Recursos Vitais: `VIDA` | `ARMADURA` | `MANA` | `PA` | `REGEN_MANA`
-     - Combate: `DEFESA` | `ATAQUE` | `ARCANA` | `SANTIDADE`
-     - Atributos Canônicos: `FORCA` | `DESTREZA` | `INTELIGENCIA` | `SABEDORIA` | `LABIA`
-   - `modifierType`: `FLAT` (Fixo, ex: +70, -2) | `PERCENT` (Percentual, ex: +50%, -10%)
-   - `value`: Number
-   - `durationTurns`: Integer opcional (null para equipáveis, > 0 para consumíveis)
-4. **Aplicação de Peso:** O peso de itens equipáveis só é contabilizado na carga do personagem quando o item estiver marcado como equipado (`isEquipped: true`). Se guardado no inventário, o peso é ignorado.
+
+Centralizar toda a consolidação matemática em `compute_character_derived_stats` (`rules_engine.py`, espelhada no cliente em `01-core-state.js`) usando uma lista canônica de **33 alvos** (`VALID_EFFECT_TARGETS`):
+- **Vitais & Carga:** `VIDA`, `ARMADURA`, `MANA`, `PA`, `CAPACIDADE_PESO`.
+- **Regeneração:** `REGEN_VIDA`, `REGEN_ARMADURA`, `REGEN_MANA`.
+- **Combate:** `DEFESA`, `ATAQUE`, `ARCANA`, `SANTIDADE`.
+- **Resistências Elementais:** `RES_GERAL` + os 7 tipos (`FISICO`, `MAGICO`, `PYRO`, `CRYO`, `ELETRICO`, `PROFANO`, `SACRO`).
+- **Limites de Acúmulo:** `ACUMULO_GERAL` + os 7 status (`CONGELAMENTO`, `CHOQUE`, `SANGRAMENTO`, `CHAMAS`, `VENENO`, `ATORDOAMENTO`, `CEGUEIRA`).
+- **Atributos Canônicos:** `FORCA`, `DESTREZA`, `INTELIGENCIA`, `SABEDORIA`, `LABIA`.
+
+O motor aplica na sequência:
+1. Modificadores de **Raça Base e Sub-raça**;
+2. Peso seletivo e modificadores de **Itens Equipáveis equipados** (ignorando `IN_ESCROW`);
+3. **Buffs/Nerfs ativos** (`enabled !== false` e dentro da duração ou permanentes);
+4. **Classes e Subclasses** (com aplicação imediata do Efeito de Classe e eventual substituição/herança em Nível 15+);
+5. **Árvores de Habilidades** (escalando Talentos por `cur_rank`, aplicando bônus de `100%` quando completa e impondo o teto global de **`3 / 3` passivas ativas**).
 
 ## Consequências
-- Criação extensível de itens simples ou extremamente complexos via interface do Mestre que interagem diretamente com qualquer atributo ou recurso vital do personagem.
+
+- **Positivas:** qualquer nova raça, classe, item ou buff funciona imediatamente sobre todos os 33 alvos sem alterações de código; consistência garantida pelo servidor a cada `state_sync`.
+- **Negativas:** exige que cliente e servidor mantenham a mesma ordem de agregação e regras de precedência (`ADR-009`).

@@ -1,148 +1,117 @@
-# Casos de Uso do Sistema (Use Cases)
+# Casos de Uso do Sistema (Fluxos Principais)
 
-Este documento descreve os fluxos operacionais principais que guiarão o desenvolvimento e os testes automatizados (TDD/E2E).
+Este documento descreve os fluxos operacionais completos do **CMrpg** com base na implementação atual (FastAPI + WebSockets + `state.json` + Frontend modular Vanilla JS).
 
 ---
 
-### UC-01: Criação de Sala e Geração de Convite
-* **Ator Principal:** Usuário (Futuro Mestre).
-* **Pré-condição:** Autenticado com Discord.
+### UC-01: Inicialização do Servidor Local e Conexão via Radmin VPN
+* **Atores:** Mestre (Host) e Jogadores (Rede Radmin VPN / LAN).
 * **Fluxo:**
-  1. O usuário clica em "Criar Nova Sala".
-  2. Informa Nome, Descrição, Nome da Moeda e preferências (Moeda compartilhada, Inventário ilimitado).
-  3. O backend valida se o usuário possui menos de 10 salas ativas.
-  4. A sala é criada no PostgreSQL e o usuário é registrado como membro com papel `MESTRE`.
-  5. Um token de convite com TTL de 3600 segundos (1 hora) é gerado e retornado.
-  6. O Mestre copia o link de convite e compartilha no Discord.
+  1. O Mestre executa `iniciar_servidor.bat`, que valida a presença do Python 3.10+ e inicia `launcher.py`.
+  2. No menu interativo ANSI, o Mestre escolhe `Iniciar` (ou `Instalar atualizacoes e iniciar` para atualizar via Git/zipball preservando `state.json`).
+  3. O `launcher.py` configura a regra `"CMrpg Server"` no Firewall (porta `8000`), valida o ambiente virtual `venv/`, exibe o IP do Radmin VPN (`26.x.x.x`), cria backup rotativo em `backups/` (máx. 15 arquivos) e sobe o Uvicorn em `0.0.0.0:8000`.
+  4. O navegador do Mestre abre `http://localhost:8000` e o servidor atribui automaticamente a identidade `host_master` (`MESTRE`).
+  5. Os jogadores acessam `http://<IP_RADMIN>:8000` em seus navegadores; o servidor os identifica automaticamente pelo IP como `JOGADOR` (`ip_<IP>`) e transmite o estado completo via WebSocket (`/ws`).
 
 ---
 
-### UC-02: Entrada de Jogador por Link de Convite
-* **Ator Principal:** Usuário Convidado.
-* **Pré-condição:** Autenticado com Discord e de posse do link.
-* **Fluxo:**
-  1. O usuário acessa a URL `https://.../invite/[token]`.
-  2. O backend valida se o token existe e não está expirado.
-  3. O usuário é vinculado à sala como membro com papel `JOGADOR` (sem permissões administrativas por padrão).
-  4. O usuário é redirecionado para a tela principal da sala.
-  5. Um evento é disparado via Pusher anunciando a chegada do novo membro.
-
----
-
-### UC-03: Criação de Personagem com Validação de Atributos
-* **Ator Principal:** Jogador.
-* **Fluxo:**
-  1. O jogador abre o formulário de criação de personagem dentro da sala.
-  2. Os 5 atributos (Força, Destreza, Inteligência, Sabedoria, Lábia) iniciam em 8.
-  3. O sistema exibe o contador "17 pontos restantes".
-  4. O jogador pode reduzir no máximo 1 atributo para 7 (ganhando 1 ponto extra, totalizando 18 pontos a distribuir).
-  5. O jogador aloca os pontos. O sistema recalcula dinamicamente modificadores e sucessos automáticos passivos na tela.
-  6. O jogador clica em "Salvar Personagem".
-  7. O backend executa a validação formal da soma e invariantes: se válido, salva no banco; se inválido, rejeita com erro explícito.
-
----
-
-### UC-04: Cadastro de Item com Efeitos pelo Mestre
-* **Ator Principal:** Mestre.
-* **Fluxo:**
-  1. O Mestre acessa o painel de Itens da sala e clica em "Novo Item".
-  2. Define Nome, Descrição, Tipo (`ARMADURA`, `ARMA`, `ACESSORIO`, `CONSUMIVEL` ou `OUTRO`), Equipável, Peso e Preço.
-  3. Se o tipo suportar efeitos, o Mestre clica em "Adicionar Efeito".
-  4. Configura: Alvo (ex: Vida), Tipo (Fixo ou %), Valor (ex: +70) e Duração em turnos (caso seja consumível).
-  5. O Mestre salva o item.
-  6. O item fica disponível no catálogo da sala e pode ser associado a NPCs da loja ou entregue a jogadores.
-
----
-
-### UC-05: Compra de Item na Loja
-* **Ator Principal:** Jogador.
-* **Fluxo:**
-  1. O jogador entra na Loja e seleciona um NPC Negociante.
-  2. Escolhe um item e clica em "Comprar".
-  3. O sistema exibe modal de confirmação: *"Deseja comprar [Item] por [X] [Moeda]?"*.
-  4. O jogador confirma.
-  5. O backend inicia uma transação atômica (`prisma.$transaction`):
-     - Valida saldo na carteira compartilhada da sala (`saldo >= preco`).
-     - Deduz o preço do saldo.
-     - Cria um `InventoryItem` vinculado ao personagem do comprador.
-     - Grava o log na tabela `RoomAuditLog`.
-  6. A transação é comitada.
-  7. O Pusher emite o evento de atualização de ouro e inventário em tempo real para a sala.
-
----
-
-### UC-06: Solicitação e Aprovação de Venda de Item
-* **Atores:** Jogador e Mestre.
-* **Fluxo:**
-  1. No inventário, o jogador clica em "Vender" em um item.
-  2. O backend altera o status do item para `IN_ESCROW`.
-  3. O item exibe um ícone de "Em Processo de Venda" e é bloqueado para ações.
-  4. Na interface do Mestre, a solicitação surge na bandeja de pendências.
-  5. O Mestre clica em "Aprovar":
-     - Transação atômica remove o item do inventário.
-     - Saldo de ouro do grupo é incrementado com o valor de venda.
-     - Registro é salvo na auditoria da sala.
-  6. Ambos os clientes atualizam suas telas via Pusher.
-
----
-
-### UC-07: Aplicação de Dano e Sobrecarga de Armadura
-* **Ator Principal:** Mestre.
-* **Alvo:** Jogador.
-* **Fluxo:**
-  1. No painel de combate, o Mestre seleciona um jogador, digita o Dano (ex: 20) e clica em "Aplicar Dano".
-  2. O backend compara o dano com a Armadura atual do personagem (ex: 15):
-     - Como $20 > 15$, a Armadura Máxima é degradada/reduzida temporariamente até o fim da batalha.
-     - O excedente de dano afeta a Vida do personagem.
-  3. Se a Vida chegar a zero, o status do personagem muda automaticamente para `MORTO`.
-  4. O Pusher propaga a alteração de vida/armadura para a mesa inteira instantaneamente.
-
----
-
-### UC-08: Gerenciamento de Turnos, Cargas do Grupo e Estatísticas
+### UC-02: Gestão de Membros por IP, Cursores Colaborativos e 32 Permissões
 * **Atores:** Mestre e Jogadores.
 * **Fluxo:**
-  1. O Mestre ativa o modo de batalha e define a ordem sequencial de participantes (`[Jogador 1, Mestre, Jogador 2]`).
-  2. A batalha inicia:
-     - Os contadores de telemetria são inicializados (`totalTurns = 0`, `round = 1`, `masterTurns = 0`, turnos individuais = 0, `groupCharges = 0`).
-  3. O turno inicia no `Jogador 1`:
-     - O sistema recarrega os Pontos de Ação (`pa`) do jogador para **3 PA**.
-     - O sistema regenera **20% da Mana Máxima** do jogador (limitado ao teto de Mana).
-     - O sistema incrementa automaticamente o pool compartilhado de cargas do grupo (`groupCharges`) em $+1$.
-     - O `Jogador 1` gasta PA para suas ações, gasta cargas da reserva coletiva do grupo clicando em `[ - ]` ou as ajusta livremente.
-     - Ele executa suas ações e clica em "Finalizar Turno".
-     - O contador de turnos do `Jogador 1` e os turnos totais da batalha são incrementados em $+1$.
-  4. O cursor avança para o `Mestre`:
-     - **Não** há recarga de PA, regeneração de mana ou acúmulo de cargas no turno do Mestre.
-     - O Mestre narra, aplica dano nos jogadores e clica em "Finalizar Turno".
-     - O contador `masterTurns` e os turnos totais são incrementados em $+1$.
-  5. O cursor avança para o `Jogador 2`:
-     - O pool de cargas do grupo (`groupCharges`) é incrementado novamente em $+1$.
-     - Se o `Jogador 2` estiver com Vida 0 (`MORTO`), o turno chega nele, mas sua interface só permite clicar em "Avançar Turno".
-     - Se o jogador demorar, o Mestre clica em "Forçar Avanço", passando a vez imediatamente.
-  6. Ao completar o ciclo de todos os participantes, o contador `roundNumber` é incrementado em $+1$.
+  1. Na aba **Visão Geral**, todos os participantes visualizam o painel ao vivo de IPs conectados e a tabela **Membros da Sala**.
+  2. Cada jogador recebe automaticamente uma cor permanente dentre as **10 cores** da paleta de cursores colaborativos; o Mestre exibe transição contínua **RGB Chroma** (exclusiva do Host).
+  3. O Mestre edita o membro (`modal-member`) para definir um apelido, vincular uma ficha (`characterId`), escolher um preset (`JOGADOR_COMUM`, `SUB_MESTRE`, `ESPECTADOR`) ou ajustar individualmente qualquer uma das **32 permissões em 7 categorias** (`modal-perm-category`), podendo salvar o conjunto como um **Preset Customizado**.
+  4. O Mestre pode clicar no badge `MODO MESTRE` no topo para ativar temporariamente o modo **Simular Jogador** e testar restrições de interface.
 
 ---
 
-### UC-09: Ressurreição de Jogador Caído
-* **Ator:** Mestre.
-* **Alvo:** Jogador com status `MORTO`.
+### UC-03: Criação de Personagem (Point Buy, Raça, Classe e Avatar Circular)
+* **Atores:** Jogador (com `char_create`) ou Mestre.
 * **Fluxo:**
-  1. O Mestre clica no botão "Reviver" no card do personagem.
-  2. Escolhe a modalidade:
-     - `100%`: restaura todos os valores máximos.
-     - `50%`: restaura metade dos valores (obedecendo a regra de arredondamento da sala).
-     - `Personalizado`: digita os valores exatos (ex: 33 de Vida e 2 de Armadura).
-  3. O backend aplica os valores, altera o status para `ATIVO` e audita a ação.
-  4. A interface do jogador é desbloqueada via evento do Pusher.
+  1. Na aba **Mesa** ou **Fichas**, o usuário clica em `＋ CRIAR` (`modal-char-form`).
+  2. Distribui os **5 Atributos Canônicos** (`FORCA`, `DESTREZA`, `INTELIGENCIA`, `SABEDORIA`, `LABIA`) partindo de `8` com `+17` pontos (total `57`), podendo aplicar a **Regra do 1 Ponto** (reduzir 1 atributo para `7` para liberar teto `19` em outro).
+  3. Seleciona **Raça Base** (ex.: `Dragão`, `Humano`, `Elfo`, `Orc`, `Xituiara`), eventual **Sub-raça** e **Classe Base** (cujo Efeito de Classe entra em vigor imediatamente).
+  4. Opcionalmente envia uma imagem para o **Recortador Circular** (`modal-image-cropper`), que envia a imagem original e o token circular para `POST /api/upload-image` (`static/img/fichas/personagens/`).
+  5. Ao salvar, `normalize_character` aplica bônus de raça (ex.: `+8` Pontos de Talento do Humano), calcula derivados e posiciona o card automaticamente na **Mesa** sem colisões.
 
 ---
 
-### UC-10: Concessão de XP e Atributos em Lote
-* **Ator:** Mestre.
+### UC-04: Uso da Aba Mesa (Câmera, Arraste AABB, Modo Compacto e Batalha `y = 1500`)
+* **Atores:** Mestre e Jogadores.
 * **Fluxo:**
-  1. O Mestre abre o painel de Recompensas.
-  2. Marca os checkboxes dos jogadores que participaram do desafio (ou clica em "Marcar Todos").
-  3. Digita o valor de XP (ex: 200) e/ou pontos de atributos extras (ex: 1).
-  4. Clica em "Conceder Recompensa".
-  5. O backend executa o update em lote para todos os selecionados e registra no histórico de auditoria.
+  1. O participante navega pela Mesa (`4800 × 3000 px`) ajustando zoom individual (`25%` a `150%`, padrão `75%`) com a roda do mouse e movendo a câmera com botão do meio ou `Espaço + arrastar`, usando **Centralizar** ou **Ver Tudo** quando desejar.
+  2. Ao arrastar um card na Mesa, `REMOTE_CARD_DRAG` envia prévias a cada `35 ms` para os demais clientes interpolarem o movimento a **60 FPS**; ao soltar (`REMOTE_CARD_DROP`), `table_engine.py` valida colisão AABB determinística, atualiza `table.rev` e sincroniza a posição final.
+  3. O participante pode recolher qualquer card na Mesa para o **Modo Compacto** (token circular **`72 × 96 px`**), ajustando sua caixa de colisão instantaneamente.
+  4. O Mestre invoca monstros do **Bestiário** (`TRAZER INIMIGO`) e inicia o **Modo de Batalha**: a Mesa se divide horizontalmente em `y = 1500` (Inimigos acima, Heróis abaixo), realocando apenas quem estiver fora de sua metade ou sobreposto.
+
+---
+
+### UC-05: Catálogo de Itens, Inventário 3×, Peso Seletivo e Transferência P2P
+* **Atores:** Mestre e Jogadores.
+* **Fluxo:**
+  1. Na aba **Catálogo de Itens**, o Mestre (ou membro com `item_manage_catalog`) cadastra itens entre os 5 tipos (`ARMADURA`, `ARMA`, `ACESSORIO`, `CONSUMIVEL`, `OUTRO`), define peso, preço, visibilidade e efeitos sobre os 33 alvos de `VALID_EFFECT_TARGETS`.
+  2. Ao abrir a mochila de uma ficha (`modal-char-inventory`, grade `3×`), apenas itens equipáveis marcados como `isEquipped: true` somam ao peso carregado; equipáveis ocupam slots individuais enquanto consumíveis empilham.
+  3. Ao clicar em **Equipar**, o `AudioManager` toca `equip_item.mp3` e aplica os bônus na ficha; ao clicar em **Desequipar**, reproduz o mesmo áudio **de trás para frente** via Web Audio API.
+  4. Para enviar itens a outro personagem, o usuário clica em **Transferir** (`modal-item-recipient`), escolhe destinatário e quantidade (tocando `move_item_to_player.mp3`).
+
+---
+
+### UC-06: Loja, Barganha ("Fazer Proposta") e Venda em Custódia (`IN_ESCROW`)
+* **Atores:** Jogador e Mestre.
+* **Fluxo:**
+  1. Na aba **Loja & Mercadores**, o jogador seleciona sua ficha compradora e um NPC Mercador.
+  2. **Compra Direta:** define a quantidade e clica em **Comprar**; o sistema valida saldo (`sharedGold` ou `char.gold`) e estoque (infinito ou finito), entrega o item, toca `buy_item.mp3` e registra na auditoria.
+  3. **Barganha:** o jogador clica em **Fazer Proposta** (`modal-create-proposal`), informa quantidade, valor em ouro ofertado e justificativa. A solicitação entra em `purchaseProposals` (`PENDENTE`). O Mestre abre **Solicitações de Compras** (`modal-purchase-proposals`) e decide entre **Aceitar Proposta** (debita valor negociado, reduz estoque se finito e entrega o item) ou **Recusar**.
+  4. **Venda Assistida (`IN_ESCROW`):** no inventário, o jogador clica em **Vender** (`modal-sell-escrow`); o item muda para `IN_ESCROW` (ficando bloqueado e sem efeitos). O Mestre aprova ou recusa na bandeja da Loja, creditando o ouro na carteira caso aprovado.
+
+---
+
+### UC-07: Combate por Turnos, Cargas do Grupo, Pipeline de Dano e Ressurreição
+* **Atores:** Mestre e Jogadores.
+* **Fluxo:**
+  1. O Mestre inicia a batalha definindo a ordem na fila de iniciativa (`modal-battle-order`), onde inimigos/chefes com `turnsPerRound > 1` aparecem múltiplas vezes.
+  2. No início do turno de cada jogador vivo: aplica-se dano de `Veneno` (se houver), gera-se **`+1` Carga do Grupo**, recarrega-se `PA` descontando penalidades (`Atordoamento`), expiram buffs/nerfs temporários e regeneram-se Mana/Vida/Armadura percentualmente.
+  3. Durante as ações, ataques podem usar o modal de dano (`modal-damage`) no modo **Simples** ou **Pipeline Tática** (Dano Base + Multiplicadores + Bônus %, Letalidade % vs Defesa, Perfuração % vs Resistência %, Ruptura % vs Redução %, ou Dano Real).
+  4. Ao atingir o máximo de um dos 7 acúmulos (`Congelamento`, `Choque`, `Sangramento`, `Chamas`, `Veneno`, `Atordoamento`, `Cegueira`), o gatilho automático é disparado; ao encerrar o turno, `Chamas` aplica e escala seu dano de combustão; combatentes com `0 HP` ou `Congelamento` são pulados automaticamente na fila.
+  5. Para reerguer um combatente caído (`0 HP`), o Mestre clica em **Reviver** (`modal-revive`) escolhendo `100% Total`, `50% Rápido` ou valores `Personalizados`.
+
+---
+
+### UC-08: Árvores de Habilidades Radiais (4 Quadrantes e Limite `3/3` Passivas)
+* **Atores:** Mestre (configuração) e Jogador (evolução).
+* **Fluxo:**
+  1. O Mestre (ou membro com `manageSkillTrees`) cria árvores na aba **Árvore de Habilidades**, cadastrando nós nos 4 quadrantes (**Passivas**, **Talentos**, **Ativas**, **Supremas** — com campo exclusivo de `Cargas` em Supremas) e configurando o **Efeito de Árvore Completa (`100%`)**.
+  2. Na ficha do personagem, o jogador abre a Árvore Radial (`modal-skill-tree`), navega pelas sub-abas (`2 × 3` slots por página) e inspeciona nós no painel flutuante `.sk-inspector`.
+  3. Ao investir Pontos de Talento (`skillPoints`), Talentos escalam por múltiplos ranks (`valor × rank`) e Ativas/Supremas/Passivas desbloqueiam e recebem melhorias extras.
+  4. Ao ativar Passivas, o sistema impõe o limite global de **`3 / 3` passivas ativas** por ficha; ao atingir `100%` dos passos da árvore, o efeito central de completude ativa automaticamente.
+  5. O jogador pode reembolsar um nó individualmente ou clicar em **Resetar Árvore** para recuperar 100% dos pontos gastos nela.
+
+---
+
+### UC-09: Evolução de Nível, Subclasse no Nível 15+, Herança e Troca de Vocação
+* **Atores:** Jogador e Mestre.
+* **Fluxo:**
+  1. Ao acumular XP (`80 XP` base + `+8%` composto por nível), a ficha sobe de nível automaticamente recebendo **`+2 Pontos de Talento`** por nível.
+  2. Ao atingir o **Nível 15+**, o seletor de **Subclasse** é desbloqueado na ficha do personagem, aplicando imediatamente o Efeito de Subclasse e liberando seus nós no motor radial.
+  3. Com Subclasse ativa no Nível 15+, o jogador pode abrir **Herança de Classe** (`modal-subclass-inheritance`) para escolher outra Classe Base, substituir opcionalmente 1 efeito de sua Classe Base e/ou herdar 1 habilidade (`TALENTO`, `ATIVA` ou `PASSIVA`; `SUPREMA` excluída).
+  4. Ao trocar de Classe Base ou Subclasse, o sistema solicita confirmação, reseta os nós da vocação anterior (e nó herdado), devolve `100%` dos pontos gastos e ativa imediatamente a nova vocação.
+
+---
+
+### UC-10: Quadro de Missões e Concessão de Recompensas em Lote
+* **Atores:** Mestre e Jogadores.
+* **Fluxo:**
+  1. O Mestre cadastra uma missão na aba **Missões** (`modal-quest`) com título, descrição e recompensas (Ouro, XP, Pontos de Atributo, Pontos de Talento e Itens).
+  2. Um jogador com `mission_accept` aceita a missão vinculando seu personagem (`modal-accept-quest`), mudando o status para `ACEITA` (ou o Mestre altera entre `PENDENTE`, `ACEITA`, `EM_PROGRESSO`, `PAUSADA`, `CONCLUIDA`, `RECUSADA`, `CANCELADA`).
+  3. Quando o Mestre (ou `mission_approve`) conclui a missão (`CONCLUIDA`), todas as recompensas são entregues automaticamente uma única vez (`rewarded: true`).
+  4. Para recompensas fora do mural, o Mestre usa **XP em Lote** (`modal-bulk-reward`) para distribuir XP, Pontos de Atributo e Pontos de Talento simultaneamente para os personagens selecionados.
+
+---
+
+### UC-11: Bloco de Notas Multi-Páginas, Bestiário, Preferências de Áudio e Undo/Redo
+* **Atores:** Mestre e Jogadores.
+* **Fluxo:**
+  1. Ao clicar em **Notas** no card de uma ficha, o proprietário (ou Mestre) gerencia múltiplas abas nomeadas (`modal-notes`) com editor rico, checklists interativos e tabelas; o **autosave de `600 ms`** persiste isoladamente em `char.notesPages` e sincroniza via WebSocket.
+  2. Na aba **Bestiário**, o Mestre cadastra criaturas e alterna entre `Oculto` e `Liberado`; criaturas ocultas só ficam visíveis ao Mestre e a membros com `bestiary_view_hidden`.
+  3. Clicando na engrenagem (`#btn-open-preferences`) no topo, qualquer usuário configura individualmente em seu navegador o toggle de **Notificações na Tela**, o **Volume Geral (padrão `25%`)** e os 4 canais individuais (`buy`, `equip`, `move`, `hover`) com botão de teste `▶`.
+  4. Caso ocorra um erro de operação, o Mestre (ou `system_undo_redo`) clica em **DESFAZER (`Ctrl+Z`)** ou **REFAZER (`Ctrl+Y`)** no rodapé da sidebar para navegar pelos últimos **`6` snapshots** de estado da campanha, recuperando inclusive cards excluídos na Mesa via `graveyard`.

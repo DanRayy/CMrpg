@@ -1,22 +1,24 @@
-# ADR-004: Modelo de Itens (Catálogo Canônico vs. Instância de Inventário)
+# ADR-004: Catálogo Canônico de Itens, Instâncias de Inventário, Barganha e Escrow
 
-## Status
-Aceito
+- **Status:** Aceito (Em Produção)
 
 ## Contexto
-O Mestre precisa ter poder de criar e editar itens na sala. Quando um item for editado pelo Mestre, a alteração deve se propagar automaticamente para a loja e para os inventários de todos os personagens daquela sala. Além disso, os jogadores não possuem permissão de personalizar ou renomear itens (sem runas ou anotações próprias).
+
+Duplicar dados de itens dentro de cada inventário impede o balanceamento centralizado pelo Mestre. Além disso, o jogo exige que itens equipáveis sejam rastreados individualmente (enquanto consumíveis empilham) e que negociações com mercadores e vendas de jogadores sejam auditadas.
 
 ## Decisão
-Adota-se uma separação em duas entidades:
-1. `Item` (Catálogo / Template):
-   - Pertence à sala (`roomId`).
-   - Define nome, tipo (`ARMADURA`, `ARMA`, `ACESSORIO`, `CONSUMIVEL`, `OUTRO`), equipável (`boolean`), peso, preço, descrição e efeitos.
-   - É a única fonte da verdade para dados do item.
-2. `InventoryItem` (Instância de Posse):
-   - Representa a posse de um item por um personagem (`characterId`) ou NPC.
-   - Contém apenas `id`, `characterId`, `itemId`, `quantity`, `isEquipped: boolean`, e `status: 'IN_INVENTORY' | 'IN_ESCROW'`.
-3. **Propagação Automática:** Como o `InventoryItem` apenas referencia `itemId`, qualquer alteração no `Item` pelo Mestre é refletida imediatamente em todos os inventários sem redundância de dados.
+
+1. **Separação Catálogo Canônico vs. Instância de Inventário:**
+   - `state["itemsCatalog"]` detém a definição única de cada item (`nome`, `descricao`, `tipo`, `equipavel`, `peso`, `preco`, `visivelParaJogadores`, `effects[]`).
+   - Cada personagem armazena em `char["inventory"]` apenas referências (`id`, `itemId`, `quantity`, `isEquipped`, `status`).
+2. **Regras de Empilhamento e Peso Seletivo:**
+   - `normalize_character` (`main.py`) garante que itens com `equipavel: true` nunca empilhem (`quantity: 1` por entrada). Consumíveis e outros itens não-equipáveis empilham em `quantity`.
+   - `compute_character_derived_stats` (`rules_engine.py`) soma ao `totalWeight` apenas itens com `equipavel: true`, `isEquipped: true` e `status != "IN_ESCROW"`.
+3. **Economia Assistida (`IN_ESCROW` e `purchaseProposals`):**
+   - Vendas de inventário colocam a entrada em `status: "IN_ESCROW"` (desativando efeitos e bloqueando ações) dentro de `state["escrowSales"]` até aprovação ou recusa do Mestre.
+   - Negociações de preço na loja criam propostas em `state["purchaseProposals"]` (`PENDENTE` → `ACEITA` / `RECUSADA`) com aprovação exclusiva do Mestre.
 
 ## Consequências
-- Consistência total de dados e integridade referencial.
-- Evita mutações descontroladas nos inventários dos jogadores.
+
+- **Positivas:** editar um item no catálogo atualiza imediatamente todas as fichas e mercadores; economia protegida contra fraudes ou erros acidentais.
+- **Negativas:** exige lookup `items_by_id` durante normalização e renderização.

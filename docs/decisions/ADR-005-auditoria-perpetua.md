@@ -1,24 +1,21 @@
-# ADR-005: Auditoria Perpétua e Imutável por Sala
+# ADR-005: Auditoria de Ações e Histórico Temporal (`Undo/Redo` de 6 Estados)
 
-## Status
-Aceito
+- **Status:** Aceito (Em Produção)
 
 ## Contexto
-Toda movimentação relevante na sala (alteração de ouro, compras na loja, movimentação de itens, mudanças de permissão, concessão de dano ou XP) precisa ser auditável para manter a transparência entre Mestre e Jogadores. Os registros de histórico devem ser permanentes e nunca excluídos.
+
+Sessões colaborativas em tempo real frequentemente sofrem cliques acidentais (aplicação de dano errado, exclusão de ficha, troca equivocada de turno ou item). É necessário rastrear o histórico de mutações da campanha e permitir reversão rápida e segura.
 
 ## Decisão
-1. **Tabela Append-Only:** Implementação da tabela `RoomAuditLog`. Não haverá operações de `UPDATE` ou `DELETE` nesta tabela.
-2. **Estrutura do Registro:**
-   - `id`: UUID
-   - `roomId`: UUID (isolamento por sala)
-   - `actorUserId`: UUID (quem disparou a ação)
-   - `actionType`: String (ex: `GOLD_UPDATE`, `ITEM_PURCHASE`, `DAMAGE_DEALT`, `PERMISSION_CHANGE`)
-   - `targetEntity`: String opcional (ex: `Character:Guerreiro`, `Item:Espada`)
-   - `previousValue`: JSON opcional (estado anterior)
-   - `newValue`: JSON opcional (novo estado)
-   - `createdAt`: Timestamp
-3. **Retenção:** Os registros são mantidos indefinidamente (para sempre).
+
+1. **Log de Auditoria (`state["auditLog"]`):**
+   - `StateManager.add_audit_entry` insere no topo de `auditLog` registros com `id`, `actorName`, `actionType`, `targetEntity`, `summary` e `createdAt`, mantendo uma janela dos **`250` eventos mais recentes** em `state.json`.
+   - A visibilidade da aba/painel respeita a permissão `system_view_audit_log`.
+2. **Histórico Temporal `Undo/Redo` (`HISTORY_LIMIT = 6`):**
+   - Antes de aplicar uma mutação com `record_history: true`, `StateManager` empilha um snapshot completo do núcleo da campanha (`_snapshot_core`: `room`, `members`, `characters`, `itemsCatalog`, `npcs`, `escrowSales`, `purchaseProposals`, `battle`, `quests`, `bestiary`, `customPermissionPresets`, `skillTrees`, `classes`, `races`) em `undo_stack`, limitando a **`6` estados** e limpando `redo_stack`.
+   - Mensagens WebSocket `undo` e `redo` (restritas ao Mestre ou permissão `system_undo_redo`) restauram o snapshot via `_restore_core`, executam `_recalculate_all()` (incluindo reconciliação de posições na Mesa via `graveyard`) e propagam o novo estado para toda a sala.
 
 ## Consequências
-- Total rastreabilidade e histórico de auditoria.
-- Consultas no frontend serão paginadas para evitar sobrecarga de payload.
+
+- **Positivas:** recuperação instantânea de erros operacionais sem reiniciar o servidor ou restaurar backups manualmente.
+- **Negativas:** limite fixo de 6 passos para manter o arquivo `state.json` enxuto e ágil na serialização.

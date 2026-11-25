@@ -1,104 +1,136 @@
-# Especificação 02: Ficha de Personagem, Status e Motor de Atributos
+# Especificação 02: Ficha de Personagem, Atributos, Status, Notas e Avatares
 
-## 1. Estrutura da Ficha
-* **Identificação:** Nome, Idade, Altura, História, Descrição das Habilidades.
-* **Nível:** Nível numérico do personagem (inicia em 1).
-* **Experiência (XP):** XP Atual / XP Necessário para o próximo nível.
-* **Pontos de Habilidade:** Reserva para aquisição ou evolução de habilidades.
+## 1. Os 5 Atributos Canônicos e Sistema Point Buy
 
----
+Toda ficha possui exatamente **5 Atributos Canônicos** (`CANONICAL_ATTRIBUTES` em `rules_engine.py` e `01-core-state.js`):
+1. `FORCA` (**Força** — `FOR`)
+2. `DESTREZA` (**Destreza** — `DES`)
+3. `INTELIGENCIA` (**Inteligência** — `INT`)
+4. `SABEDORIA` (**Sabedoria** — `SAB`)
+5. `LABIA` (**Lábia** — `LAB`)
 
-## 2. Status Iniciais e Recursos Vitais (Nível 1)
-
-Todo personagem recém-criado inicia com os seguintes valores padrão:
-
-| Status | Valor Inicial | Descrição |
-| :--- | :---: | :--- |
-| **Nível** | 1 | Nível inicial da jornada. |
-| **XP** | 0 / 80 | Requer 80 XP para subir ao Nível 2. |
-| **Pontos de Habilidade** | 0 | Inicia em 0 e ganha **+2 pontos** a cada novo nível. |
-| **Vida (HP)** | 80 / 80 | Reserva de vitalidade do personagem. |
-| **Armadura** | 0 | Base 0; valor provém estritamente de equipamentos equipados. |
-| **Pontos de Ação (PA)** | 3 | Quantidade de ações/recursos disponíveis. |
-| **Mana Máxima** | 100 / 100 | Energia arcana/mágica para conjurações. |
-| **Regeneração de Mana** | 20% | Percentual de recuperação de mana. |
-| **Defesa** | 0 | Estatística defensiva base. |
-| **Ataque** | 0 | Estatística ofensiva base. |
-| **Arcana** | 0 | Afinidade com poderes arcanos. |
-| **Santidade** | 0 | Afinidade com poderes sagrados/divinos. |
-
-### 2.1 Curva de Progressão de Nível e XP (+8% por nível)
-O custo de XP para alcançar o próximo nível aumenta em **8% composto a cada nível**:
-$$XP_{req}(N) = \text{round}(XP_{req}(N-1) \times 1.08)$$
-*Onde a função de arredondamento segue o `roundingMode` (`ROUND_UP` ou `ROUND_DOWN`) configurado na sala (ADR-009).*
-
-* **Exemplo de Escala de XP:**
-  * Nível 1 $\rightarrow$ 2: **80 XP**
-  * Nível 2 $\rightarrow$ 3: $80 \times 1.08 =$ **86 XP** (arredondado)
-  * Nível 3 $\rightarrow$ 4: $86.4 \times 1.08 =$ **93 XP** (arredondado)
-  * Nível 4 $\rightarrow$ 5: $93.31 \times 1.08 =$ **101 XP** (arredondado)
-
-### 2.2 Progressão de Pontos de Habilidade
-* $\text{Pontos de Habilidade} = (\text{Nível} - 1) \times 2$
-* Nível 1: 0 pontos
-* Nível 2: 2 pontos (+2)
-* Nível 3: 4 pontos (+2)
-* Nível 4: 6 pontos (+2)
+### Regras de Distribuição na Criação (`validate_point_buy`)
+- **Base Inicial:** todos os 5 atributos iniciam em **`8`** (soma inicial = `40`).
+- **Pontos Livres:** **`+17` pontos** para distribuir, totalizando **`57` pontos** máximos (`sum(attributes) <= 57`).
+- **Piso Mínimo:** nenhum atributo pode ser reduzido abaixo de **`7`** na criação.
+- **Regra do 1 Ponto:**
+  - Por padrão, o teto individual máximo é **`18`**.
+  - O jogador pode reduzir **no máximo `1` atributo de `8` para `7`** (ganhando `+1` ponto extra para gastar), o que eleva o teto permitido de **`18` para `19`** em outro atributo.
+  - Reduzir dois ou mais atributos para `7` é rejeitado por `validate_point_buy`.
 
 ---
 
-## 3. Atributos Principais
-Existem 5 atributos canônicos:
-1. **Força:** Força física simples e potência muscular.
-2. **Destreza:** Agilidade geral, reflexos e ações manuais.
-3. **Inteligência:** Intelecto geral e capacidade de análise/raciocínio.
-4. **Sabedoria:** Vivência, intuição e influência em situações diversas.
-5. **Lábia:** Capacidade de persuasão, negociação e carisma.
+## 2. Modificadores de Rolagem e Sucesso Automático Passivo
 
----
+### Tabela de Modificadores (`get_attribute_modifier`)
+Calculada dinamicamente sobre o **valor efetivo** do atributo (base + modificadores de raça, classe, árvores, itens equipados e buffs/nerfs):
 
-## 4. Matemática de Distribuição de Pontos (Point Buy)
-1. **Base Inicial:** Todo personagem inicia com valor **8** em todos os 5 atributos (representando a média humana).
-2. **Pote de Pontos Padrão:** O jogador recebe **17 pontos extras** para distribuir livremente.
-3. **Teto Inicial:** Nenhum atributo pode ultrapassar **18** durante a distribuição padrão dos 17 pontos.
-4. **Regra Estrita de Permuta (Regra do 1 Ponto):**
-   * O jogador pode escolher **no máximo um** atributo para reduzir em 1 ponto (de 8 para 7).
-   * Essa redução concede +1 ponto ao pote de distribuição, totalizando **18 pontos a distribuir**.
-   * O sistema proíbe reduzir múltiplos atributos para ganhar mais de 18 pontos na criação.
-   * Através dessa permuta, o jogador pode ultrapassar o teto padrão de 18 pontos em um atributo, alcançando o teto máximo absoluto de 19 pontos na criação (nunca 20).
-5. **Invariante Matemático na Criação:**
-   $$\sum \text{Atributos} = 57 \text{ pontos no total}$$
-   * Com teto máximo de 19 pontos por atributo e no máximo 1 redução de 8 para 7.
-
----
-
-## 5. Poderes de Intervenção do Mestre sobre Atributos
-* **Ajuste Forçado por Roleplay:** O Mestre pode alterar qualquer atributo de um jogador para qualquer valor arbitrário (ex: reduzir Força para 3 para um personagem ancião/enfermo).
-* **Concessão Direta de Atributos:** O Mestre pode conceder pontos adicionais de atributos para um jogador ou para todo o grupo simultaneamente.
-* **Recompensa de Missões:** Missões podem premiar o jogador com pontos de atributo.
-
----
-
-## 6. Tabela de Modificadores de Rolagem
-
-| Valor do Atributo | Modificador |
+| Valor Efetivo | Modificador |
 | :---: | :---: |
-| 1 | -5 |
-| 2 ~ 3 | -3 |
-| 4 ~ 5 | -2 |
-| 6 ~ 7 | -1 |
-| 8 ~ 9 | 0 |
-| 10 ~ 11 | +1 |
-| 12 ~ 13 | +2 |
-| 14 ~ 15 | +3 |
-| 16 ~ 17 | +4 |
-| 18 ~ 19 | +5 |
-| 20+ | +7 |
+| `<= 1` | `-5` |
+| `2 – 3` | `-3` |
+| `4 – 5` | `-2` |
+| `6 – 7` | `-1` |
+| `8 – 9` | `0` |
+| `10 – 11` | `+1` |
+| `12 – 13` | `+2` |
+| `14 – 15` | `+3` |
+| `16 – 17` | `+4` |
+| `18 – 19` | `+5` |
+| `>= 20` | `+7` |
+
+### Sucesso Automático Passivo (`get_passive_auto_success_dc`)
+Personagens com atributos elevados dispensam rolagem contra dificuldades triviais/moderadas:
+- **`15 – 16`:** Sucesso Automático em testes com **`DC 5`**
+- **`17 – 18`:** Sucesso Automático em testes com **`DC 8`**
+- **`>= 19`:** Sucesso Automático em testes com **`DC 11`**
+- **`< 15`:** Sem sucesso automático passivo (`null`).
 
 ---
 
-## 7. Mecânica de Sucesso Automático Passivo
-Quando o personagem possui atributos elevados, ele passa automaticamente em testes de baixa dificuldade sem necessidade de rolagem de dados:
-* **Atributo $\ge 15$:** Sucesso automático em testes com Dificuldade (DC) $\le 5$.
-* **Atributo $\ge 17$:** Sucesso automático em testes com Dificuldade (DC) $\le 8$.
-* **Atributo $\ge 19$:** Sucesso automático em testes com Dificuldade (DC) $\le 11$.
+## 3. Status Vitais, Atributos Derivados e Precedência Matemática
+
+O motor `compute_character_derived_stats` (`rules_engine.py`) recalcula todos os status efetivos sempre que o estado é sincronizado ou editado:
+
+- **Status Vitais:**
+  - **Vida (`hp` / `maxHp`):** base padrão `80`.
+  - **Armadura (`armor` / `maxArmor`):** base padrão `0`.
+  - **Mana (`mana` / `maxMana`):** base padrão `100`.
+  - **Pontos de Ação (`pa` / `maxPa`):** base padrão `3`.
+  - **Regeneração (`regen %`):** base padrão `20%` (recupera Mana no início do turno; também suporta bônus específicos `effectiveRegenVida` e `effectiveRegenArmadura`).
+  - **Overflow:** valores atuais acima do máximo (ex.: cura ou escudo temporário) são permitidos e destacados com badge `OVERFLOW` e borda dourada mate (`.stat-overflow-glow`).
+- **Atributos Derivados de Combate e Carga:**
+  - `Ataque` (`attack`), `Defesa` (`defense`), `Arcana` (`arcana`), `Santidade` (`santidade`), `Capacidade de Peso` (`maxWeight`, base padrão `27 kg` para jogadores e `999 kg` para inimigos), `resistancePercent` e `damageReductionPercent`.
+- **Precedência e Arredondamento (`compute_stat_with_modifiers` / `apply_rounding`):**
+  - `FLAT_FIRST` (padrão): `(Base + Σ Flat) × (1 + Σ Percent / 100)`
+  - `PERCENT_FIRST`: `(Base × (1 + Σ Percent / 100)) + Σ Flat`
+  - Arredondamento configurável na sala: `ROUND_DOWN` (padrão, `math.floor` com tolerância `1e-9`) ou `ROUND_UP` (`math.ceil`).
+
+---
+
+## 4. As 7 Resistências Elementais / de Dano (%)
+
+Cada ficha e criatura do bestiário possui 7 resistências percentuais (`ELEMENTAL_RESISTANCE_TYPES`):
+1. `FISICO` (**Físico**)
+2. `MAGICO` (**Mágico**)
+3. `PYRO` (**Pyro**)
+4. `CRYO` (**Cryo**)
+5. `ELETRICO` (**Elétrico**)
+6. `PROFANO` (**Profano**)
+7. `SACRO` (**Sacro**)
+
+O valor efetivo de cada tipo soma o valor base na ficha (`elementalResistances[tipo]`), modificadores diretos `RES_<TIPO>` (em Flat ou Percent) e o modificador global `RES_GERAL`. Valores negativos representam vulnerabilidade elemental.
+
+---
+
+## 5. Os 7 Acúmulos de Status e Gatilhos Automáticos
+
+Cada combatente possui 7 medidores de acúmulo (`STATUS_RESISTANCE_TYPES`), cada qual com valor atual (`current`) e limite máximo (`max`, base padrão `100`, ajustável por ficha e por modificadores `ACUMULO_<TIPO>` e `ACUMULO_GERAL`).
+
+Quando um acúmulo cresce e atinge `current == max`, o servidor (`detect_max_resistance_toasts`) emite o alerta `<Nome> MAX ACÚMULO: <STATUS>!` e o cliente (`applyAccumulationTrigger` em `02-websocket-combat.js`) dispara automaticamente o efeito correspondente:
+
+| Acúmulo | Gatilho Automático ao Atingir o Máximo (`current >= max`) |
+| :--- | :--- |
+| **Congelamento** | Aplica Nerf `Congelamento Severo` (`CONGELAMENTO`, 1 turno): o alvo **perde o próximo turno** e recebe `+25% Resistência Geral` e `+25% Resistência Perfuração`. Ao pular o turno, remove `CONGELAMENTO` e aplica `Imunidade a Congelamento` (1 turno); caso novos acúmulos atinjam o máximo durante a imunidade, ficam represados e disparam assim que a imunidade expira. |
+| **Choque** | Causa dano imediato de `30 + (5 × Nível)` (absorvido pela Armadura antes da Vida) e reduz Cargas da batalha: **`-1` carga** se o alvo for inimigo ou **`-2` cargas** se for jogador. |
+| **Sangramento** | Causa hemorragia imediata **direta na Vida** (ignora Armadura): **`11%` do HP Máx** em inimigos ou **`22%` do HP Máx** em jogadores. |
+| **Chamas** | Aplica Nerf `Chamas (Combustão)` por `3` turnos com dano inicial de **`15 + (2 × Nível)`** aplicado no **fim do turno** (Armadura → Vida). A cada ativação ou tick de fim de turno, o próximo dano escala para `floor((danoAtual + 10) × 1.2)`; uma nova ativação renova a duração para `3` turnos sem causar dano imediato. |
+| **Veneno** | Aplica Nerf `Veneno Letal` por `3` turnos, causando dano **direto na Vida** no **início de cada turno**: **`5%` do HP Máx** em inimigos ou **`10%` do HP Máx** em jogadores. Nova ativação renova a duração para `3` turnos. |
+| **Atordoamento** | Aplica Nerf `Atordoamento` com **`-1 PA` por `2` turnos** (reduzindo o PA atual caso ultrapasse o novo teto disponível). Nova ativação renova para `2` turnos. |
+| **Cegueira** | Aplica penalidade `Cegueira` (desvantagem em testes) por **`2` turnos**. |
+
+---
+
+## 6. Curva de XP, Progressão e Pontos de Talento
+
+Implementada em `calculate_xp_required_for_level` e `process_xp_and_level_up` (`rules_engine.py`):
+- **Fórmula Exponencial:** Nível `1 → 2` exige **`80 XP`**. Cada nível seguinte multiplica o requisito anterior por **`1.08` (`+8%` composto)** respeitando o arredondamento da sala.
+- **Multi-Level Up:** ao receber XP suficiente para mais de um nível, o excedente é preservado em loop até `xp < xpNext`.
+- **Recompensa por Nível:** cada nível ganho concede automaticamente **`+2 Pontos de Talento` (`skillPoints`)** para uso nas Árvores de Habilidades, Classes e Subclasses.
+
+---
+
+## 7. Sistema de Buffs e Nerfs (`char.buffsNerfs`)
+
+Gerenciado pelo modal `modal-buffs-nerfs`:
+- **Tipos:** `BUFF` (card esmeralda `.buff-item-card`) ou `NERF` (card carmesim `.nerf-item-card`).
+- **Duração:**
+  - **Temporário:** número inteiro de turnos (`duration > 0`), decrementado em `1` no início do turno do combatente (exceto `CHAMAS`, decrementado no fim do turno).
+  - **Permanente:** flag `isPermanent: true` (`duration: null`), nunca expira por passagem de turnos.
+- **Múltiplos Modificadores e Toggle Rápido:** um único Buff/Nerf pode agrupar múltiplos modificadores (`targetStat`, `modifierType: FLAT | PERCENT`, `value`) sobre qualquer alvo de `VALID_EFFECT_TARGETS`, além de possuir um toggle switch rápido (`enabled`) para ativar/pausar o efeito sem excluí-lo.
+
+---
+
+## 8. Bloco de Notas Multi-Páginas com Autosave Isolado
+
+Implementado em `modal-notes` e `05-modals-notes-inventory-bestiary.js`:
+- **Estrutura por Ficha (`char.notesPages`):** cada personagem possui suas próprias abas independentes identificadas por ID (`note_<timestamp>_<rand>`), com criação (`modal-new-note-page`), renomeação e exclusão (mínimo de 1 aba mantida).
+- **Editor Rico:** barra de ferramentas sem rolagem com títulos (`H1`, `H2`), formatação (`B`, `I`, `U`, `S`), seletores flutuantes de cor de texto e marcador de destaque, listas ordenadas/não-ordenadas, **checklists interativos** (`.note-checkbox`), inserção de tabelas editáveis, citações (`blockquote`), divisor horizontal (`hr`) e contador ao vivo de palavras e caracteres.
+- **Autosave Isolado:** alterações disparam `scheduleNotesAutoSave(600ms)` gravando especificamente em `target.notesPages` da ficha identificada por `currentNotesCharId` e sincronizando com a sala via WebSocket.
+
+---
+
+## 9. Sistema de Avatares Circulares e Visualização em Tela Cheia
+
+- **Upload com Recorte Circular (`modal-image-cropper`):** ao selecionar uma imagem na criação/edição da ficha ou bestiário, o usuário ajusta zoom e posição sobre uma máscara circular e envia em `POST /api/upload-image` tanto a imagem completa (`*_orig.<ext>`) quanto o recorte do token (`*_token.png/.webp`) para `static/img/fichas/personagens/` ou `static/img/fichas/inimigos/`.
+- **Exibição e Ampliação (`modal-image-viewer`):** os cards exibem o token circular (`64 × 64 px`) centralizado no topo (`top: -32px`). Clicar no avatar (`.image-viewer-trigger`) abre a imagem original completa em tela cheia.

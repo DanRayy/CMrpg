@@ -1,34 +1,27 @@
-# ADR-011: Status Iniciais de Personagem e Curva de Progressão de Nível e XP
+# ADR-011: Atributos Iniciais (Point Buy), Curva de XP, Raças e Subclasses Nv.15+
 
-## Status
-Aceito
+- **Status:** Aceito (Em Produção)
 
 ## Contexto
-Anteriormente, valores como HP e Armadura eram mantidos como referências genéricas ou sem fórmulas fechadas. O Mestre confirmou os status vitais, valores base iniciais, recursos de combate e a fórmula matemática para avanço de nível e pontos de habilidade.
+
+As regras de criação de personagem e progressão de campanha do CMrpg exigem equilíbrio na distribuição inicial dos 5 atributos, transparência em rolagens passivas e uma curva de XP exponencial suave combinada com desbloqueio de vocações avançadas (Subclasses e Herança) no Nível 15+.
 
 ## Decisão
-1. **Status Base Iniciais (Nível 1):**
-   - `Nível`: 1
-   - `XP`: 0 / 80 (80 XP necessários para alcançar o Nível 2)
-   - `Pontos de Habilidade`: 0 (+2 pontos a cada nível alcançado)
-   - `HP (Vida)`: 80 / 80
-   - `Armadura`: 0 (depende exclusivamente de armaduras/equipamentos)
-   - `PA (Pontos de Ação)`: 3
-   - `Mana Máxima`: 100 / 100
-   - `Regeneração de Mana`: 20%
-   - `Defesa`: 0
-   - `Ataque`: 0
-   - `Arcana`: 0
-   - `Santidade`: 0
-2. **Curva Exponencial de XP (+8% por nível):**
-   - Para subir do nível $N$ para o nível $N+1$, o requisito de XP é:
-     $$XP_{req}(N) = \text{round}(XP_{req}(N-1) \times 1.08)$$
-     *Com $XP_{req}(1) = 80$, e a função de arredondamento seguindo o `roundingMode` (`ROUND_UP` ou `ROUND_DOWN`) configurado na sala (ADR-009).*
-3. **Progressão de Pontos de Habilidade:**
-   - Fórmula: $\text{Pontos de Habilidade Total} = (\text{Nível} - 1) \times 2$.
-4. **Alvos de Efeitos Expandidos:**
-   - Todos esses status (`HP`, `ARMADURA`, `MANA`, `PA`, `REGEN_MANA`, `DEFESA`, `ATAQUE`, `ARCANA`, `SANTIDADE`) passam a ser alvos válidos para bônus/penalidades de itens e consumíveis.
+
+1. **Point Buy Canônico (`validate_point_buy` em `rules_engine.py`):**
+   - 5 atributos (`FORCA`, `DESTREZA`, `INTELIGENCIA`, `SABEDORIA`, `LABIA`) iniciam em `8`, com `+17` pontos livres (`57` pontos totais).
+   - **Regra do 1 Ponto:** no máximo `1` atributo pode cair para `7`, elevando o teto individual de `18` para `19`.
+2. **Modificadores e Sucesso Automático Passivo:**
+   - Tabela de modificadores de `-5` (`<= 1`) até `+7` (`>= 20`).
+   - Sucesso automático passivo em **`DC 5`** (`15–16`), **`DC 8`** (`17–18`) e **`DC 11`** (`>= 19`).
+3. **Curva Exponencial de XP (`calculate_xp_required_for_level`):**
+   - Nível `1 → 2` = `80 XP`, crescendo **`+8%` composto por nível** (`apply_rounding(req * 1.08)`).
+   - Cada nível ganho concede **`+2 Pontos de Talento` (`skillPoints`)**.
+4. **Raças Base e Subclasses no Nível 15+:**
+   - 5 Raças Base pré-cadastradas (`Dragão`, `Humano`, `Elfo`, `Orc`, `Xituiara`) + suporte a Sub-raças e bônus inicial de Pontos de Talento.
+   - Subclasses desbloqueiam exclusivamente em **`level >= 15`**, permitindo configurar Herança Opcional (1 efeito substituído + 1 habilidade `TALENTO`/`ATIVA`/`PASSIVA` de outra classe base) e troca segura com reset e devolução de 100% dos pontos gastos.
 
 ## Consequências
-- A ficha ganha sustentação numérica completa e previsível.
-- A progressão de XP e pontos de habilidade é 100% determinística e testável via TDD.
+
+- **Positivas:** progressão clara de poder em campanhas longas e personalização profunda sem perda de pontos ao reconfigurar vocação.
+- **Negativas:** exige recálculo completo de derivados após qualquer mudança de nível, raça ou classe.
