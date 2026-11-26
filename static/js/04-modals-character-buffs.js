@@ -2980,62 +2980,52 @@
         }
 
         <div class="space-y-1.5">
-          ${
-            allAcquiredTreeNodes.length > 0
-              ? allAcquiredTreeNodes
-                  .map(({ tree, node, nodeState }) => {
-                    const cat = String(node.category || 'TALENTO').toUpperCase();
-                    const isTalent = cat === 'TALENTO';
-                    const rankBadge = isTalent
-                      ? `Nível ${nodeState.rank}/${nodeState.maxRanks}`
-                      : nodeState.maxUpgrades > 0
-                      ? `Melhoria ${nodeState.upgrades}/${nodeState.maxUpgrades}`
-                      : 'Liberada';
-                    const mult = isTalent ? nodeState.rank : 1;
-                    const effectsStr = (node.effects || [])
-                      .map((ef) => {
-                        const totalVal = Number((Number(ef.value || 0) * mult).toFixed(2));
-                        return `${formatEffectTargetLabel(ef.targetStat)} ${totalVal >= 0 ? '+' : ''}${totalVal}${ef.modifierType === 'PERCENT' ? '%' : ''}`;
-                      })
-                      .join(' • ');
-                    return `
-                      <div class="p-2.5 rounded-xl bg-black/35 border ${
-                        nodeState.enabled ? 'border-amber-500/35' : 'border-slate-700/50 opacity-60'
-                      } flex flex-wrap items-center justify-between gap-2 text-xs">
-                        <div class="min-w-0 flex-1">
-                          <div class="flex flex-wrap items-center gap-1.5">
-                            <span class="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold uppercase bg-amber-500/15 gold-title border border-amber-500/30">${escapeHtml(cat)}${node.subtype ? ` - ${escapeHtml(node.subtype.toUpperCase())}` : ''}</span>
-                            <strong class="font-serif-fantasy font-bold app-title">${escapeHtml(node.name)}</strong>
-                            <span class="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-purple-500/20 text-purple-200 border border-purple-500/35">${escapeHtml(rankBadge)}</span>
-                            <span class="text-[10px] font-mono app-muted">(${escapeHtml(tree.name)})</span>
-                          </div>
-                          <p class="text-[11px] app-muted mt-0.5">${escapeHtml(node.description || '')}</p>
-                          ${effectsStr ? `<div class="text-[10px] font-mono text-emerald-300 mt-0.5"><iconify-icon icon="game-icons:lightning-branches"></iconify-icon> ${escapeHtml(effectsStr)}</div>` : ''}
-                        </div>
-                        ${
-                          canEdit
-                            ? `<label class="inline-flex items-center gap-1.5 cursor-pointer select-none shrink-0">
-                                <input type="checkbox" data-toggle-skill-node="${escapeHtml(node.id)}" data-char-id="${escapeHtml(char.id)}" ${nodeState.enabled ? 'checked' : ''} class="w-4 h-4 rounded accent-emerald-500 cursor-pointer" />
-                                <span class="text-[10px] font-mono font-bold ${nodeState.enabled ? 'text-emerald-300' : 'text-slate-400'}">${nodeState.enabled ? 'Ativa' : 'Inativa'}</span>
-                              </label>`
-                            : `<span class="text-[10px] font-mono font-bold ${nodeState.enabled ? 'text-emerald-300' : 'text-slate-400'}">${nodeState.enabled ? 'Ativa' : 'Inativa'}</span>`
-                        }
-                      </div>
-                    `;
+          ${(() => {
+            const acquiredPassiveNodes = allAcquiredTreeNodes.filter(
+              ({ node }) => String(node?.category || '').toUpperCase() === 'PASSIVA'
+            );
+            if (acquiredPassiveNodes.length === 0) {
+              return '<p class="app-muted italic text-xs">Nenhuma passiva adquirida nas árvores ainda. Clique em "Abrir Árvore de Habilidades" para explorar e liberar nós.</p>';
+            }
+            return acquiredPassiveNodes
+              .map(({ tree, node, nodeState }) => {
+                const cat = String(node.category || 'PASSIVA').toUpperCase();
+                const rankBadge = nodeState.maxUpgrades > 0
+                  ? `Melhoria ${nodeState.upgrades}/${nodeState.maxUpgrades}`
+                  : 'Liberada';
+                const effectsStr = (node.effects || [])
+                  .map((ef) => {
+                    const totalVal = Number(Number(ef.value || 0).toFixed(2));
+                    return `${formatEffectTargetLabel(ef.targetStat)} ${totalVal >= 0 ? '+' : ''}${totalVal}${ef.modifierType === 'PERCENT' ? '%' : ''}`;
                   })
-                  .join('')
-              : ''
-          }
-          ${
-            (char.talents || []).map(
-              (t) => `<div class="p-2 rounded bg-black/30 border app-divider-border"><strong><iconify-icon icon="game-icons:sparkles"></iconify-icon> ${escapeHtml(t.name)}:</strong> <span class="app-muted">${escapeHtml(t.description || '')}</span></div>`
-            ).join('')
-          }
-          ${
-            allAcquiredTreeNodes.length === 0 && (char.talents || []).length === 0
-              ? '<p class="app-muted italic text-xs">Nenhuma habilidade ou talento adquirido nas árvores ainda. Clique em "Abrir Árvore de Habilidades" para explorar e liberar nós.</p>'
-              : ''
-          }
+                  .join(' • ');
+                return `
+                  <div class="p-2.5 rounded-xl bg-black/35 border ${
+                    nodeState.enabled ? 'border-amber-500/35' : 'border-slate-700/50 opacity-60'
+                  } flex flex-wrap items-center justify-between gap-2 text-xs">
+                    <div class="min-w-0 flex-1">
+                      <div class="flex flex-wrap items-center gap-1.5">
+                        <span class="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold uppercase bg-amber-500/15 gold-title border border-amber-500/30">${escapeHtml(cat)}${node.subtype ? ` - ${escapeHtml(node.subtype.toUpperCase())}` : ''}</span>
+                        <strong class="font-serif-fantasy font-bold app-title">${escapeHtml(node.name)}</strong>
+                        <span class="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-purple-500/20 text-purple-200 border border-purple-500/35">${escapeHtml(rankBadge)}</span>
+                        <span class="text-[10px] font-mono app-muted">(${escapeHtml(tree.name)})</span>
+                      </div>
+                      <p class="text-[11px] app-muted mt-0.5">${escapeHtml(node.description || '')}</p>
+                      ${effectsStr ? `<div class="text-[10px] font-mono text-emerald-300 mt-0.5"><iconify-icon icon="game-icons:lightning-branches"></iconify-icon> ${escapeHtml(effectsStr)}</div>` : ''}
+                    </div>
+                    ${
+                      canEdit
+                        ? `<label class="inline-flex items-center gap-1.5 cursor-pointer select-none shrink-0">
+                            <input type="checkbox" data-toggle-skill-node="${escapeHtml(node.id)}" data-char-id="${escapeHtml(char.id)}" ${nodeState.enabled ? 'checked' : ''} class="w-4 h-4 rounded accent-emerald-500 cursor-pointer" />
+                            <span class="text-[10px] font-mono font-bold ${nodeState.enabled ? 'text-emerald-300' : 'text-slate-400'}">${nodeState.enabled ? 'Ativa' : 'Inativa'}</span>
+                          </label>`
+                        : `<span class="text-[10px] font-mono font-bold ${nodeState.enabled ? 'text-emerald-300' : 'text-slate-400'}">${nodeState.enabled ? 'Ativa' : 'Inativa'}</span>`
+                    }
+                  </div>
+                `;
+              })
+              .join('');
+          })()}
         </div>
       </div>
 
