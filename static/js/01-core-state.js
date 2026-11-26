@@ -2341,13 +2341,15 @@
     if (!char || char.isEnemy) return [];
     const clsList = Array.isArray(st?.classes) ? st.classes : [];
     const result = [];
-    if (char.classId) {
-      const baseCls = clsList.find((c) => c && c.id === char.classId && !c.isSubclass);
+    const normClassId = String(char.classId || '').trim();
+    if (normClassId) {
+      const baseCls = clsList.find((c) => c && String(c.id || '').trim() === normClassId && !c.isSubclass);
       if (baseCls) result.push(baseCls);
     }
     const charLvl = Math.max(1, Number(char.level || 1));
-    if (charLvl >= 15 && char.subclassId) {
-      const subCls = clsList.find((c) => c && c.id === char.subclassId && Boolean(c.isSubclass));
+    const normSubId = String(char.subclassId || '').trim();
+    if (charLvl >= 15 && normSubId) {
+      const subCls = clsList.find((c) => c && String(c.id || '').trim() === normSubId && Boolean(c.isSubclass));
       if (subCls) result.push(subCls);
     }
     return result;

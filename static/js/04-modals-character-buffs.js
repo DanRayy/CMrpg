@@ -3080,9 +3080,34 @@
     return combined;
   }
 
+  function isClassContainerEquippedOnChar(char, tree, node = null) {
+    if (!tree || !isClassContainer(tree)) return true;
+    if (!char || char.isEnemy) return false;
+    const normTreeId = String(tree.id || '').trim();
+    if (!normTreeId) return false;
+    const isSub = Boolean(tree.isSubclass);
+    const charLvl = Number(char.level || 1);
+    const normClassId = String(char.classId || '').trim();
+    const normSubId = String(char.subclassId || '').trim();
+    const eqList = typeof getCharacterEquippedClasses === 'function' ? getCharacterEquippedClasses(char) : [];
+    const inEqList = eqList.some((c) => c && String(c.id || '').trim() === normTreeId);
+
+    if (isSub) {
+      if (charLvl < 15) return false;
+      return normSubId === normTreeId || inEqList;
+    }
+
+    const isInheritedNode =
+      node &&
+      String(char.subclassInheritance?.otherClassId || '').trim() === normTreeId &&
+      String(char.subclassInheritance?.inheritedNodeId || '').trim() === String(node.id || '').trim();
+
+    return normClassId === normTreeId || inEqList || Boolean(isInheritedNode);
+  }
+
   function openSkillTreeModal(charId = null, treeId = null) {
     const heroes = (state.characters || []).filter((c) => !c.isEnemy);
-    let targetCharId = charId;
+    let targetCharId = String(charId || '').trim();
     if (!targetCharId) {
       const myChar = getMyLinkedCharacter();
       if (myChar && !myChar.isEnemy) {
@@ -3094,13 +3119,14 @@
       }
     }
     state.activeSkillTreeCharId = targetCharId || null;
-    const activeChar = heroes.find((h) => h.id === state.activeSkillTreeCharId) || null;
+    const activeChar = heroes.find((h) => String(h.id || '').trim() === String(state.activeSkillTreeCharId || '').trim()) || null;
 
     const availableContainers = getAvailableRadialContainersForCharacter(activeChar);
     const visibleTrees = getVisibleSkillTrees();
-    if (treeId && findProgressionContainerById(treeId)) {
-      state.activeSkillTreeId = treeId;
-    } else if (!state.activeSkillTreeId || !availableContainers.some((t) => t.id === state.activeSkillTreeId)) {
+    const normTreeId = String(treeId || '').trim();
+    if (normTreeId && findProgressionContainerById(normTreeId)) {
+      state.activeSkillTreeId = normTreeId;
+    } else if (!state.activeSkillTreeId || !availableContainers.some((t) => String(t.id || '').trim() === String(state.activeSkillTreeId || '').trim())) {
       state.activeSkillTreeId = (visibleTrees[0] || availableContainers[0])?.id || null;
     }
 
@@ -3277,11 +3303,7 @@
     const offset = (C * (1 - pct / 100)).toFixed(2);
     const isCls = isClassContainer(tree);
     const isSub = Boolean(tree.isSubclass);
-    const isEquippedOnChar = activeChar
-      ? isSub
-        ? activeChar.subclassId === tree.id && Number(activeChar.level || 1) >= 15
-        : activeChar.classId === tree.id
-      : true;
+    const isEquippedOnChar = activeChar ? isClassContainerEquippedOnChar(activeChar, tree) : true;
     const isCoreEffectActive = isCls ? isEquippedOnChar : progress.isComplete;
     const coreTitle = isCls
       ? isSub
@@ -3370,27 +3392,22 @@
     // Ações respeitando permissões do dono da ficha / Mestre
     const isClsContainer = isClassContainer(tree);
     const isSubContainer = Boolean(tree.isSubclass);
-    const isInheritedNodeForChar =
-      char?.subclassInheritance?.otherClassId === tree.id &&
-      char?.subclassInheritance?.inheritedNodeId === node.id;
-    const isEquippedClassOnChar = !isClsContainer
-      ? true
-      : char
-      ? isSubContainer
-        ? char.subclassId === tree.id && Number(char.level || 1) >= 15
-        : char.classId === tree.id || isInheritedNodeForChar
-      : false;
+    const isEquippedClassOnChar = isClassContainerEquippedOnChar(char, tree, node);
 
     let actionsHtml = '';
     if (char && canEditChar && !isEquippedClassOnChar) {
-      const isOtherInhClass = char?.subclassInheritance?.otherClassId === tree.id;
-      actionsHtml = `<div class="sk-insp-actions"><div class="sk-act-note">${
-        isOtherInhClass
-          ? `Apenas a habilidade herdada desta classe (${escapeHtml(tree.name)}) pode ser adquirida na ficha de ${escapeHtml(char.name)}.`
-          : isSubContainer && Number(char.level || 1) < 15
-          ? 'Subclasse desbloqueia apenas no Nível 15.'
-          : `Selecione esta ${isSubContainer ? 'Subclasse' : 'Classe'} na ficha de ${escapeHtml(char.name)} para adquirir seus nós.`
-      }</div></div>`;
+      const isOtherInhClass = String(char?.subclassInheritance?.otherClassId || '').trim() === String(tree.id || '').trim();
+      const subLockedByLevel = isSubContainer && Number(char.level || 1) < 15;
+      const canQuickEquip = !isOtherInhClass && !subLockedByLevel;
+      const noteText = isOtherInhClass
+        ? `Apenas a habilidade herdada desta classe (${escapeHtml(tree.name)}) pode ser adquirida na ficha de ${escapeHtml(char.name)}.`
+        : subLockedByLevel
+        ? 'Subclasse desbloqueia apenas no Nível 15.'
+        : `Selecione esta ${isSubContainer ? 'Subclasse' : 'Classe'} na ficha de ${escapeHtml(char.name)} para adquirir seus nós.`;
+      const quickEquipBtnHtml = canQuickEquip
+        ? `<button type="button" class="sk-act-btn" data-st-equip-vocation="${escapeHtml(tree.id)}" data-vocation-kind="${isSubContainer ? 'SUBCLASS' : 'CLASS'}" data-char-id="${escapeHtml(char.id)}">Equipar ${isSubContainer ? 'Subclasse' : 'Classe'} na Ficha</button>`
+        : '';
+      actionsHtml = `<div class="sk-insp-actions"><div class="sk-act-note">${noteText}</div>${quickEquipBtnHtml}</div>`;
     } else if (char && canEditChar) {
       const idAttrs = `data-tree-id="${escapeHtml(tree.id)}" data-char-id="${escapeHtml(char.id)}"`;
       const buttons = [];
@@ -3849,15 +3866,11 @@
         showToast('Subclasses exigem Nível 15 ou superior!', 'warning');
         return;
       }
-      const isInheritedNode =
-        char.subclassInheritance?.otherClassId === tree.id &&
-        char.subclassInheritance?.inheritedNodeId === node.id;
-      const equipped = isSub
-        ? char.subclassId === tree.id
-        : char.classId === tree.id || isInheritedNode;
+      const equipped = isClassContainerEquippedOnChar(char, tree, node);
       if (!equipped) {
+        const isOtherInhClass = String(char.subclassInheritance?.otherClassId || '').trim() === String(tree.id || '').trim();
         showToast(
-          isInheritedNode === false && char.subclassInheritance?.otherClassId === tree.id
+          isOtherInhClass
             ? `Apenas a habilidade herdada desta classe pode ser adquirida na ficha de ${char.name}!`
             : `Selecione "${tree.name}" como sua ${isSub ? 'Subclasse' : 'Classe'} na ficha antes de liberar nós nela!`,
           'warning'

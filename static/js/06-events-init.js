@@ -1042,8 +1042,10 @@
 
       const openClsTreeBtn = e.target.closest('[data-open-char-class-tree]');
       if (openClsTreeBtn) {
-        const clsId = openClsTreeBtn.getAttribute('data-open-char-class-tree');
-        const cId = openClsTreeBtn.getAttribute('data-char-id') || charId;
+        const clsId = String(openClsTreeBtn.getAttribute('data-open-char-class-tree') || '').trim();
+        const cId = String(openClsTreeBtn.getAttribute('data-char-id') || charId || state.activeSheetCharId || '').trim();
+        if (cId) state.activeSkillTreeCharId = cId;
+        if (clsId) state.activeSkillTreeId = clsId;
         openSkillTreeModal(cId, clsId);
         return;
       }
@@ -3302,6 +3304,17 @@
       if (e.target.closest('#btn-st-modal-refund-tree')) {
         if (state.activeSkillTreeCharId && state.activeSkillTreeId) {
           handleRefundWholeSkillTree(state.activeSkillTreeCharId, state.activeSkillTreeId);
+        }
+        return;
+      }
+
+      const equipVocBtn = e.target.closest('[data-st-equip-vocation]');
+      if (equipVocBtn) {
+        const vocId = String(equipVocBtn.getAttribute('data-st-equip-vocation') || '').trim();
+        const vocKind = equipVocBtn.getAttribute('data-vocation-kind') || 'CLASS';
+        const cId = String(equipVocBtn.getAttribute('data-char-id') || state.activeSkillTreeCharId || '').trim();
+        if (cId && vocId && typeof handleSheetChangeCharacterVocation === 'function') {
+          handleSheetChangeCharacterVocation(cId, vocKind, vocId);
         }
         return;
       }
