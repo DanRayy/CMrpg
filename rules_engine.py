@@ -452,8 +452,8 @@ def compute_character_derived_stats(
         if not isinstance(nodes, list) or len(nodes) == 0:
             return
 
-        total_steps = 0
-        acquired_steps = 0
+        spent_points = 0
+        tree_completion_points_goal = 20
 
         for node in nodes:
             if not isinstance(node, dict):
@@ -471,20 +471,35 @@ def compute_character_derived_stats(
                     max_ranks = max(1, int(node.get("maxRanks", 1) or 1))
                 except (ValueError, TypeError):
                     max_ranks = 1
+                raw_cost_per_rank = node.get("costPerRank") if node.get("costPerRank") is not None else node.get("unlockCost", 1)
+                try:
+                    cost_per_rank = max(0, int(round(float(raw_cost_per_rank if raw_cost_per_rank is not None else 1))))
+                except (ValueError, TypeError):
+                    cost_per_rank = 1
                 try:
                     cur_rank = max(0, min(max_ranks, int(n_prog.get("rank", 0) or 0)))
                 except (ValueError, TypeError):
                     cur_rank = 0
                 unlocked = cur_rank > 0
                 enabled = n_prog.get("enabled") is not False
-                total_steps += max_ranks
-                acquired_steps += cur_rank
+                if unlocked:
+                    spent_points += cur_rank * cost_per_rank
                 mult = float(cur_rank)
             else:
                 try:
                     max_upgrades = max(0, int(node.get("maxUpgrades", 0) or 0))
                 except (ValueError, TypeError):
                     max_upgrades = 0
+                raw_unlock_cost = node.get("unlockCost") if node.get("unlockCost") is not None else node.get("costPerRank", 1)
+                try:
+                    unlock_cost = max(0, int(round(float(raw_unlock_cost if raw_unlock_cost is not None else 1))))
+                except (ValueError, TypeError):
+                    unlock_cost = 1
+                raw_upgrade_cost = node.get("upgradeCost", 1)
+                try:
+                    upgrade_cost = max(0, int(round(float(raw_upgrade_cost if raw_upgrade_cost is not None else 1))))
+                except (ValueError, TypeError):
+                    upgrade_cost = 1
                 try:
                     raw_rank = int(n_prog.get("rank", 0) or 0)
                 except (ValueError, TypeError):
@@ -495,8 +510,8 @@ def compute_character_derived_stats(
                 except (ValueError, TypeError):
                     cur_upgrades = 0
                 enabled = n_prog.get("enabled") is not False
-                total_steps += 1 + max_upgrades
-                acquired_steps += (1 if unlocked else 0) + cur_upgrades
+                if unlocked:
+                    spent_points += unlock_cost + (cur_upgrades * upgrade_cost)
                 mult = 1.0
 
             if unlocked and enabled and mult > 0:
@@ -511,8 +526,8 @@ def compute_character_derived_stats(
                 for eff in (node.get("effects") or node.get("modifiers") or []):
                     _apply_eff_to_mods(eff, mult)
 
-        # Regra de Ativação de 100% (exclusiva para Árvores comuns; Classes já aplicam o efeito imediatamente)
-        if not is_class_entity and total_steps > 0 and acquired_steps >= total_steps:
+        # Regra de Ativação de 100% por 20 pontos gastos (exclusiva para Árvores comuns; Classes já aplicam o efeito imediatamente)
+        if not is_class_entity and spent_points >= tree_completion_points_goal:
             for c_eff in (container.get("completionEffects") or []):
                 _apply_eff_to_mods(c_eff, 1.0)
 

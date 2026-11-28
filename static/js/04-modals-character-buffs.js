@@ -3348,7 +3348,13 @@
               ? '<div class="sk-core-effect-empty">Nenhum efeito configurado.</div>'
               : ''
           }
-          <div class="sk-core-progress">${progress.acquiredSteps}/${progress.totalSteps} etapas • ${progress.spentPoints} pts investidos</div>
+          <div class="sk-core-progress">${
+            isCls
+              ? `${progress.acquiredSteps}/${progress.totalSteps} etapas • ${progress.spentPoints} pts investidos`
+              : progress.spentPoints >= TREE_COMPLETION_POINTS_GOAL
+              ? `20/20 pts (Completa) • ${progress.spentPoints} pts investidos`
+              : `${Math.min(TREE_COMPLETION_POINTS_GOAL, progress.spentPoints)}/${TREE_COMPLETION_POINTS_GOAL} pts para 100% • ${progress.spentPoints} pts investidos`
+          }</div>
         </div>
       </div>
     `;
@@ -4231,7 +4237,7 @@
     if (coreSubtitle) {
       coreSubtitle.textContent = isClassMode
         ? 'Aplicado automaticamente na ficha assim que o personagem escolhe esta Classe ou Subclasse (não precisa completar 100% dos nós).'
-        : 'Ativado automaticamente em dourado quando o personagem adquirir 100% de todos os nós e todas as melhorias desta árvore.';
+        : 'Ativado automaticamente em dourado quando o personagem investir 20 pontos de talento nesta árvore.';
     }
     if (coreBtnLabel) {
       coreBtnLabel.textContent = isClassMode ? '＋ Modificador de Classe' : '＋ Efeito se Completa';

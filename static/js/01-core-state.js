@@ -12,6 +12,7 @@
   const STORAGE_KEY_STATE = 'cmrpg_full_state_v2';
   const STORAGE_KEY_NOTIFICATIONS = 'cmrpg_notifications_enabled';
   const MAX_ACTIVE_TREE_PASSIVES = 3;
+  const TREE_COMPLETION_POINTS_GOAL = 20;
   let notificationsEnabled = true;
   const STORAGE_KEY_MEMBER_ID = 'cmrpg_local_member_id';
   const STORAGE_KEY_CURSOR_COLOR_MAP = 'cmrpg_cursor_colors_v1';
@@ -915,17 +916,21 @@
 
     const processContainerNodes = (container, isClsEntity = false) => {
       if (!container || !Array.isArray(container.nodes) || container.nodes.length === 0) return;
-      let totalSteps = 0;
-      let acquiredSteps = 0;
+      let spentPoints = 0;
 
       for (const node of container.nodes) {
         if (!node || !node.id) continue;
         const nState = getCharacterSkillNodeState(char, node);
-        totalSteps += nState.totalSteps;
-        acquiredSteps += nState.acquiredSteps;
+        const catUpper = String(node.category || 'TALENTO').toUpperCase();
+        if (nState.unlocked) {
+          if (catUpper === 'TALENTO') {
+            spentPoints += nState.rank * nState.costPerRank;
+          } else {
+            spentPoints += nState.unlockCost + nState.upgrades * nState.upgradeCost;
+          }
+        }
 
         if (nState.unlocked && nState.enabled) {
-          const catUpper = String(node.category || 'TALENTO').toUpperCase();
           if (catUpper === 'PASSIVA') {
             if (activePassivesApplied >= MAX_ACTIVE_TREE_PASSIVES) {
               if (char.skillTreeProgress[node.id]) {
@@ -956,7 +961,7 @@
         }
       }
 
-      if (!isClsEntity && totalSteps > 0 && acquiredSteps >= totalSteps) {
+      if (!isClsEntity && spentPoints >= TREE_COMPLETION_POINTS_GOAL) {
         completedTreeIds.push(container.id);
         for (const cEff of container.completionEffects || []) {
           let stat = cEff.targetStat || cEff.stat;
@@ -2555,6 +2560,7 @@
 
   function computeSkillTreeProgress(char, tree) {
     const nodes = Array.isArray(tree?.nodes) ? tree.nodes : [];
+    const isCls = isClassContainer(tree);
     if (nodes.length === 0) {
       return {
         acquiredSteps: 0,
@@ -2586,8 +2592,16 @@
       }
     }
 
-    const isComplete = totalSteps > 0 && acquiredSteps >= totalSteps;
-    const percent = totalSteps > 0 ? Math.min(100, Math.floor((acquiredSteps / totalSteps) * 100)) : 0;
+    const isComplete = isCls
+      ? totalSteps > 0 && acquiredSteps >= totalSteps
+      : spentPoints >= TREE_COMPLETION_POINTS_GOAL;
+    const percent = isCls
+      ? totalSteps > 0
+        ? Math.min(100, Math.floor((acquiredSteps / totalSteps) * 100))
+        : 0
+      : isComplete
+      ? 100
+      : Math.min(100, Math.floor((spentPoints / TREE_COMPLETION_POINTS_GOAL) * 100));
 
     return {
       acquiredSteps,

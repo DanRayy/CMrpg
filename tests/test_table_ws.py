@@ -401,10 +401,10 @@ def test_decoupled_mesa_compact_state_and_cards_rendering(tmp_path: Path) -> Non
         assert sync["table"]["sizes"]["char_default_1"] == {"w": 72, "h": 96}
         assert sync["table"]["sizes"]["char_default_2"] == {"w": 420, "h": 468}
 
-        # Static asset query string must be v1.16.5
+        # Static asset query string must be v1.16.6
         resp = client.get("/")
-        assert "js/01-core-state.js?v=1.16.5" in resp.text
-        assert "js/03-tabs-renderers.js?v=1.16.5" in resp.text
+        assert "js/01-core-state.js?v=1.16.6" in resp.text
+        assert "js/03-tabs-renderers.js?v=1.16.6" in resp.text
 
         # Verify 03-tabs-renderers.js restricts compact mode exclusively to Mesa:
         js_resp = client.get("/js/03-tabs-renderers.js")
@@ -569,9 +569,9 @@ def test_v1_13_5_navigation_presence_and_render_stability(tmp_path: Path) -> Non
 
     # 1. HTML and assets checks
     resp_html = client.get("/")
-    assert 'styles.css?v=1.16.5' in resp_html.text
-    assert 'js/02-websocket-combat.js?v=1.16.5' in resp_html.text
-    assert 'js/05b-mesa-board.js?v=1.16.5' in resp_html.text
+    assert 'styles.css?v=1.16.6' in resp_html.text
+    assert 'js/02-websocket-combat.js?v=1.16.6' in resp_html.text
+    assert 'js/05b-mesa-board.js?v=1.16.6' in resp_html.text
 
     # 2. CSS Subpixel stabilization & GPU layer rules
     resp_css = client.get("/styles.css")
@@ -1455,7 +1455,7 @@ def test_v1_16_1_preferences_audio_and_shop_buttons(tmp_path: Path) -> None:
     client = TestClient(main.app, client=("127.0.0.1", 53045))
 
     # 1. FastAPI app version check
-    assert main.app.version == "1.16.5"
+    assert main.app.version == "1.16.6"
 
     # 2. HTML elements check
     resp = client.get("/")
@@ -1506,7 +1506,7 @@ def test_v1_16_2_character_card_redesign(tmp_path: Path) -> None:
     _setup_isolated_state(tmp_path)
     client = TestClient(main.app, client=("127.0.0.1", 53046))
 
-    assert main.app.version == "1.16.5"
+    assert main.app.version == "1.16.6"
 
     resp_js3 = client.get("/js/03-tabs-renderers.js")
     assert resp_js3.status_code == 200
@@ -1543,7 +1543,7 @@ def test_v1_16_3_combat_stat_toggle(tmp_path: Path) -> None:
     _setup_isolated_state(tmp_path)
     client = TestClient(main.app, client=("127.0.0.1", 53047))
 
-    assert main.app.version == "1.16.5"
+    assert main.app.version == "1.16.6"
 
     resp_js1 = client.get("/js/01-core-state.js")
     assert "cardCombatStatMode: {}" in resp_js1.text
@@ -1561,7 +1561,7 @@ def test_v1_16_4_class_subclass_node_purchase_and_equip_shortcut(tmp_path: Path)
     _setup_isolated_state(tmp_path)
     client = TestClient(main.app, client=("127.0.0.1", 53048))
 
-    assert main.app.version == "1.16.5"
+    assert main.app.version == "1.16.6"
 
     resp_js4 = client.get("/js/04-modals-character-buffs.js")
     assert resp_js4.status_code == 200
@@ -1575,6 +1575,107 @@ def test_v1_16_4_class_subclass_node_purchase_and_equip_shortcut(tmp_path: Path)
     assert "[data-st-equip-vocation]" in resp_js6.text
     assert "handleSheetChangeCharacterVocation(cId, vocKind, vocId)" in resp_js6.text
     assert "const acquiredPassiveNodes = allAcquiredTreeNodes.filter(" in js4
+
+
+def test_v1_16_6_skill_tree_20_points_completion_rule(tmp_path: Path) -> None:
+    _setup_isolated_state(tmp_path)
+    client = TestClient(main.app, client=("127.0.0.1", 53049))
+
+    assert main.app.version == "1.16.6"
+
+    resp_js1 = client.get("/js/01-core-state.js")
+    assert "const TREE_COMPLETION_POINTS_GOAL = 20;" in resp_js1.text
+    assert "spentPoints >= TREE_COMPLETION_POINTS_GOAL" in resp_js1.text
+
+    resp_js4 = client.get("/js/04-modals-character-buffs.js")
+    assert "20/20 pts (Completa)" in resp_js4.text
+    assert "pts para 100%" in resp_js4.text
+
+    with client.websocket_connect("/ws") as ws:
+        init_sync = _drain_until_type(ws, "state_sync")
+
+        # Tree has 40 total possible points across 4 nodes, with +100 VIDA and +25 ATAQUE completionEffects
+        tree_20pts = {
+            "id": "tree_arcana_20pts",
+            "name": "Arcanismo Profundo",
+            "completionDescription": "+100 Vida e +25 Ataque ao investir 20 pontos.",
+            "completionEffects": [
+                {"targetStat": "VIDA", "modifierType": "FLAT", "value": 100},
+                {"targetStat": "ATAQUE", "modifierType": "FLAT", "value": 25},
+            ],
+            "nodes": [
+                {
+                    "id": "nd_talento_1",
+                    "category": "TALENTO",
+                    "name": "Foco Mental",
+                    "maxRanks": 6,
+                    "costPerRank": 2,  # up to 12 pts
+                    "effects": [{"targetStat": "ARCANA", "modifierType": "FLAT", "value": 2}],
+                },
+                {
+                    "id": "nd_ativa_1",
+                    "category": "ATIVA",
+                    "name": "Raio Astral",
+                    "unlockCost": 4,
+                    "maxUpgrades": 3,
+                    "upgradeCost": 2,  # up to 10 pts
+                    "effects": [],
+                },
+                {
+                    "id": "nd_suprema_1",
+                    "category": "SUPREMA",
+                    "name": "Singularidade",
+                    "unlockCost": 10,  # 10 pts
+                    "effects": [],
+                },
+                {
+                    "id": "nd_passiva_extra",
+                    "category": "PASSIVA",
+                    "name": "Mente Eterna",
+                    "unlockCost": 8,  # 8 pts (never unlocked in this test!)
+                    "effects": [],
+                },
+            ],
+        }
+
+        chars = copy.deepcopy(init_sync["characters"])
+        c1 = chars[0]
+        c1["baseMaxHp"] = 100
+        c1["baseAttack"] = 10
+        c1["classId"] = None
+        c1["subclassId"] = None
+        c1["raceId"] = "race_humano"  # 0 stat modifiers on HP/ATAQUE
+
+        # 1) Invest 18 points (rank 5 * 2 = 10 pts + unlock 4 + 2 upgrades * 2 = 8 pts -> total 18 pts < 20)
+        c1["skillTreeProgress"] = {
+            "nd_talento_1": {"rank": 5, "enabled": True},
+            "nd_ativa_1": {"unlocked": True, "upgrades": 2, "enabled": True},
+        }
+        ws.send_json({"type": "update_state", "skillTrees": [tree_20pts], "characters": chars})
+        sync_18 = _drain_until_type(ws, "state_sync")
+        c1_18 = next(c for c in sync_18["characters"] if c["id"] == c1["id"])
+        assert c1_18["maxHp"] == 100
+        assert c1_18["attack"] == 10
+
+        # 2) Invest 20 points (upgrade nd_ativa_1 from 2 -> 3 upgrades => +2 pts => total 20 pts, with 2 nodes still untouched/unmaxed!)
+        chars_20 = copy.deepcopy(sync_18["characters"])
+        c1_mut = next(c for c in chars_20 if c["id"] == c1["id"])
+        c1_mut["skillTreeProgress"]["nd_ativa_1"]["upgrades"] = 3
+        ws.send_json({"type": "update_state", "characters": chars_20})
+        sync_20 = _drain_until_type(ws, "state_sync")
+        c1_20 = next(c for c in sync_20["characters"] if c["id"] == c1["id"])
+        assert c1_20["maxHp"] == 200
+        assert c1_20["attack"] == 35
+
+        # 3) Refund 1 rank of nd_talento_1 (-2 pts => total 18 pts < 20) -> completionEffects deactivated!
+        chars_refund = copy.deepcopy(sync_20["characters"])
+        c1_ref = next(c for c in chars_refund if c["id"] == c1["id"])
+        c1_ref["skillTreeProgress"]["nd_talento_1"]["rank"] = 4
+        ws.send_json({"type": "update_state", "characters": chars_refund})
+        sync_ref = _drain_until_type(ws, "state_sync")
+        c1_after_ref = next(c for c in sync_ref["characters"] if c["id"] == c1["id"])
+        assert c1_after_ref["maxHp"] == 100
+        assert c1_after_ref["attack"] == 10
 
 
 
